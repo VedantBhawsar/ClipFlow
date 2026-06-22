@@ -16,10 +16,10 @@ import { OnboardingGuard } from "@/lib/onboarding-guard";
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <ProtectedShell>
-      <div className="flex min-h-svh bg-background">
+      <div className="flex bg-background h-screen">
         <Sidebar />
-        <div className="flex flex-1 flex-col">
-          <main className="mx-auto w-full max-w-[960px] flex-1 px-6 py-8 sm:px-8">
+        <div className="flex flex-1 flex-col max-h-screen overflow-y-auto h-screen">
+          <main className="mx-auto w-full flex-1 px-6 py-8 sm:px-8">
             <OnboardingGuard mode="require-complete">{children}</OnboardingGuard>
           </main>
         </div>

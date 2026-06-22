@@ -31,7 +31,7 @@ import { getPreferences } from "../preferences/preferences.service.js";
  *
  * @returns Always-disconnected YouTube connection for v1.
  */
-const stubbedYouTubeConnection = (): YouTubeConnection => {
+export const stubbedYouTubeConnection = (): YouTubeConnection => {
   return {
     status: "disconnected",
     channelId: null,
