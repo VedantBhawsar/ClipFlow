@@ -1,7 +1,8 @@
 {
   "extends": "@clipflow/typescript-config/react-library.json",
   "compilerOptions": {
-    "outDir": "dist",
+    "outDir": "./dist",
+    "rootDir": "./src",
     "strictNullChecks": true
   },
   "include": ["src"],
