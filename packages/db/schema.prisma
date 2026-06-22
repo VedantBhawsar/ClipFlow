@@ -89,8 +89,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile      UserProfile?
-  preferences  UserPreferences?
+  profile     UserProfile?
+  preferences UserPreferences?
 
   @@map("users")
 }
@@ -149,13 +149,13 @@ model UserPreferences {
 
   // ---- Scheduling defaults ----
   /// IANA timezone string, e.g. "Asia/Kolkata". Validated application-side.
-  defaultTimezone String  @default("UTC")
+  defaultTimezone    String @default("UTC")
   /// HH:MM 24h local time, e.g. "18:00". Validated application-side.
   defaultPublishTime String @default("18:00")
 
   // ---- Generation behavior ----
-  chapterBehavior       ChapterBehavior        @default(ALWAYS_REVIEW)
-  thumbnailStyle        ThumbnailStyleOverride @default(AUTO)
+  chapterBehavior ChapterBehavior        @default(ALWAYS_REVIEW)
+  thumbnailStyle  ThumbnailStyleOverride @default(AUTO)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
