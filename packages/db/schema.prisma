@@ -1,18 +1,18 @@
 // packages/db/schema.prisma
 //
 // ClipFlow database schema. Mirrors docs/Schema.md, scoped down to the
-// tables needed for the v1 onboarding slice (Steps 1-5 of AppFlow.md)
-// and the v1 settings slice:
+// tables needed for the v1 onboarding slice (Steps 1-5 of AppFlow.md),
+// v1 settings slice, and YouTube OAuth slice:
 //
 //   - User (auth identity)
 //   - UserProfile (onboarding answers — niche/freq/goal)
 //   - UserPreferences (runtime preferences — notifications, scheduling,
 //     generation behavior)
+//   - YouTubeChannel (OAuth connection for publishing)
 //
-// YouTubeChannel, Video, Plan, Subscription, WebhookEvent, etc. are
-// intentionally omitted from this file until their slices are built, to
-// keep migrations honest and avoid declaring indexes/columns that
-// nothing queries yet.
+// Video, Plan, Subscription, WebhookEvent, etc. are intentionally
+// omitted from this file until their slices are built, to keep migrations
+// honest and avoid declaring indexes/columns that nothing queries yet.
 //
 // See docs/Schema.md for the full v1 picture and the v1.5 / v2 forward
 // notes (VideoStats, multi-channel, etc.).
@@ -74,6 +74,14 @@ enum ThumbnailStyleOverride {
   TEXT_FORWARD
 }
 
+// ---------- Channel connection status ----------
+
+enum ChannelConnectionStatus {
+  CONNECTED
+  NEEDS_REAUTH
+  DISCONNECTED
+}
+
 // ---------- User ----------
 
 /// Auth identity only. Onboarding answers live in UserProfile.
@@ -89,8 +97,9 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile     UserProfile?
-  preferences UserPreferences?
+  profile       UserProfile?
+  preferences   UserPreferences?
+  youtubeChannel YouTubeChannel?
 
   @@map("users")
 }
@@ -161,4 +170,32 @@ model UserPreferences {
   updatedAt DateTime @updatedAt
 
   @@map("user_preferences")
+}
+
+// ---------- YouTubeChannel ----------
+
+/// Stores the OAuth connection between a User and their YouTube channel.
+/// One channel per user (v1 limitation; v2 supports multi-channel).
+/// Refresh tokens are encrypted at rest using AES-256-GCM.
+model YouTubeChannel {
+  id String @id @default(cuid())
+  userId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// The actual YouTube channel ID from Google
+  youtubeChannelId String
+  channelTitle String
+  channelThumbnailUrl String?
+
+  /// Encrypted refresh token (AES-256-GCM)
+  refreshTokenEncrypted String
+  scopes String
+
+  status ChannelConnectionStatus @default(CONNECTED)
+  lastVerifiedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("youtube_channels")
 }

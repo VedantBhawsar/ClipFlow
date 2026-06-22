@@ -210,6 +210,13 @@ export interface ChangePasswordRequest {
 
 // ---------- YouTube connection (read-side; OAuth not yet wired) ----------
 
+export const CHANNEL_CONNECTION_STATUSES = [
+  "CONNECTED",
+  "NEEDS_REAUTH",
+  "DISCONNECTED",
+] as const;
+export type ChannelConnectionStatus = (typeof CHANNEL_CONNECTION_STATUSES)[number];
+
 export type YouTubeConnectionStatus = "connected" | "needs_reauth" | "disconnected";
 
 export interface YouTubeConnection {
