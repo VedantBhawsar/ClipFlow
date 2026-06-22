@@ -106,7 +106,7 @@ export default async function DashboardPage() {
             </p>
           </div>
           <Button asChild variant="outline">
-            <Link href="/settings/profile">
+            <Link href="/dashboard/settings/profile">
               <SettingsIcon aria-hidden="true" />
               Open settings
             </Link>
