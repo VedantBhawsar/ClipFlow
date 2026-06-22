@@ -6,5 +6,5 @@ import { redirect } from "next/navigation";
  * stable (no "index" route that might confuse deep-links).
  */
 export default function SettingsIndexPage() {
-  redirect("/settings/profile");
+  redirect("/dashboard/settings/profile");
 }

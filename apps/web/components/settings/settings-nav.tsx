@@ -24,43 +24,43 @@ interface SettingsNavItem {
 
 const SETTINGS_NAV: ReadonlyArray<SettingsNavItem> = [
   {
-    href: "/settings/profile",
+    href: "/dashboard/settings/profile",
     label: "Profile",
     description: "Channel name, niche, and goals.",
     icon: User,
   },
   {
-    href: "/settings/notifications",
+    href: "/dashboard/settings/notifications",
     label: "Notifications",
     description: "Email alerts for video status and account health.",
     icon: Bell,
   },
   {
-    href: "/settings/scheduling",
+    href: "/dashboard/settings/scheduling",
     label: "Scheduling",
     description: "Default timezone and publish time for new videos.",
     icon: Clock,
   },
   {
-    href: "/settings/generation",
+    href: "/dashboard/settings/generation",
     label: "Generation",
     description: "How chapters and thumbnails are produced.",
     icon: Sparkles,
   },
   {
-    href: "/settings/connected",
+    href: "/dashboard/settings/connected",
     label: "YouTube connection",
     description: "Channel connection status and reconnect.",
     icon: Youtube,
   },
   {
-    href: "/settings/security",
+    href: "/dashboard/settings/security",
     label: "Security",
     description: "Change your password.",
     icon: Lock,
   },
   {
-    href: "/settings/appearance",
+    href: "/dashboard/settings/appearance",
     label: "Appearance",
     description: "Light, dark, or system theme.",
     icon: Sun,
