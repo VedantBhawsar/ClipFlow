@@ -1,18 +1,24 @@
 {
-  "extends": "@repo/typescript-config/nextjs.json",
+  "extends": "@clipflow/typescript-config/nextjs.json",
   "compilerOptions": {
     "plugins": [
       {
         "name": "next"
       }
     ],
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "@/*": ["./*"]
+    }
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     "next-env.d.ts",
     "next.config.js",
+    "postcss.config.mjs",
     ".next/types/**/*.ts"
   ],
   "exclude": ["node_modules"]

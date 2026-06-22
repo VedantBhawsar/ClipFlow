@@ -1,50 +1,193 @@
+@import "tailwindcss";
+
+/*
+ * ClipFlow design tokens (per docs/Design.md).
+ *
+ * shadcn/ui "new-york" base + neutral palette. The base colors live in
+ * the :root + .dark blocks below; shadcn semantic aliases (--background,
+ * --primary, etc.) point at them so utility classes (`bg-background`,
+ * `text-muted-foreground`, …) Just Work across both themes.
+ */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* shadcn base neutral — light */
+  --background: #FAFAF8;
+  --foreground: #1A1B18;
+
+  --card: #FFFFFF;
+  --card-foreground: #1A1B18;
+
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1B18;
+
+  --muted: #F4F3EC;
+  --muted-foreground: #6B6D66;
+
+  --border: #E4E3DC;
+  --input: #E4E3DC;
+
+  /* Brand: deep pine green */
+  --primary: #2A5C4D;
+  --primary-foreground: #FFFFFF;
+
+  --secondary: #F4F3EC;
+  --secondary-foreground: #1A1B18;
+
+  --accent: #2A5C4D;
+  --accent-foreground: #FFFFFF;
+
+  --destructive: #8C3B2E;
+  --destructive-foreground: #FFFFFF;
+
+  --ring: #2A5C4D;
+
+  /* Pipeline status palette (matches Design.md Section 2) */
+  --status-processing: #9C7A2E;
+  --status-ready: #2A5C4D;
+  --status-scheduled: #3B5A78;
+  --status-error: #8C3B2E;
+
+  /* Radii — shadcn defaults, kept on the small side per the calm tone. */
+  --radius: 0.625rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+.dark {
+  /* shadcn neutral — dark, lifted one step per Design.md dark spec */
+  --background: #16170F;
+  --foreground: #F4F3EC;
+
+  --card: #1E1F17;
+  --card-foreground: #F4F3EC;
+
+  --popover: #1E1F17;
+  --popover-foreground: #F4F3EC;
+
+  --muted: #26271D;
+  --muted-foreground: #A2A39A;
+
+  --border: #2E2F25;
+  --input: #2E2F25;
+
+  /* Lifted accent for AA contrast on dark bg */
+  --primary: #4A8770;
+  --primary-foreground: #16170F;
+
+  --secondary: #26271D;
+  --secondary-foreground: #F4F3EC;
+
+  --accent: #4A8770;
+  --accent-foreground: #16170F;
+
+  --destructive: #B85A4A;
+  --destructive-foreground: #F4F3EC;
+
+  --ring: #4A8770;
+
+  /* Status hues stay similar hue, lifted one step for contrast */
+  --status-processing: #C29A4E;
+  --status-ready: #4A8770;
+  --status-scheduled: #5A7C9E;
+  --status-error: #B85A4A;
+}
+
+@theme inline {
+  /* Map shadcn semantic tokens into Tailwind v4 utility classes. */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-ring: var(--ring);
+
+  /* Pipeline status — expose directly so utilities like
+     `bg-status-ready` / `text-status-processing` work. */
+  --color-status-processing: var(--status-processing);
+  --color-status-ready: var(--status-ready);
+  --color-status-scheduled: var(--status-scheduled);
+  --color-status-error: var(--status-error);
+
+  /* Fonts (per Design.md). Inter Tight is the single grotesque used
+     for both display + body to keep the weight palette tight. */
+  --font-sans: var(--font-inter-tight), ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular,
+    Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  /* Type scale (per Design.md: 12 / 13 / 14 / 16 / 20 / 28).
+     shadcn defaults already cover most of these; we declare the
+     full set explicitly so the design intent is auditable in one place. */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.125rem;
+  --text-base: 0.875rem;
+  --text-base--line-height: 1.25rem;
+  --text-lg: 1rem;
+  --text-lg--line-height: 1.5rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.75rem;
+  --text-2xl--line-height: 2.25rem;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--color-border);
   }
-}
 
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-}
-
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.imgDark {
-  display: none;
-}
-
-@media (prefers-color-scheme: dark) {
   html {
-    color-scheme: dark;
+    color-scheme: light dark;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 
-  .imgLight {
-    display: none;
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
   }
-  .imgDark {
-    display: unset;
+
+  /* Visible, accent-tinted focus ring everywhere. Per Design.md
+     Section 6 — keyboard accessibility baseline. */
+  :focus-visible {
+    outline: none;
+  }
+
+  /* Monospace numbers so "1:05" / "1:50" never get misread. */
+  .font-mono,
+  code,
+  kbd {
+    font-family: var(--font-mono);
+  }
+}
+
+@layer utilities {
+  /* Used by onboarding cards + status timeline — instant state changes
+     are the default per Design.md Section 5. */
+  .motion-safe\:duration-150 {
+    transition-duration: 150ms;
   }
 }

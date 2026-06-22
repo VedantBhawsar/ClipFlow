@@ -1,0 +1,101 @@
+// packages/db/schema.prisma
+//
+// ClipFlow database schema. Mirrors docs/Schema.md, scoped down to the
+// tables needed for the v1 onboarding slice (Steps 1-5 of AppFlow.md):
+//
+//   - User (auth identity)
+//   - UserProfile (onboarding answers — niche/freq/goal)
+//
+// YouTubeChannel, Video, Plan, Subscription, WebhookEvent, etc. are
+// intentionally omitted from this file until their slices are built, to
+// keep migrations honest and avoid declaring indexes/columns that
+// nothing queries yet.
+//
+// See docs/Schema.md for the full v1 picture and the v1.5 / v2 forward
+// notes (VideoStats, multi-channel, etc.).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- Enums ----------
+
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+}
+
+enum ContentNiche {
+  GAMING
+  TECH_EDUCATION
+  VLOG_LIFESTYLE
+  BUSINESS_FINANCE
+  ENTERTAINMENT_COMEDY
+  OTHER
+}
+
+enum UploadFrequency {
+  ONE_TO_FOUR
+  FIVE_TO_TEN
+  ELEVEN_TO_TWENTY
+  TWENTY_PLUS
+}
+
+enum PrimaryGoal {
+  SAVE_TIME_EDITING
+  BETTER_THUMBNAILS_CTR
+  CONSISTENT_SCHEDULE
+  GROW_VIEWS
+}
+
+// ---------- User ----------
+
+/// Auth identity only. Onboarding answers live in UserProfile.
+model User {
+  id              String       @id @default(cuid())
+  email           String       @unique
+  passwordHash    String?
+  name            String?
+  authProvider    AuthProvider @default(EMAIL)
+  googleId        String?      @unique
+  emailVerifiedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile UserProfile?
+
+  @@map("users")
+}
+
+// ---------- UserProfile ----------
+
+/// Onboarding answers. Nullable until onboarding completes, so a
+/// half-finished signup doesn't have to backfill later.
+model UserProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  displayName String?
+
+  niche           ContentNiche?
+  uploadFrequency UploadFrequency?
+  primaryGoal     PrimaryGoal?
+
+  recommendedPlanId String?
+
+  /// null until all required onboarding steps are done. Used to decide
+  /// whether to redirect to the profile step or straight to the dashboard
+  /// on login (per AppFlow.md edge case "user abandons mid-profile").
+  onboardingCompletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_profiles")
+}
