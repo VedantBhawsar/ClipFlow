@@ -45,13 +45,13 @@ describe("Sidebar", () => {
     render(<Sidebar />);
     const settingsLink = screen.getByText("Settings").closest("a");
     expect(settingsLink).not.toHaveAttribute("aria-disabled");
-    expect(settingsLink).toHaveAttribute("href", "/settings");
+    expect(settingsLink).toHaveAttribute("href", "/dashboard/settings");
   });
 
   it("links the user email row to /settings/profile", () => {
     render(<Sidebar />);
     const emailLink = screen.getByText("creator@example.com").closest("a");
-    expect(emailLink).toHaveAttribute("href", "/settings/profile");
+    expect(emailLink).toHaveAttribute("href", "/dashboard/settings/profile");
   });
 
   it("still shows Videos and Billing as disabled placeholders", () => {

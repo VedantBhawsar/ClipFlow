@@ -9,10 +9,6 @@
  * shape is co-located with the rest of the auth module.
  */
 import type { NextFunction, Request, Response } from "express";
-// Side-effect: load the Express `Request` augmentations (`req.id`,
-// `req.user`). This middleware is transitively pulled in by every
-// authenticated route, so the augmentation reaches every controller.
-import "../types/express.js";
 import { AppError } from "../errors/AppError.js";
 import { verifyJwt } from "../lib/jwt.js";
 import type { Env } from "@clipflow/config";
