@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { SettingsNav } from "./settings-nav.js";
 
 vi.mock("next/navigation", () => ({
-  usePathname: vi.fn(() => "/settings/profile"),
+  usePathname: vi.fn(() => "/dashboard/settings/profile"),
 }));
 
 import { usePathname } from "next/navigation";
@@ -12,7 +12,7 @@ const mockUsePathname = vi.mocked(usePathname);
 describe("SettingsNav", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUsePathname.mockReturnValue("/settings/profile");
+    mockUsePathname.mockReturnValue("/dashboard/settings/profile");
   });
 
   it("renders all 7 settings sections", () => {
@@ -39,7 +39,7 @@ describe("SettingsNav", () => {
   });
 
   it("updates active state when pathname changes", () => {
-    mockUsePathname.mockReturnValue("/settings/security");
+    mockUsePathname.mockReturnValue("/dashboard/settings/security");
     render(<SettingsNav />);
     const security = screen.getByText("Security").closest("a");
     expect(security).toHaveAttribute("aria-current", "page");

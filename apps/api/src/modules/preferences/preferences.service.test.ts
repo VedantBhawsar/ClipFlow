@@ -32,6 +32,8 @@ const mockUserUpdate = vi.mocked(prisma.user.update);
 const mockHash = vi.mocked(hashPassword);
 const mockVerify = vi.mocked(verifyPassword);
 
+// `as const` so the chapterBehavior / thumbnailStyle fields are the
+// enum literal types Prisma expects (not plain `string`).
 const baseRow = {
   id: "pref-1",
   userId: "user-1",
@@ -42,8 +44,20 @@ const baseRow = {
   notifyWeeklySummary: false,
   defaultTimezone: "UTC",
   defaultPublishTime: "18:00",
-  chapterBehavior: "ALWAYS_REVIEW",
-  thumbnailStyle: "AUTO",
+  chapterBehavior: "ALWAYS_REVIEW" as const,
+  thumbnailStyle: "AUTO" as const,
+  createdAt: new Date("2025-01-01T00:00:00.000Z"),
+  updatedAt: new Date("2025-01-01T00:00:00.000Z"),
+};
+
+const baseUser = {
+  id: "user-1",
+  email: "test@example.com",
+  name: "Test User",
+  passwordHash: "old_hash" as string | null,
+  authProvider: "EMAIL" as const,
+  googleId: null,
+  emailVerifiedAt: null,
   createdAt: new Date("2025-01-01T00:00:00.000Z"),
   updatedAt: new Date("2025-01-01T00:00:00.000Z"),
 };
@@ -95,7 +109,7 @@ describe("preferences.service", () => {
       mockUpsert.mockResolvedValue({
         ...baseRow,
         defaultTimezone: "Asia/Kolkata",
-        chapterBehavior: "AUTO_APPLY_IF_VALID",
+        chapterBehavior: "AUTO_APPLY_IF_VALID" as const,
         updatedAt: new Date("2025-02-01T00:00:00.000Z"),
       });
       await preferencesService.updatePreferences("user-1", {
@@ -112,12 +126,9 @@ describe("preferences.service", () => {
 
   describe("changePassword", () => {
     it("hashes the new password and updates the user row on success", async () => {
-      mockUserFindUnique.mockResolvedValue({
-        id: "user-1",
-        passwordHash: "old_hash",
-      });
+      mockUserFindUnique.mockResolvedValue(baseUser);
       mockHash.mockResolvedValue("new_hash");
-      mockUserUpdate.mockResolvedValue({});
+      mockUserUpdate.mockResolvedValue(baseUser);
       await expect(
         preferencesService.changePassword("user-1", {
           currentPassword: "OldPass123",
@@ -133,10 +144,7 @@ describe("preferences.service", () => {
     });
 
     it("rejects with 401 INVALID_CREDENTIALS on wrong current password", async () => {
-      mockUserFindUnique.mockResolvedValue({
-        id: "user-1",
-        passwordHash: "old_hash",
-      });
+      mockUserFindUnique.mockResolvedValue(baseUser);
       mockVerify.mockResolvedValue(false);
       await expect(
         preferencesService.changePassword("user-1", {
@@ -151,10 +159,7 @@ describe("preferences.service", () => {
     });
 
     it("rejects Google-only accounts (no passwordHash) with 400 PASSWORD_NOT_SET", async () => {
-      mockUserFindUnique.mockResolvedValue({
-        id: "user-1",
-        passwordHash: null,
-      });
+      mockUserFindUnique.mockResolvedValue({ ...baseUser, passwordHash: null });
       await expect(
         preferencesService.changePassword("user-1", {
           currentPassword: "anything",
