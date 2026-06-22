@@ -22,8 +22,8 @@ const PRIMARY_NAV: ReadonlyArray<NavItem> = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, enabled: true },
   { href: "/videos", label: "Videos", icon: Film, enabled: false },
   { href: "/billing", label: "Billing", icon: CreditCard, enabled: false },
-  // Settings now exists under /settings/* — see apps/web/app/dashboard/settings.
-  { href: "/settings", label: "Settings", icon: Settings, enabled: true },
+  // Settings lives under /dashboard/settings/* — see apps/web/app/dashboard/settings.
+  { href: "/dashboard/settings", label: "Settings", icon: Settings, enabled: true },
 ];
 
 interface SidebarProps {
@@ -130,7 +130,7 @@ export function Sidebar({
         </div>
         <div className="mt-2 flex items-center gap-1 px-1">
           <Link
-            href="/settings/profile"
+            href="/dashboard/settings/profile"
             className="flex-1 truncate rounded-md px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             title="Open profile settings"
           >
