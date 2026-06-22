@@ -1,0 +1,11 @@
+{
+  "extends": "@clipflow/typescript-config/base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "declaration": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts", "schema.prisma"],
+  "exclude": ["node_modules", "dist"]
+}
