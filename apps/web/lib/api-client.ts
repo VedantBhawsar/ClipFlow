@@ -1,11 +1,16 @@
 import type {
   AuthResponse,
+  ChangePasswordRequest,
   LoginRequest,
   MeResponse,
   OnboardingStatusResponse,
   RegisterRequest,
+  UpdatePreferencesRequest,
   UpdateProfileRequest,
+  UserBundleResponse,
+  UserPreferences,
   UserProfile,
+  YouTubeConnection,
   ApiErrorBody,
 } from "@clipflow/types";
 import { env } from "@/lib/env";
@@ -143,5 +148,43 @@ export const api = {
 
   submitOnboardingProfile(body: UpdateProfileRequest): Promise<UserProfile> {
     return request("POST", "/api/onboarding/profile", body);
+  },
+
+  // ---------- User bundle (profile + preferences + YouTube) ----------
+
+  /**
+   * Single round-trip read of user + profile + preferences + YouTube
+   * connection. Returns everything the dashboard chrome needs in one
+   * call, used by the auth context on hydration.
+   */
+  getUserBundle(): Promise<UserBundleResponse> {
+    return request("GET", "/api/user/profile");
+  },
+
+  /**
+   * Narrow YouTube-connection read. Used by /settings/connected so the
+   * page can refresh just the connection status without paying for
+   * the full bundle.
+   */
+  getYouTubeConnection(): Promise<YouTubeConnection> {
+    return request("GET", "/api/user/youtube-connection");
+  },
+
+  // ---------- Preferences ----------
+
+  getPreferences(): Promise<UserPreferences> {
+    return request("GET", "/api/user/preferences");
+  },
+
+  updatePreferences(body: UpdatePreferencesRequest): Promise<UserPreferences> {
+    return request("PATCH", "/api/user/preferences", body);
+  },
+
+  /**
+   * Change the authenticated user's password. Returns void on
+   * success; the server responds with 204.
+   */
+  changePassword(body: ChangePasswordRequest): Promise<void> {
+    return request<void>("POST", "/api/user/change-password", body);
   },
 } as const;
