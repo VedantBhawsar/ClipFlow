@@ -4,6 +4,7 @@ import type {
   LoginRequest,
   MeResponse,
   OnboardingStatusResponse,
+  PatchProfileRequest,
   RegisterRequest,
   UpdatePreferencesRequest,
   UpdateProfileRequest,
@@ -148,6 +149,15 @@ export const api = {
 
   submitOnboardingProfile(body: UpdateProfileRequest): Promise<UserProfile> {
     return request("POST", "/api/onboarding/profile", body);
+  },
+
+  /**
+   * Partial update of the onboarding profile. Use for settings-page
+   * edits where the user is just changing one or two fields; the
+   * onboarding-completion timestamp is not touched.
+   */
+  patchOnboardingProfile(body: PatchProfileRequest): Promise<UserProfile> {
+    return request("PATCH", "/api/onboarding/profile", body);
   },
 
   // ---------- User bundle (profile + preferences + YouTube) ----------
