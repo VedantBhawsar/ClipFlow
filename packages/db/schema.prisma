@@ -1,10 +1,13 @@
 // packages/db/schema.prisma
 //
 // ClipFlow database schema. Mirrors docs/Schema.md, scoped down to the
-// tables needed for the v1 onboarding slice (Steps 1-5 of AppFlow.md):
+// tables needed for the v1 onboarding slice (Steps 1-5 of AppFlow.md)
+// and the v1 settings slice:
 //
 //   - User (auth identity)
 //   - UserProfile (onboarding answers — niche/freq/goal)
+//   - UserPreferences (runtime preferences — notifications, scheduling,
+//     generation behavior)
 //
 // YouTubeChannel, Video, Plan, Subscription, WebhookEvent, etc. are
 // intentionally omitted from this file until their slices are built, to
@@ -52,6 +55,25 @@ enum PrimaryGoal {
   GROW_VIEWS
 }
 
+/// How the app should treat generated chapters before publishing.
+/// ALWAYS_REVIEW: surface chapters in the review screen every time (default).
+/// AUTO_APPLY_IF_VALID: if the LLM output passes YouTube's rules (first=0,
+/// min 3, min 10s apart), apply without waiting for the user.
+enum ChapterBehavior {
+  ALWAYS_REVIEW
+  AUTO_APPLY_IF_VALID
+}
+
+/// Per-user override for thumbnail style. AUTO means "use the niche
+/// default" (the same lookup that runs today). The other values let
+/// creators with multi-niche content force a consistent treatment.
+enum ThumbnailStyleOverride {
+  AUTO
+  BOLD
+  MINIMAL
+  TEXT_FORWARD
+}
+
 // ---------- User ----------
 
 /// Auth identity only. Onboarding answers live in UserProfile.
@@ -67,7 +89,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile UserProfile?
+  profile     UserProfile?
+  preferences UserPreferences?
 
   @@map("users")
 }
@@ -98,4 +121,44 @@ model UserProfile {
   updatedAt DateTime @updatedAt
 
   @@map("user_profiles")
+}
+
+// ---------- UserPreferences ----------
+
+/// Runtime user preferences (notifications, scheduling, generation).
+///
+/// Modeled separately from `UserProfile` so onboarding answers and
+/// runtime preferences can evolve independently — and so the auth-critical
+/// `User` table never needs to grow every time a new toggle is added.
+/// Same separation rationale as `UserProfile` itself (see Schema.md).
+///
+/// Row is created on first read via service-layer upsert, so a returning
+/// user always has preferences; explicit defaults live here so the API
+/// contract is "if you PATCH with one field, the rest stay as-is."
+model UserPreferences {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // ---- Notifications (email) ----
+  notifyProcessingComplete Boolean @default(true)
+  notifyPublished          Boolean @default(true)
+  notifyPublishFailed      Boolean @default(true)
+  notifyNeedsReauth        Boolean @default(true)
+  notifyWeeklySummary      Boolean @default(false)
+
+  // ---- Scheduling defaults ----
+  /// IANA timezone string, e.g. "Asia/Kolkata". Validated application-side.
+  defaultTimezone    String @default("UTC")
+  /// HH:MM 24h local time, e.g. "18:00". Validated application-side.
+  defaultPublishTime String @default("18:00")
+
+  // ---- Generation behavior ----
+  chapterBehavior ChapterBehavior        @default(ALWAYS_REVIEW)
+  thumbnailStyle  ThumbnailStyleOverride @default(AUTO)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_preferences")
 }

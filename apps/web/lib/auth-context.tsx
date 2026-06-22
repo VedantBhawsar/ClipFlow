@@ -16,8 +16,10 @@ import type {
   AuthUser,
   LoginRequest,
   RegisterRequest,
-  UpdateProfileRequest,
+  UpdatePreferencesRequest,
+  UserPreferences,
   UserProfile,
+  YouTubeConnection,
 } from "@clipflow/types";
 import {
   api,
@@ -31,6 +33,8 @@ export interface AuthContextValue {
   status: AuthStatus;
   user: AuthUser | null;
   profile: UserProfile | null;
+  preferences: UserPreferences | null;
+  youtubeConnection: YouTubeConnection | null;
   onboardingCompleted: boolean;
   signIn: (body: LoginRequest) => Promise<void>;
   signUp: (body: RegisterRequest) => Promise<void>;
@@ -41,6 +45,16 @@ export interface AuthContextValue {
    * Used after the profile wizard successfully submits.
    */
   setOnboardingCompleted: (profile: UserProfile) => void;
+  /**
+   * Update the cached preferences without a full /user/profile refetch.
+   * Used by the settings forms after a successful PATCH.
+   */
+  setPreferences: (next: UserPreferences) => void;
+  /**
+   * Patch preferences via the API and update the cached value. Used
+   * by the settings forms to keep the auth context in sync.
+   */
+  patchPreferences: (body: UpdatePreferencesRequest) => Promise<UserPreferences>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -49,11 +63,22 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+const DISCONNECTED_YT: YouTubeConnection = {
+  status: "disconnected",
+  channelId: null,
+  channelTitle: null,
+  channelThumbnailUrl: null,
+  connectedAt: null,
+  lastVerifiedAt: null,
+};
+
 export function AuthProvider({ children }: AuthProviderProps) {
   const router = useRouter();
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [preferences, setPreferencesState] = useState<UserPreferences | null>(null);
+  const [youtubeConnection, setYoutubeConnection] = useState<YouTubeConnection | null>(null);
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
   // Track whether a refresh is in-flight so concurrent callers reuse it.
   const inflight = useRef<Promise<void> | null>(null);
@@ -66,16 +91,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (inflight.current) return inflight.current;
     const promise = (async () => {
       try {
-        const me = await api.me();
-        setUser(me.user);
-        setProfile(me.profile);
-        setOnboardingCompleted(me.onboardingCompleted);
+        const bundle = await api.getUserBundle();
+        setUser(bundle.user);
+        setProfile(bundle.profile);
+        setPreferencesState(bundle.preferences);
+        setYoutubeConnection(bundle.youtubeConnection);
+        setOnboardingCompleted(bundle.onboardingCompleted);
         setStatus("authenticated");
       } catch {
-        // 401 inside api.me() already cleared the cookie + redirected;
+        // 401 inside the bundle call already cleared the cookie + redirected;
         // any other error means we just don't have a session.
         setUser(null);
         setProfile(null);
+        setPreferencesState(null);
+        setYoutubeConnection(null);
         setOnboardingCompleted(false);
         setStatus("unauthenticated");
       } finally {
@@ -120,6 +149,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     clearAuthTokenCookie();
     setUser(null);
     setProfile(null);
+    setPreferencesState(null);
+    setYoutubeConnection(DISCONNECTED_YT);
     setOnboardingCompleted(false);
     setStatus("unauthenticated");
     router.push("/signin");
@@ -131,28 +162,49 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setOnboardingCompleted(next.onboardingCompletedAt !== null);
   }, []);
 
+  const setPreferences = useCallback((next: UserPreferences) => {
+    setPreferencesState(next);
+  }, []);
+
+  const patchPreferences = useCallback(
+    async (body: UpdatePreferencesRequest): Promise<UserPreferences> => {
+      const next = await api.updatePreferences(body);
+      setPreferencesState(next);
+      return next;
+    },
+    [],
+  );
+
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
       user,
       profile,
+      preferences,
+      youtubeConnection,
       onboardingCompleted,
       signIn,
       signUp,
       signOut,
       refresh,
       setOnboardingCompleted: setProfileCompleted,
+      setPreferences,
+      patchPreferences,
     }),
     [
       status,
       user,
       profile,
+      preferences,
+      youtubeConnection,
       onboardingCompleted,
       signIn,
       signUp,
       signOut,
       refresh,
       setProfileCompleted,
+      setPreferences,
+      patchPreferences,
     ],
   );
 

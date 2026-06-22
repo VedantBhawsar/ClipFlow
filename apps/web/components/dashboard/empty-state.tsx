@@ -1,20 +1,60 @@
 "use client";
 
-import { Upload } from "lucide-react";
+import Link from "next/link";
+import { Upload, Youtube } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
+interface EmptyStateProps {
+  /**
+   * Whether the user has connected a YouTube channel. When `false`,
+   * the empty state shows the "connect your channel first" prompt
+   * — the upload CTA is gated behind a connected channel per
+   * AppFlow.md.
+   */
+  connected?: boolean;
+}
+
 /**
- * "Upload your first video" empty state. Per Design.md the dashboard
- * empty state is text-first: no decorative illustration, no apology,
+ * "No videos yet" empty state. Per Design.md the dashboard empty
+ * state is text-first: no decorative illustration, no apology,
  * one invitation and one action.
  *
- * The Upload button is rendered but disabled-looking — uploads require
- * a connected YouTube channel (the dashboard's connect card handles
- * that), and we don't want to surface an Upload affordance the user
- * can't act on yet. The helper line points them at the prerequisite.
+ * The Upload button is enabled once a YouTube channel is connected.
+ * When the channel isn't connected yet, the empty state points the
+ * user at the prerequisite rather than teasing a feature they can't
+ * act on.
  */
-export function EmptyState() {
+export function EmptyState({ connected = false }: EmptyStateProps) {
+  if (!connected) {
+    return (
+      <section
+        aria-labelledby="videos-empty-title"
+        className="rounded-xl border border-dashed border-border bg-card/40 p-8 sm:p-12"
+      >
+        <div className="flex flex-col items-start gap-3">
+          <h2
+            id="videos-empty-title"
+            className="text-lg font-semibold tracking-tight"
+          >
+            Connect your channel to get started
+          </h2>
+          <p className="max-w-prose text-sm text-muted-foreground">
+            ClipFlow can&apos;t publish until your YouTube channel is
+            connected. It takes about a minute, and you stay in control of
+            every video.
+          </p>
+          <Button asChild className="mt-2">
+            <Link href="/youtube-connect">
+              <Youtube aria-hidden="true" />
+              Connect your channel
+            </Link>
+          </Button>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
       aria-labelledby="videos-empty-title"
@@ -37,13 +77,14 @@ export function EmptyState() {
           disabled
           aria-disabled="true"
           className="mt-2"
-          title="Connecting your YouTube channel is the first step"
+          title="Upload ships with the next slice"
         >
           <Upload aria-hidden="true" />
           Upload your first video
         </Button>
         <p className="text-xs text-muted-foreground">
-          Connecting your YouTube channel is the first step.
+          Upload ships with the next slice. Use Settings to get your
+          account ready in the meantime.
         </p>
       </div>
     </section>
