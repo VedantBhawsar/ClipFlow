@@ -12,7 +12,8 @@
     "prisma:generate": "prisma generate --schema=./schema.prisma",
     "prisma:migrate": "prisma migrate dev --schema=./schema.prisma",
     "prisma:studio": "prisma studio --schema=./schema.prisma",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "postinstall": "prisma generate --schema=./schema.prisma && ln -sf $(readlink -f node_modules/@prisma/client)/../.prisma node_modules/.prisma"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
