@@ -22,7 +22,8 @@ const PRIMARY_NAV: ReadonlyArray<NavItem> = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, enabled: true },
   { href: "/videos", label: "Videos", icon: Film, enabled: false },
   { href: "/billing", label: "Billing", icon: CreditCard, enabled: false },
-  { href: "/settings", label: "Settings", icon: Settings, enabled: false },
+  // Settings now exists under /settings/* — see apps/web/app/dashboard/settings.
+  { href: "/settings", label: "Settings", icon: Settings, enabled: true },
 ];
 
 interface SidebarProps {
@@ -40,9 +41,13 @@ interface SidebarProps {
  * - Channel-connection indicator pinned to the footer (always visible,
  *   never dismissible)
  *
- * "Videos / Billing / Settings" routes don't exist yet in v1, so they're
- * rendered with `aria-disabled` and a tooltip — visible but not clickable
- * — so users know what's coming without us faking a feature.
+ * "Videos / Billing" routes don't exist yet in v1, so they're rendered
+ * with `aria-disabled` and a tooltip — visible but not clickable.
+ * Settings IS wired (Settings entry now lives under /settings/* and
+ * redirects to /settings/profile on click).
+ *
+ * The user-email row at the bottom is now a link to /settings/profile
+ * so a user can reach their profile from anywhere in the dashboard.
  */
 export function Sidebar({
   channelState = "unconnected",
@@ -123,10 +128,14 @@ export function Sidebar({
             {channelLabel}
           </span>
         </div>
-        <div className="mt-2 flex items-center gap-2 px-2">
-          <span className="flex-1 truncate text-xs text-muted-foreground">
+        <div className="mt-2 flex items-center gap-1 px-1">
+          <Link
+            href="/settings/profile"
+            className="flex-1 truncate rounded-md px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            title="Open profile settings"
+          >
             {user?.email ?? "Signed in"}
-          </span>
+          </Link>
           <Button
             type="button"
             variant="ghost"
