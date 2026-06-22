@@ -1,0 +1,22 @@
+{
+  "name": "@clipflow/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@clipflow/typescript-config": "workspace:*",
+    "@types/node": "^22.15.3",
+    "typescript": "5.9.2"
+  }
+}
