@@ -17,10 +17,8 @@ import { OnboardingGuard } from "@/lib/onboarding-guard";
 export default function SettingsLayout({ children }: { children: ReactNode }) {
   return (
     <ProtectedShell>
-      <div className="mx-auto w-full max-w-[960px] flex-1 px-6 py-8 sm:px-8"> 
-      <OnboardingGuard mode="require-complete">
+      <div className="w-full  flex-1 px-6 py-8 sm:px-8"> 
         <SettingsLayoutComponent>{children}</SettingsLayoutComponent>
-      </OnboardingGuard>
       </div> 
     </ProtectedShell>
   );

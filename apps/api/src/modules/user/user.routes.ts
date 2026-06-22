@@ -17,7 +17,7 @@ import { Router } from "express";
 import type { Env } from "@clipflow/config";
 import { requireAuth } from "../../middleware/auth.js";
 import { getUserBundleController } from "./user.controller.js";
-import { getUserBundle } from "./user.service.js";
+import { stubbedYouTubeConnection } from "./user.service.js";
 import "../auth/auth.types.js";
 
 /**
@@ -44,8 +44,7 @@ export const buildUserRouter = (env: Env): Router => {
       res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication required." });
       return;
     }
-    const bundle = await getUserBundle(req.user.id);
-    res.status(200).json(bundle.youtubeConnection);
+    res.status(200).json(stubbedYouTubeConnection());
   });
 
   return router;

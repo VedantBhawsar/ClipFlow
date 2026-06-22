@@ -59,7 +59,7 @@ export function Sidebar({
   return (
     <aside
       aria-label="Primary navigation"
-      className="flex h-full w-64 shrink-0 flex-col border-r border-border bg-card/40"
+      className="flex w-64 shrink-0 flex-col border-r border-border bg-card/40 h-screen"
     >
       <div className="flex h-14 items-center px-5">
         <Link href="/dashboard" aria-label="ClipFlow home" className="inline-flex">
