@@ -8,7 +8,11 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
-      include: ["src/modules/auth/**/*.ts", "src/modules/onboarding/**/*.ts"],
+      include: [
+        "src/modules/auth/**/*.ts",
+        "src/modules/onboarding/**/*.ts",
+        "src/modules/preferences/**/*.ts",
+      ],
     },
   },
 });
