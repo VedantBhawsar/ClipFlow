@@ -1,16 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import { Upload, Youtube } from "lucide-react";
+import { Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
 interface EmptyStateProps {
   /**
    * Whether the user has connected a YouTube channel. When `false`,
-   * the empty state shows the "connect your channel first" prompt
-   * — the upload CTA is gated behind a connected channel per
-   * AppFlow.md.
+   * the upload CTA is gated behind a connected channel — the
+   * YouTubeConnectCard above handles prompting the user to connect.
    */
   connected?: boolean;
 }
@@ -21,40 +19,10 @@ interface EmptyStateProps {
  * one invitation and one action.
  *
  * The Upload button is enabled once a YouTube channel is connected.
- * When the channel isn't connected yet, the empty state points the
- * user at the prerequisite rather than teasing a feature they can't
- * act on.
+ * When the channel isn't connected yet, the YouTubeConnectCard
+ * (shown above this component) handles prompting the user to connect.
  */
 export function EmptyState({ connected = false }: EmptyStateProps) {
-  if (!connected) {
-    return (
-      <section
-        aria-labelledby="videos-empty-title"
-        className="rounded-xl border border-dashed border-border bg-card/40 p-8 sm:p-12"
-      >
-        <div className="flex flex-col items-start gap-3">
-          <h2
-            id="videos-empty-title"
-            className="text-lg font-semibold tracking-tight"
-          >
-            Connect your channel to get started
-          </h2>
-          <p className="max-w-prose text-sm text-muted-foreground">
-            ClipFlow can&apos;t publish until your YouTube channel is
-            connected. It takes about a minute, and you stay in control of
-            every video.
-          </p>
-          <Button asChild className="mt-2">
-            <Link href="/youtube-connect">
-              <Youtube aria-hidden="true" />
-              Connect your channel
-            </Link>
-          </Button>
-        </div>
-      </section>
-    );
-  }
-
   return (
     <section
       aria-labelledby="videos-empty-title"
@@ -74,17 +42,18 @@ export function EmptyState({ connected = false }: EmptyStateProps) {
         </p>
         <Button
           type="button"
-          disabled
-          aria-disabled="true"
+          disabled={!connected}
+          aria-disabled={!connected}
           className="mt-2"
-          title="Upload ships with the next slice"
+          title={connected ? "Upload ships with the next slice" : "Connect your YouTube channel first"}
         >
           <Upload aria-hidden="true" />
           Upload your first video
         </Button>
         <p className="text-xs text-muted-foreground">
-          Upload ships with the next slice. Use Settings to get your
-          account ready in the meantime.
+          {connected
+            ? "Upload ships with the next slice. Use Settings to get your account ready in the meantime."
+            : "Connect your YouTube channel above to get started."}
         </p>
       </div>
     </section>

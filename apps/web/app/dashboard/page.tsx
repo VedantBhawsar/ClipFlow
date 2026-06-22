@@ -72,7 +72,9 @@ export default async function DashboardPage() {
       </header>
 
       <YouTubeConnectCard
-        state={channelConnected ? "connected" : "unconnected"}
+        status={bundle?.youtubeConnection.status}
+        channelTitle={bundle?.youtubeConnection.channelTitle}
+        channelThumbnailUrl={bundle?.youtubeConnection.channelThumbnailUrl}
       />
 
       <section aria-labelledby="videos-heading" className="space-y-4">

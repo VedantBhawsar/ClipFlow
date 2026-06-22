@@ -22,7 +22,6 @@ const AUTH_COOKIE = "clipflow_token";
 const PROTECTED_PREFIXES = [
   "/dashboard",
   "/onboarding",
-  "/youtube-connect",
 ] as const;
 
 // Routes an authenticated user should NOT be sitting on (they're

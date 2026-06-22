@@ -180,6 +180,27 @@ export const api = {
     return request("GET", "/api/user/youtube-connection");
   },
 
+  /**
+   * Get the Google OAuth authorization URL for connecting YouTube.
+   */
+  getYouTubeOAuthUrl(): Promise<{ url: string }> {
+    return request("GET", "/api/youtube/oauth/url");
+  },
+
+  /**
+   * Connect a YouTube channel by exchanging an OAuth authorization code.
+   */
+  connectYouTube(code: string): Promise<YouTubeConnection> {
+    return request("POST", "/api/youtube/connect", { code });
+  },
+
+  /**
+   * Disconnect the authenticated user's YouTube channel.
+   */
+  disconnectYouTube(): Promise<void> {
+    return request<void>("DELETE", "/api/youtube/disconnect");
+  },
+
   // ---------- Preferences ----------
 
   getPreferences(): Promise<UserPreferences> {
