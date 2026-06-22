@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { ProtectedShell } from "@/components/shared/protected-shell";
-import { SettingsLayout } from "@/components/settings/settings-layout";
+import { SettingsLayout as SettingsLayoutComponent } from "@/components/settings/settings-layout";
 import { OnboardingGuard } from "@/lib/onboarding-guard";
 
 /**
@@ -17,16 +17,11 @@ import { OnboardingGuard } from "@/lib/onboarding-guard";
 export default function SettingsLayout({ children }: { children: ReactNode }) {
   return (
     <ProtectedShell>
-      <div className="flex min-h-svh bg-background">
-        <Sidebar />
-        <div className="flex flex-1 flex-col">
-          <main className="mx-auto w-full max-w-[960px] flex-1 px-6 py-8 sm:px-8">
-            <OnboardingGuard mode="require-complete">
-              <SettingsLayout>{children}</SettingsLayout>
-            </OnboardingGuard>
-          </main>
-        </div>
-      </div>
+      <div className="mx-auto w-full max-w-[960px] flex-1 px-6 py-8 sm:px-8"> 
+      <OnboardingGuard mode="require-complete">
+        <SettingsLayoutComponent>{children}</SettingsLayoutComponent>
+      </OnboardingGuard>
+      </div> 
     </ProtectedShell>
   );
 }
