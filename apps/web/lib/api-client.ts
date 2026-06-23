@@ -45,6 +45,16 @@ function readTokenFromCookie(): string | null {
   return null;
 }
 
+/**
+ * Cheap cookie-presence check for "is there a token at all?". Used as
+ * the `enabled` flag for queries that need auth — without this, calling
+ * the bundle from /signin would 401, fire the global error handler,
+ * and bounce back to /signin in an infinite loop.
+ */
+export function hasAuthTokenCookie(): boolean {
+  return readTokenFromCookie() !== null;
+}
+
 export function setAuthTokenCookie(token: string): void {
   if (typeof document === "undefined") return;
   // 30 days; same-site strict so it isn't leaked on cross-site requests.
@@ -178,6 +188,27 @@ export const api = {
    */
   getYouTubeConnection(): Promise<YouTubeConnection> {
     return request("GET", "/api/user/youtube-connection");
+  },
+
+  /**
+   * Get the Google OAuth authorization URL for connecting YouTube.
+   */
+  getYouTubeOAuthUrl(): Promise<{ url: string }> {
+    return request("GET", "/api/youtube/oauth/url");
+  },
+
+  /**
+   * Connect a YouTube channel by exchanging an OAuth authorization code.
+   */
+  connectYouTube(code: string): Promise<YouTubeConnection> {
+    return request("POST", "/api/youtube/connect", { code });
+  },
+
+  /**
+   * Disconnect the authenticated user's YouTube channel.
+   */
+  disconnectYouTube(): Promise<void> {
+    return request<void>("DELETE", "/api/youtube/disconnect");
   },
 
   // ---------- Preferences ----------

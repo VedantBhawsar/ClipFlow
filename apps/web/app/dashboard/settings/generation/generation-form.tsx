@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Select } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
+import { useUpdatePreferences } from "@/hooks/use-update-preferences";
 import {
   type ChapterBehavior,
   type ThumbnailStyle,
@@ -59,7 +60,8 @@ const THUMBNAIL_STYLE_OPTIONS: ReadonlyArray<{
 ];
 
 export function GenerationForm() {
-  const { preferences: prefs, patchPreferences } = useAuth();
+  const { preferences: prefs } = useAuth();
+  const updatePrefs = useUpdatePreferences();
 
   const [chapterBehavior, setChapterBehavior] = React.useState<ChapterBehavior>(
     prefs?.chapterBehavior ?? "ALWAYS_REVIEW",
@@ -67,8 +69,7 @@ export function GenerationForm() {
   const [thumbnailStyle, setThumbnailStyle] = React.useState<ThumbnailStyle>(
     prefs?.thumbnailStyle ?? "AUTO",
   );
-  const [saving, setSaving] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const [localError, setLocalError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!prefs) return;
@@ -78,20 +79,22 @@ export function GenerationForm() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError(null);
-    setSaving(true);
+    setLocalError(null);
     try {
-      await patchPreferences({
+      await updatePrefs.mutateAsync({
         chapterBehavior,
         thumbnailStyle,
       });
       toast.success("Generation preferences saved.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't save your generation preferences.");
-    } finally {
-      setSaving(false);
+      setLocalError(err instanceof Error ? err.message : "Couldn't save your generation preferences.");
     }
   };
+
+  const saving = updatePrefs.isPending;
+  const error = localError ?? (updatePrefs.error instanceof Error
+    ? updatePrefs.error.message
+    : null);
 
   return (
     <form

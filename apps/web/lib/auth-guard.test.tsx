@@ -58,7 +58,6 @@ describe("AuthGuard", () => {
   it("renders children when authenticated", () => {
     renderGuard({
       status: "authenticated",
-      user: { id: "1", email: "a@b.com", name: "A", authProvider: "EMAIL", emailVerifiedAt: null, createdAt: "" },
     });
     expect(screen.getByText("Protected Content")).toBeInTheDocument();
   });

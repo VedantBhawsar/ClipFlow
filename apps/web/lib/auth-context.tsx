@@ -1,60 +1,32 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import type {
-  AuthResponse,
-  AuthUser,
-  LoginRequest,
-  RegisterRequest,
-  UpdatePreferencesRequest,
-  UserPreferences,
-  UserProfile,
-  YouTubeConnection,
-} from "@clipflow/types";
-import {
-  api,
-  clearAuthTokenCookie,
-  setAuthTokenCookie,
-} from "@/lib/api-client";
+
+import { useSignIn } from "@/hooks/use-sign-in";
+import { useSignOut } from "@/hooks/use-sign-out";
+import { useSignUp } from "@/hooks/use-sign-up";
+import { useUserBundle } from "@/hooks/use-user-bundle";
+import type { AuthResponse, LoginRequest, RegisterRequest } from "@clipflow/types";
 
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
+/**
+ * Auth surface owned by AuthContext. Deliberately narrow: just the
+ * loading/authenticated/unauthenticated status and the three auth
+ * actions. Server-derived data (user, profile, preferences,
+ * youtubeConnection, onboardingCompleted) lives in the TanStack Query
+ * bundle cache and is exposed via `useAuth()`'s facade, not here.
+ *
+ * Keeping the context auth-only makes it impossible for a component to
+ * accidentally couple itself to cached server data through the
+ * context; the data layer is the query layer.
+ */
 export interface AuthContextValue {
   status: AuthStatus;
-  user: AuthUser | null;
-  profile: UserProfile | null;
-  preferences: UserPreferences | null;
-  youtubeConnection: YouTubeConnection | null;
-  onboardingCompleted: boolean;
-  signIn: (body: LoginRequest) => Promise<void>;
-  signUp: (body: RegisterRequest) => Promise<void>;
+  signIn: (body: LoginRequest) => Promise<AuthResponse>;
+  signUp: (body: RegisterRequest) => Promise<AuthResponse>;
   signOut: () => Promise<void>;
-  refresh: () => Promise<void>;
-  /**
-   * Optimistically mark onboarding complete without re-fetching.
-   * Used after the profile wizard successfully submits.
-   */
-  setOnboardingCompleted: (profile: UserProfile) => void;
-  /**
-   * Update the cached preferences without a full /user/profile refetch.
-   * Used by the settings forms after a successful PATCH.
-   */
-  setPreferences: (next: UserPreferences) => void;
-  /**
-   * Patch preferences via the API and update the cached value. Used
-   * by the settings forms to keep the auth context in sync.
-   */
-  patchPreferences: (body: UpdatePreferencesRequest) => Promise<UserPreferences>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -63,149 +35,47 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-const DISCONNECTED_YT: YouTubeConnection = {
-  status: "disconnected",
-  channelId: null,
-  channelTitle: null,
-  channelThumbnailUrl: null,
-  connectedAt: null,
-  lastVerifiedAt: null,
-};
-
 export function AuthProvider({ children }: AuthProviderProps) {
   const router = useRouter();
-  const [status, setStatus] = useState<AuthStatus>("loading");
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [preferences, setPreferencesState] = useState<UserPreferences | null>(null);
-  const [youtubeConnection, setYoutubeConnection] = useState<YouTubeConnection | null>(null);
-  const [onboardingCompleted, setOnboardingCompleted] = useState(false);
-  // Track whether a refresh is in-flight so concurrent callers reuse it.
-  const inflight = useRef<Promise<void> | null>(null);
+  const bundle = useUserBundle();
+  const signInMutation = useSignIn();
+  const signUpMutation = useSignUp();
+  const signOutMutation = useSignOut();
 
-  const applyAuthResponse = useCallback((res: AuthResponse) => {
-    setAuthTokenCookie(res.token);
-  }, []);
-
-  const refresh = useCallback(async (): Promise<void> => {
-    if (inflight.current) return inflight.current;
-    const promise = (async () => {
-      try {
-        const bundle = await api.getUserBundle();
-        setUser(bundle.user);
-        setProfile(bundle.profile);
-        setPreferencesState(bundle.preferences);
-        setYoutubeConnection(bundle.youtubeConnection);
-        setOnboardingCompleted(bundle.onboardingCompleted);
-        setStatus("authenticated");
-      } catch {
-        // 401 inside the bundle call already cleared the cookie + redirected;
-        // any other error means we just don't have a session.
-        setUser(null);
-        setProfile(null);
-        setPreferencesState(null);
-        setYoutubeConnection(null);
-        setOnboardingCompleted(false);
-        setStatus("unauthenticated");
-      } finally {
-        inflight.current = null;
-      }
-    })();
-    inflight.current = promise;
-    return promise;
-  }, []);
-
-  // On mount: try to hydrate the session from the cookie.
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  // Derive status from the bundle query. Pending → loading (we don't
+  // know yet). Has data → authenticated. Errored or absent → unauthenticated
+  // (the api-client + global queryCache.onError will have cleared the
+  // cookie and bounced to /signin on a 401 by now).
+  const status: AuthStatus = bundle.isPending
+    ? "loading"
+    : bundle.data
+      ? "authenticated"
+      : "unauthenticated";
 
   const signIn = useCallback(
-    async (body: LoginRequest): Promise<void> => {
-      const res = await api.login(body);
-      applyAuthResponse(res);
-      await refresh();
-      router.refresh();
+    async (body: LoginRequest): Promise<AuthResponse> => {
+      return signInMutation.mutateAsync(body);
     },
-    [applyAuthResponse, refresh, router],
+    [signInMutation],
   );
 
   const signUp = useCallback(
-    async (body: RegisterRequest): Promise<void> => {
-      const res = await api.register(body);
-      applyAuthResponse(res);
-      await refresh();
-      router.refresh();
+    async (body: RegisterRequest): Promise<AuthResponse> => {
+      return signUpMutation.mutateAsync(body);
     },
-    [applyAuthResponse, refresh, router],
+    [signUpMutation],
   );
 
   const signOut = useCallback(async (): Promise<void> => {
-    try {
-      await api.logout();
-    } catch {
-      // Even if the network call fails, we still want to clear locally.
-    }
-    clearAuthTokenCookie();
-    setUser(null);
-    setProfile(null);
-    setPreferencesState(null);
-    setYoutubeConnection(DISCONNECTED_YT);
-    setOnboardingCompleted(false);
-    setStatus("unauthenticated");
+    // The mutation's onSettled already cleared the cookie + query cache
+    // regardless of server outcome. We then send the user to /signin.
+    await signOutMutation.mutateAsync();
     router.push("/signin");
-    router.refresh();
-  }, [router]);
-
-  const setProfileCompleted = useCallback((next: UserProfile) => {
-    setProfile(next);
-    setOnboardingCompleted(next.onboardingCompletedAt !== null);
-  }, []);
-
-  const setPreferences = useCallback((next: UserPreferences) => {
-    setPreferencesState(next);
-  }, []);
-
-  const patchPreferences = useCallback(
-    async (body: UpdatePreferencesRequest): Promise<UserPreferences> => {
-      const next = await api.updatePreferences(body);
-      setPreferencesState(next);
-      return next;
-    },
-    [],
-  );
+  }, [signOutMutation, router]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({
-      status,
-      user,
-      profile,
-      preferences,
-      youtubeConnection,
-      onboardingCompleted,
-      signIn,
-      signUp,
-      signOut,
-      refresh,
-      setOnboardingCompleted: setProfileCompleted,
-      setPreferences,
-      patchPreferences,
-    }),
-    [
-      status,
-      user,
-      profile,
-      preferences,
-      youtubeConnection,
-      onboardingCompleted,
-      signIn,
-      signUp,
-      signOut,
-      refresh,
-      setProfileCompleted,
-      setPreferences,
-      patchPreferences,
-    ],
+    () => ({ status, signIn, signUp, signOut }),
+    [status, signIn, signUp, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

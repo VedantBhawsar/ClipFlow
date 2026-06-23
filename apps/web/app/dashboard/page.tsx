@@ -71,9 +71,7 @@ export default async function DashboardPage() {
         </p>
       </header>
 
-      <YouTubeConnectCard
-        state={channelConnected ? "connected" : "unconnected"}
-      />
+      <YouTubeConnectCard />
 
       <section aria-labelledby="videos-heading" className="space-y-4">
         <div className="flex items-baseline justify-between">
