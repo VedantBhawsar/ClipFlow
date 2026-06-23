@@ -11,26 +11,22 @@ export default function ConnectedSettingsPage() {
   const [connection, setConnection] = React.useState<YouTubeConnection | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    let cancelled = false;
+  const loadConnection = React.useCallback(() => {
     api
       .getYouTubeConnection()
-      .then((c) => {
-        if (!cancelled) setConnection(c);
-      })
+      .then(setConnection)
       .catch((err) => {
-        if (!cancelled) {
-          setError(
-            err instanceof Error
-              ? err.message
-              : "Couldn't load your YouTube connection.",
-          );
-        }
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Couldn't load your YouTube connection.",
+        );
       });
-    return () => {
-      cancelled = true;
-    };
   }, []);
+
+  React.useEffect(() => {
+    loadConnection();
+  }, [loadConnection]);
 
   return (
     <div className="space-y-8">
@@ -60,7 +56,10 @@ export default function ConnectedSettingsPage() {
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : (
           <YouTubeConnectCard
-            state={connection.status === "connected" ? "connected" : "unconnected"}
+            status={connection.status === "connected" || connection.status === "needs_reauth" ? connection.status : "disconnected"}
+            channelTitle={connection.channelTitle}
+            channelThumbnailUrl={connection.channelThumbnailUrl}
+            onChange={loadConnection}
           />
         )}
       </section>
