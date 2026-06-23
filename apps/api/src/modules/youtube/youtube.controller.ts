@@ -15,7 +15,12 @@
 import type { Request, Response } from "express";
 import type { Env } from "@clipflow/config";
 import { cache } from "../../lib/cache.js";
-import { buildOAuthUrl, connectYouTubeChannel, disconnectYouTubeChannel, getYouTubeConnectionByUserId } from "./youtube.service.js";
+import {
+  buildOAuthUrl,
+  connectYouTubeChannel,
+  disconnectYouTubeChannel,
+  getYouTubeConnectionByUserId,
+} from "./youtube.service.js";
 
 const CONNECTION_CACHE_TTL_SECONDS = 60;
 
@@ -40,7 +45,9 @@ export const getOAuthUrlController = async (
   }
 
   // Generate a state parameter for CSRF protection
-  const state = Buffer.from(JSON.stringify({ redirect_uri: req.query.redirect_uri ?? "/" })).toString("base64");
+  const state = Buffer.from(
+    JSON.stringify({ redirect_uri: req.query.redirect_uri ?? "/" }),
+  ).toString("base64");
 
   const url = buildOAuthUrl(env, env.GOOGLE_REDIRECT_URI, state);
 
@@ -58,7 +65,9 @@ export const connectController = async (
   res: Response,
 ): Promise<void> => {
   if (!req.user) {
-    res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication required." });
+    res
+      .status(401)
+      .json({ error: "UNAUTHENTICATED", message: "Authentication required." });
     return;
   }
 
@@ -66,11 +75,20 @@ export const connectController = async (
 
   const { code } = req.body as { code?: string };
   if (!code || typeof code !== "string") {
-    res.status(400).json({ error: "INVALID_REQUEST", message: "Authorization code is required." });
+    res
+      .status(400)
+      .json({
+        error: "INVALID_REQUEST",
+        message: "Authorization code is required.",
+      });
     return;
   }
 
-  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET || !env.GOOGLE_REDIRECT_URI) {
+  if (
+    !env.GOOGLE_CLIENT_ID ||
+    !env.GOOGLE_CLIENT_SECRET ||
+    !env.GOOGLE_REDIRECT_URI
+  ) {
     res.status(503).json({
       error: "GOOGLE_OAUTH_UNAVAILABLE",
       message: "Google OAuth is not configured on this server.",
@@ -81,6 +99,10 @@ export const connectController = async (
   try {
     const result = await connectYouTubeChannel(req.user.id, code, env);
 
+    if (!result) {
+      throw new Error("Account Not found");
+    }
+
     // Invalidate the user bundle cache since YouTube connection changed
     await cache.del(`user:${req.user.id}`);
 
@@ -89,7 +111,12 @@ export const connectController = async (
     if (err instanceof Error && "statusCode" in err) {
       throw err;
     }
-    res.status(500).json({ error: "INTERNAL_ERROR", message: "Failed to connect YouTube channel." });
+    res
+      .status(500)
+      .json({
+        error: "INTERNAL_ERROR",
+        message: "Failed to connect YouTube channel.",
+      });
   }
 };
 
@@ -103,7 +130,9 @@ export const disconnectController = async (
   res: Response,
 ): Promise<void> => {
   if (!req.user) {
-    res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication required." });
+    res
+      .status(401)
+      .json({ error: "UNAUTHENTICATED", message: "Authentication required." });
     return;
   }
 
@@ -126,7 +155,9 @@ export const getConnectionController = async (
   res: Response,
 ): Promise<void> => {
   if (!req.user) {
-    res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication required." });
+    res
+      .status(401)
+      .json({ error: "UNAUTHENTICATED", message: "Authentication required." });
     return;
   }
 

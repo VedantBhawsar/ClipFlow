@@ -45,6 +45,16 @@ function readTokenFromCookie(): string | null {
   return null;
 }
 
+/**
+ * Cheap cookie-presence check for "is there a token at all?". Used as
+ * the `enabled` flag for queries that need auth — without this, calling
+ * the bundle from /signin would 401, fire the global error handler,
+ * and bounce back to /signin in an infinite loop.
+ */
+export function hasAuthTokenCookie(): boolean {
+  return readTokenFromCookie() !== null;
+}
+
 export function setAuthTokenCookie(token: string): void {
   if (typeof document === "undefined") return;
   // 30 days; same-site strict so it isn't leaked on cross-site requests.

@@ -12,8 +12,8 @@ import {
   PRIMARY_GOAL_OPTIONS,
   UPLOAD_FREQUENCY_OPTIONS,
 } from "@/lib/profile-options";
-import { api } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
+import { useUpdateProfile } from "@/hooks/use-update-profile";
 import type {
   ContentNiche,
   PrimaryGoal,
@@ -29,7 +29,8 @@ import type {
  * keep re-stamping the onboarding-completion timestamp on every save.
  */
 export function ProfileForm() {
-  const { profile, refresh } = useAuth();
+  const { profile } = useAuth();
+  const { patch } = useUpdateProfile();
 
   const [displayName, setDisplayName] = React.useState(profile?.displayName ?? "");
   const [niche, setNiche] = React.useState<ContentNiche | "">(
@@ -41,8 +42,7 @@ export function ProfileForm() {
   const [primaryGoal, setPrimaryGoal] = React.useState<PrimaryGoal | "">(
     profile?.primaryGoal ?? "",
   );
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const [localError, setLocalError] = React.useState<string | null>(null);
 
   // If the bundle hydrates after mount, keep the form in sync. Without
   // this, opening /settings/profile before auth context finishes
@@ -61,12 +61,11 @@ export function ProfileForm() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError(null);
+    setLocalError(null);
     if (!isFormValid) {
-      setError("Pick a niche, upload frequency, and goal to continue.");
+      setLocalError("Pick a niche, upload frequency, and goal to continue.");
       return;
     }
-    setIsSubmitting(true);
     try {
       // Build a clean payload of just-the-fields-we-send. Empty
       // displayName is normalized to null on the wire; the server
@@ -77,15 +76,17 @@ export function ProfileForm() {
         uploadFrequency: uploadFrequency as UploadFrequency,
         primaryGoal: primaryGoal as PrimaryGoal,
       };
-      await api.patchOnboardingProfile(body);
-      await refresh();
+      await patch.mutateAsync(body);
       toast.success("Profile saved.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't save your profile.");
-    } finally {
-      setIsSubmitting(false);
+      setLocalError(err instanceof Error ? err.message : "Couldn't save your profile.");
     }
   };
+
+  const isSubmitting = patch.isPending;
+  const error = localError ?? (patch.error instanceof Error
+    ? patch.error.message
+    : null);
 
   return (
     <form

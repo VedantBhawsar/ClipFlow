@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { api } from "@/lib/api-client";
+import { useUpdatePreferences } from "@/hooks/use-update-preferences";
 import type { UserPreferences } from "@clipflow/types";
 
 interface ToggleRow {
@@ -64,14 +64,14 @@ interface NotificationsFormProps {
 }
 
 export function NotificationsForm({ initial }: NotificationsFormProps = {}) {
-  const { preferences: contextPrefs, patchPreferences } = useAuth();
+  const { preferences: contextPrefs } = useAuth();
+  const updatePrefs = useUpdatePreferences();
   const prefs = initial ?? contextPrefs;
 
   // Local optimistic state. Saves are debounced to the patch call —
   // a switch flips immediately and the patch fires on the next tick.
   const [local, setLocal] = React.useState<UserPreferences | null>(prefs);
-  const [saving, setSaving] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const [localError, setLocalError] = React.useState<string | null>(null);
 
   // When the auth context's preferences hydrate, mirror them in local
   // state. This handles the "settings page opened before hydration
@@ -80,12 +80,15 @@ export function NotificationsForm({ initial }: NotificationsFormProps = {}) {
     if (prefs && local === null) setLocal(prefs);
   }, [prefs, local]);
 
-  // Per-toggle dirty tracking so the user only saves what they touched.
-  // For simplicity (and because the patch endpoint is cheap), we just
-  // collect every flipped key and send them in one PATCH on Save.
-  const [pending, setPending] = React.useState<
-    Partial<Record<keyof UserPreferences, boolean>>
-  >({});
+  // Per-toggle dirty tracking. Typed to the five notify_* boolean
+  // fields only so it can be passed straight to the patch endpoint
+  // without runtime filtering.
+  type PendingToggles = Partial<Pick<UserPreferences,
+    "notifyProcessingComplete" | "notifyPublished" |
+    "notifyPublishFailed" | "notifyNeedsReauth" |
+    "notifyWeeklySummary"
+  >>;
+  const [pending, setPending] = React.useState<PendingToggles>({});
 
   const flipToggle = (key: ToggleRow["key"], next: boolean) => {
     setLocal((prev) => (prev ? { ...prev, [key]: next } : prev));
@@ -95,23 +98,25 @@ export function NotificationsForm({ initial }: NotificationsFormProps = {}) {
   const handleSave = async () => {
     if (!local) return;
     if (Object.keys(pending).length === 0) return;
-    setSaving(true);
-    setError(null);
+    setLocalError(null);
     try {
-      const updated = await patchPreferences(pending);
+      const updated = await updatePrefs.mutateAsync(pending);
       setLocal(updated);
       setPending({});
       toast.success("Notification preferences saved.");
     } catch (err) {
-      setError(
+      setLocalError(
         err instanceof Error
           ? err.message
           : "Couldn't save your notification preferences.",
       );
-    } finally {
-      setSaving(false);
     }
   };
+
+  const saving = updatePrefs.isPending;
+  const error = localError ?? (updatePrefs.error instanceof Error
+    ? updatePrefs.error.message
+    : null);
 
   if (!local) {
     return (

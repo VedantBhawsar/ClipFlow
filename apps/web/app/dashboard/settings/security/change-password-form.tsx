@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { api } from "@/lib/api-client";
+import { useChangePassword } from "@/hooks/use-change-password";
 
 interface FormState {
   currentPassword: string;
@@ -40,9 +40,8 @@ const RULE_LIST = [
 
 export function ChangePasswordForm() {
   const router = useRouter();
+  const changePassword = useChangePassword();
   const [form, setForm] = React.useState<FormState>(INITIAL);
-  const [submitting, setSubmitting] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState(false);
 
   const setField = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -64,11 +63,9 @@ export function ChangePasswordForm() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError(null);
     if (!isValid) return;
-    setSubmitting(true);
     try {
-      await api.changePassword({
+      await changePassword.mutateAsync({
         currentPassword: form.currentPassword,
         newPassword: form.newPassword,
       });
@@ -79,12 +76,19 @@ export function ChangePasswordForm() {
       // device. We refresh the dashboard data so any cached "this
       // account uses Google" derivation gets re-read.
       router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't update your password.");
-    } finally {
-      setSubmitting(false);
+    } catch {
+      // The mutation's `error` state already holds the thrown Error;
+      // the `error` derivation below renders it in the alert banner.
+      // Also clear the success flag so an old success message doesn't
+      // linger if the user retries.
+      setSuccess(false);
     }
   };
+
+  const submitting = changePassword.isPending;
+  const error = changePassword.error instanceof Error
+    ? changePassword.error.message
+    : null;
 
   return (
     <form
