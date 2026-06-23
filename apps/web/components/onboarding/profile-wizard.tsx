@@ -16,8 +16,7 @@ import { QuestionNiche } from "@/components/onboarding/question-niche";
 import { QuestionFrequency } from "@/components/onboarding/question-frequency";
 import { QuestionGoal } from "@/components/onboarding/question-goal";
 import { QuestionDisplayName } from "@/components/onboarding/question-display-name";
-import { api } from "@/lib/api-client";
-import { useAuth } from "@/hooks/use-auth";
+import { useUpdateProfile } from "@/hooks/use-update-profile";
 
 interface WizardState {
   displayName: string;
@@ -54,11 +53,10 @@ const STEP_COUNT = 4;
  */
 export function ProfileWizard() {
   const router = useRouter();
-  const { refresh } = useAuth();
+  const { submit } = useUpdateProfile();
   const [step, setStep] = React.useState(1);
   const [state, setState] = React.useState<WizardState>(INITIAL_STATE);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const canAdvance = (() => {
     if (step === 2) return state.niche !== null;
@@ -72,7 +70,6 @@ export function ProfileWizard() {
       return;
     }
     setSubmitError(null);
-    setIsSubmitting(true);
     try {
       const payload: UpdateProfileRequest = {
         niche: state.niche,
@@ -82,12 +79,11 @@ export function ProfileWizard() {
           ? { displayName: state.displayName.trim() }
           : {}),
       };
-      await api.submitOnboardingProfile(payload);
-      // Re-fetch /api/auth/me so AuthProvider reflects the new
-      // onboardingCompletedAt (and updated profile). Without this the
-      // dashboard's OnboardingGuard reads the stale `false` and bounces
-      // the user straight back to /onboarding/profile.
-      await refresh();
+      await submit.mutateAsync(payload);
+      // The mutation's onSuccess already wrote the new profile +
+      // onboardingCompleted=true into the bundle cache, so OnboardingGuard
+      // won't bounce us back. router.refresh() re-pulls the dashboard
+      // server component (which reads from a server fetch, not the cache).
       router.push("/dashboard");
       router.refresh();
     } catch (err) {
@@ -96,9 +92,10 @@ export function ProfileWizard() {
           ? err.message
           : "Couldn't save your profile. Try again.",
       );
-      setIsSubmitting(false);
     }
   };
+
+  const isSubmitting = submit.isPending;
 
   const handleNext = () => {
     if (step < STEP_COUNT) {

@@ -9,7 +9,7 @@ import express, { type Application } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import compression from "compression";
-import pinoHttp from "pino-http";
+import { pinoHttp } from "pino-http";
 import type { Env } from "@clipflow/config";
 import { buildLogger, type Logger } from "./lib/logger.js";
 import { buildErrorHandler, notFoundHandler } from "./middleware/error.js";
@@ -20,6 +20,7 @@ import { buildOnboardingRouter } from "./modules/onboarding/onboarding.routes.js
 import { buildHealthRouter } from "./modules/health/health.routes.js";
 import { buildPreferencesRouter } from "./modules/preferences/preferences.routes.js";
 import { buildUserRouter } from "./modules/user/user.routes.js";
+import { buildYouTubeRouter } from "./modules/youtube/youtube.routes.js";
 
 /**
  * Options accepted by `createApp`.
@@ -43,6 +44,10 @@ export const createApp = ({ env, logger }: CreateAppOptions): Application => {
   // in production). One hop is enough for our setup.
   app.set("trust proxy", 1);
   app.disable("x-powered-by");
+
+  // Store validated env on the app instance so controllers can reach it
+  // via req.app.get("env") without each router having to pass it through.
+  app.set("env", env);
 
   // Request-ID must run before the logger so the log line can reference it.
   app.use(requestIdMiddleware);
@@ -107,6 +112,7 @@ export const createApp = ({ env, logger }: CreateAppOptions): Application => {
   // under the same prefix so the URL space is one tree.
   app.use("/api/user", buildUserRouter(env));
   app.use("/api/user", buildPreferencesRouter(env));
+  app.use("/api/youtube", buildYouTubeRouter(env));
 
   // 404 + error handler must be last.
   app.use(notFoundHandler);

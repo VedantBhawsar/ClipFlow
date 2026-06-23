@@ -14,7 +14,14 @@ function createPrismaClient(): PrismaClient {
     throw new Error("DATABASE_URL environment variable is not set");
   }
 
-  const pool = new pg.Pool({ connectionString });
+  const pool = new pg.Pool({
+    connectionString,
+    // Fail fast when Neon serverless compute is cold-starting instead of
+    // hanging for 10–20 s on the first connection.
+    connectionTimeoutMillis: 5_000,
+    // Don't hold connections open indefinitely when idle.
+    idleTimeoutMillis: 30_000,
+  });
   const adapter = new PrismaPg(pool);
 
   return new PrismaClient({

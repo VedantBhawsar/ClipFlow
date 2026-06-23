@@ -11,17 +11,15 @@ vi.mock("@/hooks/use-auth", () => ({
   useAuth: vi.fn(),
 }));
 
-vi.mock("@/lib/api-client", () => ({
-  api: {
-    updatePreferences: vi.fn(),
-  },
+vi.mock("@/hooks/use-update-preferences", () => ({
+  useUpdatePreferences: vi.fn(),
 }));
 
 import { useAuth } from "@/hooks/use-auth";
-import { api } from "@/lib/api-client";
+import { useUpdatePreferences } from "@/hooks/use-update-preferences";
 
 const mockUseAuth = vi.mocked(useAuth);
-const mockUpdate = vi.mocked(api.updatePreferences);
+const mockUseUpdatePreferences = vi.mocked(useUpdatePreferences);
 
 const basePrefs = {
   id: "pref-1",
@@ -39,16 +37,25 @@ const basePrefs = {
 };
 
 describe("NotificationsForm", () => {
+  let mockMutateAsync: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUpdate.mockResolvedValue(basePrefs);
+    mockMutateAsync = vi.fn().mockImplementation(async (body: object) => ({
+      ...basePrefs,
+      ...body,
+    }));
+    mockUseUpdatePreferences.mockReturnValue({
+      mutateAsync: mockMutateAsync,
+      mutate: mockMutateAsync,
+      isPending: false,
+      isError: false,
+      error: null,
+      reset: vi.fn(),
+    } as unknown as ReturnType<typeof useUpdatePreferences>);
     mockUseAuth.mockReturnValue({
       preferences: basePrefs,
-      patchPreferences: vi.fn().mockImplementation(async (body) => {
-        const merged = { ...basePrefs, ...body };
-        mockUpdate.mockResolvedValue(merged);
-        return merged;
-      }),
+      patchPreferences: vi.fn(),
       refresh: vi.fn(),
       status: "authenticated",
       user: null,
@@ -60,7 +67,7 @@ describe("NotificationsForm", () => {
       signOut: vi.fn(),
       setOnboardingCompleted: vi.fn(),
       setPreferences: vi.fn(),
-    } as ReturnType<typeof useAuth>);
+    } as unknown as ReturnType<typeof useAuth>);
   });
 
   it("renders all five toggles", () => {
@@ -80,7 +87,7 @@ describe("NotificationsForm", () => {
     expect(screen.getByText("Weekly summary")).toBeInTheDocument();
   });
 
-  it("calls patchPreferences with the right boolean on save", async () => {
+  it("calls the mutation with the right boolean on save", async () => {
     const user = userEvent.setup();
     render(<NotificationsForm />);
     // Flip the "weekly summary" toggle (currently off → on)
@@ -92,7 +99,7 @@ describe("NotificationsForm", () => {
     ) as HTMLElement;
     await user.click(switchBtn);
     await user.click(screen.getByRole("button", { name: /save changes/i }));
-    expect(mockUpdate).toHaveBeenCalledWith(
+    expect(mockMutateAsync).toHaveBeenCalledWith(
       expect.objectContaining({ notifyWeeklySummary: true }),
     );
   });

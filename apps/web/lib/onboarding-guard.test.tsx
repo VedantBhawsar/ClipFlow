@@ -1,10 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { OnboardingGuard } from "./onboarding-guard.js";
-import type { AuthContextValue } from "./auth-context.js";
 
-vi.mock("./auth-context.js", () => ({
-  useAuthContext: vi.fn(),
+vi.mock("@/hooks/use-auth", () => ({
+  useAuth: vi.fn(),
 }));
 
 const mockReplace = vi.fn();
@@ -19,26 +18,30 @@ vi.mock("next/navigation", () => ({
   })),
 }));
 
-import { useAuthContext } from "./auth-context.js";
+import { useAuth, type UseAuthValue } from "@/hooks/use-auth";
 
-const mockUseAuthContext = vi.mocked(useAuthContext);
+const mockUseAuth = vi.mocked(useAuth);
 
 const renderGuard = (
-  authValue: Partial<AuthContextValue>,
+  authValue: Partial<UseAuthValue>,
   mode: "require-incomplete" | "require-complete",
 ) => {
-  mockUseAuthContext.mockReturnValue({
+  mockUseAuth.mockReturnValue({
     status: "loading",
     user: null,
     profile: null,
+    preferences: null,
+    youtubeConnection: null,
     onboardingCompleted: false,
     signIn: vi.fn(),
     signUp: vi.fn(),
     signOut: vi.fn(),
     refresh: vi.fn(),
     setOnboardingCompleted: vi.fn(),
+    setPreferences: vi.fn(),
+    patchPreferences: vi.fn(),
     ...authValue,
-  } as AuthContextValue);
+  } as UseAuthValue);
 
   return render(<OnboardingGuard mode={mode}>Protected Content</OnboardingGuard>);
 };

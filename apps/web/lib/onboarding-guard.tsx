@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
-import { useAuthContext } from "@/lib/auth-context";
+import { useAuth } from "@/hooks/use-auth";
 
 interface OnboardingGuardProps {
   children: ReactNode;
@@ -23,10 +23,12 @@ interface OnboardingGuardProps {
  * - Visiting /onboarding/* after finishing onboarding → /dashboard
  * - Visiting /dashboard before finishing onboarding → /onboarding/profile
  *
+ * Reads status + onboardingCompleted from `useAuth()` — status from
+ * AuthContext, onboardingCompleted from the TanStack Query bundle cache.
  * Pair with <AuthGuard> at the page level to also gate on auth.
  */
 export function OnboardingGuard({ children, mode }: OnboardingGuardProps) {
-  const { status, onboardingCompleted } = useAuthContext();
+  const { status, onboardingCompleted } = useAuth();
   const router = useRouter();
 
   useEffect(() => {

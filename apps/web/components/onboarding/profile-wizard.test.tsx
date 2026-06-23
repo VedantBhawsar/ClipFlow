@@ -13,35 +13,78 @@ vi.mock("@/lib/api-client", () => ({
   },
 }));
 
+vi.mock("@/hooks/use-update-profile", () => ({
+  useUpdateProfile: vi.fn(),
+}));
+
+const mockRouterPush = vi.fn();
+const mockRouterRefresh = vi.fn();
+
 vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({
-    push: vi.fn(),
-    refresh: vi.fn(),
+    push: mockRouterPush,
+    refresh: mockRouterRefresh,
   })),
 }));
 
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/lib/api-client";
+import { useUpdateProfile } from "@/hooks/use-update-profile";
 
 const mockUseAuth = vi.mocked(useAuth);
+const mockUseUpdateProfile = vi.mocked(useUpdateProfile);
 const mockApiSubmit = vi.mocked(api.submitOnboardingProfile);
 
 describe("ProfileWizard", () => {
-  const mockRefresh = vi.fn().mockResolvedValue(undefined);
+  let mockMutateAsync: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockApiSubmit.mockResolvedValue({} as unknown as Awaited<
+      ReturnType<typeof api.submitOnboardingProfile>
+    >);
+    mockMutateAsync = vi.fn().mockImplementation(async (body: unknown) => {
+      // Simulate the mutation calling the api-client and returning
+      // its result. Matches what useUpdateProfile.submit does for real.
+      // The wizard ignores the return value, so any shape is fine.
+      await api.submitOnboardingProfile(
+        body as Parameters<typeof api.submitOnboardingProfile>[0],
+      );
+      return {};
+    });
+    mockUseUpdateProfile.mockReturnValue({
+      submit: {
+        mutateAsync: mockMutateAsync,
+        mutate: mockMutateAsync,
+        isPending: false,
+        isError: false,
+        error: null,
+        reset: vi.fn(),
+      },
+      patch: {
+        mutateAsync: vi.fn(),
+        mutate: vi.fn(),
+        isPending: false,
+        isError: false,
+        error: null,
+        reset: vi.fn(),
+      },
+    } as unknown as ReturnType<typeof useUpdateProfile>);
     mockUseAuth.mockReturnValue({
       signIn: vi.fn(),
       signUp: vi.fn(),
       signOut: vi.fn(),
-      refresh: mockRefresh,
+      refresh: vi.fn(),
       status: "authenticated",
       user: { id: "1", email: "a@b.com", name: "A", authProvider: "EMAIL", emailVerifiedAt: null, createdAt: "" },
       profile: null,
+      preferences: null,
+      youtubeConnection: null,
       onboardingCompleted: false,
       setOnboardingCompleted: vi.fn(),
-    } as ReturnType<typeof useAuth>);
+      setPreferences: vi.fn(),
+      patchPreferences: vi.fn(),
+    } as unknown as ReturnType<typeof useAuth>);
   });
 
   it("renders step 1 with channel name question", () => {
@@ -158,7 +201,7 @@ describe("ProfileWizard", () => {
       uploadFrequency: "ONE_TO_FOUR",
       primaryGoal: "SAVE_TIME_EDITING",
     });
-    expect(mockRefresh).toHaveBeenCalled();
+    expect(mockRouterPush).toHaveBeenCalledWith("/dashboard");
   });
 
   it("omits displayName from payload when empty", async () => {
