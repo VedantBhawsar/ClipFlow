@@ -17,7 +17,11 @@ import {
   GOOGLE_TOKEN_URL,
   YOUTUBE_SCOPES,
 } from "./youtube.schemas.js";
-import { channelStatusToApi, type ConnectResult, type YouTubeChannelInfo } from "./youtube.types.js";
+import {
+  channelStatusToApi,
+  type ConnectResult,
+  type YouTubeChannelInfo,
+} from "./youtube.types.js";
 
 /**
  * Build the Google OAuth authorization URL.
@@ -58,8 +62,15 @@ export const buildOAuthUrl = (
  */
 const exchangeCodeForTokens = async (
   code: string,
-  env: Pick<Env, "GOOGLE_CLIENT_ID" | "GOOGLE_CLIENT_SECRET" | "GOOGLE_REDIRECT_URI">,
-): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> => {
+  env: Pick<
+    Env,
+    "GOOGLE_CLIENT_ID" | "GOOGLE_CLIENT_SECRET" | "GOOGLE_REDIRECT_URI"
+  >,
+): Promise<{
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}> => {
   const res = await fetch(GOOGLE_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -95,56 +106,53 @@ const exchangeCodeForTokens = async (
 };
 
 /**
- * Fetch the authenticated user's YouTube channel info.
+ * Fetch the authenticated user's own YouTube channel info.
+ * Uses /channels?mine=true to get the user's channel (not subscriptions).
  */
-const fetchYouTubeChannelInfo = async (accessToken: string): Promise<YouTubeChannelInfo> => {
-  // First, get the channel ID from the subscriptions list (the authenticated
-  // user's default channel)
-  const subsRes = await fetch(
-    "https://www.googleapis.com/youtube/v3/subscriptions?mine=true&part=snippet&maxResults=1",
+const fetchYouTubeChannelInfo = async (
+  accessToken: string,
+): Promise<YouTubeChannelInfo | null> => {
+  const res = await fetch(
+    "https://www.googleapis.com/youtube/v3/channels?mine=true&part=snippet,contentDetails",
     {
       headers: { Authorization: `Bearer ${accessToken}` },
     },
   );
 
-  if (!subsRes.ok) {
+  if (!res.ok) {
+    const body = await res.text();
     throw new AppError(
       502,
       "YOUTUBE_API_ERROR",
-      "Failed to fetch YouTube subscription info.",
+      `YouTube API error ${res.status}: ${body.slice(0, 200)}`,
     );
   }
 
-  const subsData = (await subsRes.json()) as {
-    items?: Array<{ snippet: { title: string; thumbnails: { default?: { url: string } } } }>;
+  const data = (await res.json()) as {
+    items?: Array<{
+      id: string;
+      snippet: { title: string; thumbnails: { default?: { url: string } } };
+      contentDetails: { relatedPlaylists: { uploads: string } };
+    }>;
   };
 
-  const channelTitle = subsData.items?.[0]?.snippet?.title ?? "Unknown Channel";
-  const thumbnailUrl = subsData.items?.[0]?.snippet?.thumbnails?.default?.url ?? null;
-
-  // Get the channel ID from the content details
-  const contentRes = await fetch(
-    "https://www.googleapis.com/youtube/v3/channels?mine=true&part=contentDetails",
-    {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    },
-  );
-
-  if (!contentRes.ok) {
+  if (!data.items?.length) {
     throw new AppError(
-      502,
-      "YOUTUBE_API_ERROR",
-      "Failed to fetch YouTube channel content details.",
+      400,
+      "NO_YOUTUBE_CHANNEL",
+      "No YouTube channel found for this account. Please create a YouTube channel first.",
     );
   }
 
-  const contentData = (await contentRes.json()) as {
-    items?: Array<{ id: string; contentDetails: { relatedPlaylists: { uploads: string } } }>;
+  const channel = data.items[0];
+  if (!channel) {
+    return null;
+  }
+  return {
+    id: channel.id,
+    title: channel.snippet.title,
+    thumbnailUrl: channel.snippet.thumbnails.default?.url ?? null,
   };
-
-  const channelId = contentData.items?.[0]?.id ?? randomUUID();
-
-  return { id: channelId, title: channelTitle, thumbnailUrl };
 };
 
 /**
@@ -158,8 +166,14 @@ const fetchYouTubeChannelInfo = async (accessToken: string): Promise<YouTubeChan
 export const connectYouTubeChannel = async (
   userId: string,
   code: string,
-  env: Pick<Env, "GOOGLE_CLIENT_ID" | "GOOGLE_CLIENT_SECRET" | "GOOGLE_REDIRECT_URI" | "ENCRYPTION_KEY">,
-): Promise<ConnectResult> => {
+  env: Pick<
+    Env,
+    | "GOOGLE_CLIENT_ID"
+    | "GOOGLE_CLIENT_SECRET"
+    | "GOOGLE_REDIRECT_URI"
+    | "ENCRYPTION_KEY"
+  >,
+): Promise<ConnectResult | null> => {
   requireDatabase();
 
   // Exchange code for tokens
@@ -167,6 +181,10 @@ export const connectYouTubeChannel = async (
 
   // Fetch channel info
   const channelInfo = await fetchYouTubeChannelInfo(accessToken);
+
+  if (!channelInfo) {
+    return null;
+  }
 
   // Encrypt the refresh token for storage
   const refreshTokenEncrypted = encryptToken(refreshToken, env.ENCRYPTION_KEY);
@@ -204,7 +222,9 @@ export const connectYouTubeChannel = async (
  *
  * @param userId Authenticated user id.
  */
-export const disconnectYouTubeChannel = async (userId: string): Promise<void> => {
+export const disconnectYouTubeChannel = async (
+  userId: string,
+): Promise<void> => {
   requireDatabase();
   await prisma.youTubeChannel.deleteMany({
     where: { userId },
@@ -242,9 +262,15 @@ export const getYouTubeConnectionByUserId = async (
  */
 export const refreshAccessToken = async (
   channel: YouTubeChannel,
-  env: Pick<Env, "GOOGLE_CLIENT_ID" | "GOOGLE_CLIENT_SECRET" | "ENCRYPTION_KEY">,
+  env: Pick<
+    Env,
+    "GOOGLE_CLIENT_ID" | "GOOGLE_CLIENT_SECRET" | "ENCRYPTION_KEY"
+  >,
 ): Promise<{ accessToken: string; expiresAt: Date }> => {
-  const refreshToken = decryptToken(channel.refreshTokenEncrypted, env.ENCRYPTION_KEY);
+  const refreshToken = decryptToken(
+    channel.refreshTokenEncrypted,
+    env.ENCRYPTION_KEY,
+  );
 
   const res = await fetch(GOOGLE_TOKEN_URL, {
     method: "POST",

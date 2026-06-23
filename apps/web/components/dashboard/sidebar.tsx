@@ -26,12 +26,6 @@ const PRIMARY_NAV: ReadonlyArray<NavItem> = [
   { href: "/dashboard/settings", label: "Settings", icon: Settings, enabled: true },
 ];
 
-interface SidebarProps {
-  /** Render-time channel connection state for the footer indicator. */
-  channelState?: "connected" | "unconnected";
-  channelLabel?: string;
-}
-
 /**
  * Dashboard sidebar.
  *
@@ -43,18 +37,28 @@ interface SidebarProps {
  *
  * "Videos / Billing" routes don't exist yet in v1, so they're rendered
  * with `aria-disabled` and a tooltip — visible but not clickable.
- * Settings IS wired (Settings entry now lives under /settings/* and
- * redirects to /settings/profile on click).
  *
- * The user-email row at the bottom is now a link to /settings/profile
+ * The YouTube channel indicator reads `youtubeConnection` directly from
+ * the auth context (which is sourced from the TanStack Query bundle
+ * cache). When a connect/disconnect mutation updates the cache, this
+ * component re-renders automatically — no props threading, no manual
+ * refetch, no stale "not connected" state.
+ *
+ * The user-email row at the bottom is a link to /settings/profile
  * so a user can reach their profile from anywhere in the dashboard.
  */
-export function Sidebar({
-  channelState = "unconnected",
-  channelLabel = "Channel not connected",
-}: SidebarProps) {
+export function Sidebar() {
   const pathname = usePathname();
-  const { user, signOut } = useAuth();
+  const { user, youtubeConnection, signOut } = useAuth();
+
+  const channelState: "connected" | "unconnected" =
+    youtubeConnection?.status === "connected" ? "connected" : "unconnected";
+  const channelLabel =
+    channelState === "connected"
+      ? (youtubeConnection?.channelTitle ?? "Channel connected")
+      : youtubeConnection?.status === "needs_reauth"
+        ? "Reconnect required"
+        : "Channel not connected";
 
   return (
     <aside

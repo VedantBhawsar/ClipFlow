@@ -71,11 +71,7 @@ export default async function DashboardPage() {
         </p>
       </header>
 
-      <YouTubeConnectCard
-        status={bundle?.youtubeConnection.status}
-        channelTitle={bundle?.youtubeConnection.channelTitle}
-        channelThumbnailUrl={bundle?.youtubeConnection.channelThumbnailUrl}
-      />
+      <YouTubeConnectCard />
 
       <section aria-labelledby="videos-heading" className="space-y-4">
         <div className="flex items-baseline justify-between">

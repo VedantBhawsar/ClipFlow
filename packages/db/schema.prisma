@@ -102,6 +102,7 @@ model User {
   youtubeChannel YouTubeChannel?
 
   @@map("users")
+  @@index([id])
 }
 
 // ---------- UserProfile ----------

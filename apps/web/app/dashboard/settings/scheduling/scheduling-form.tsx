@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { COMMON_TIMEZONES } from "@clipflow/types";
 import { useAuth } from "@/hooks/use-auth";
+import { useUpdatePreferences } from "@/hooks/use-update-preferences";
 
 /**
  * Best-effort "detect my timezone" helper. Uses the browser's
@@ -27,7 +28,8 @@ const detectBrowserTimezone = (): string | null => {
 };
 
 export function SchedulingForm() {
-  const { preferences: prefs, patchPreferences } = useAuth();
+  const { preferences: prefs } = useAuth();
+  const updatePrefs = useUpdatePreferences();
 
   const [timezone, setTimezone] = React.useState<string>(
     prefs?.defaultTimezone ?? "UTC",
@@ -35,8 +37,7 @@ export function SchedulingForm() {
   const [publishTime, setPublishTime] = React.useState<string>(
     prefs?.defaultPublishTime ?? "18:00",
   );
-  const [saving, setSaving] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const [localError, setLocalError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!prefs) return;
@@ -63,26 +64,28 @@ export function SchedulingForm() {
     if (detected) {
       setTimezone(detected);
     } else {
-      setError("Couldn't detect your timezone automatically. Pick one from the list.");
+      setLocalError("Couldn't detect your timezone automatically. Pick one from the list.");
     }
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError(null);
-    setSaving(true);
+    setLocalError(null);
     try {
-      await patchPreferences({
+      await updatePrefs.mutateAsync({
         defaultTimezone: timezone,
         defaultPublishTime: publishTime,
       });
       toast.success("Scheduling defaults saved.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't save your scheduling defaults.");
-    } finally {
-      setSaving(false);
+      setLocalError(err instanceof Error ? err.message : "Couldn't save your scheduling defaults.");
     }
   };
+
+  const saving = updatePrefs.isPending;
+  const error = localError ?? (updatePrefs.error instanceof Error
+    ? updatePrefs.error.message
+    : null);
 
   return (
     <form

@@ -4,29 +4,10 @@ import * as React from "react";
 import { SettingsPageHeader } from "@/components/settings/settings-page-header";
 import { YouTubeConnectCard } from "@/components/dashboard/youtube-connect-card";
 import { formatDateTime } from "@/lib/format";
-import { api } from "@/lib/api-client";
-import type { YouTubeConnection } from "@clipflow/types";
+import { useYouTubeConnection } from "@/hooks/use-youtube-connection";
 
 export default function ConnectedSettingsPage() {
-  const [connection, setConnection] = React.useState<YouTubeConnection | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
-
-  const loadConnection = React.useCallback(() => {
-    api
-      .getYouTubeConnection()
-      .then(setConnection)
-      .catch((err) => {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Couldn't load your YouTube connection.",
-        );
-      });
-  }, []);
-
-  React.useEffect(() => {
-    loadConnection();
-  }, [loadConnection]);
+  const connectionQuery = useYouTubeConnection();
 
   return (
     <div className="space-y-8">
@@ -45,26 +26,23 @@ export default function ConnectedSettingsPage() {
         >
           Current status
         </h2>
-        {error ? (
+        {connectionQuery.error ? (
           <p
             role="alert"
             className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
           >
-            {error}
+            {connectionQuery.error instanceof Error
+              ? connectionQuery.error.message
+              : "Couldn't load your YouTube connection."}
           </p>
-        ) : connection === null ? (
+        ) : connectionQuery.isPending || !connectionQuery.data ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : (
-          <YouTubeConnectCard
-            status={connection.status === "connected" || connection.status === "needs_reauth" ? connection.status : "disconnected"}
-            channelTitle={connection.channelTitle}
-            channelThumbnailUrl={connection.channelThumbnailUrl}
-            onChange={loadConnection}
-          />
+          <YouTubeConnectCard />
         )}
       </section>
 
-      {connection?.status === "connected" ? (
+      {connectionQuery.data?.status === "connected" ? (
         <section
           aria-labelledby="connection-details"
           className="space-y-2 rounded-lg border border-border bg-card p-4 text-sm"
@@ -78,12 +56,12 @@ export default function ConnectedSettingsPage() {
           <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div>
               <dt className="text-xs text-muted-foreground">Channel</dt>
-              <dd className="font-medium">{connection.channelTitle ?? "—"}</dd>
+              <dd className="font-medium">{connectionQuery.data.channelTitle ?? "—"}</dd>
             </div>
             <div>
               <dt className="text-xs text-muted-foreground">Last verified</dt>
               <dd className="font-medium">
-                {formatDateTime(connection.lastVerifiedAt)}
+                {formatDateTime(connectionQuery.data.lastVerifiedAt)}
               </dd>
             </div>
           </dl>

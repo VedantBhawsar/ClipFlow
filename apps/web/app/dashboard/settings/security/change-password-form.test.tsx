@@ -15,19 +15,28 @@ vi.mock("next/navigation", () => ({
   })),
 }));
 
-vi.mock("@/lib/api-client", () => ({
-  api: {
-    changePassword: vi.fn(),
-  },
+vi.mock("@/hooks/use-change-password", () => ({
+  useChangePassword: vi.fn(),
 }));
 
-import { api } from "@/lib/api-client";
-const mockChangePassword = vi.mocked(api.changePassword);
+import { useChangePassword } from "@/hooks/use-change-password";
+
+const mockUseChangePassword = vi.mocked(useChangePassword);
 
 describe("ChangePasswordForm", () => {
+  let mockMutateAsync: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
-    mockChangePassword.mockResolvedValue(undefined);
+    mockMutateAsync = vi.fn().mockResolvedValue(undefined);
+    mockUseChangePassword.mockReturnValue({
+      mutateAsync: mockMutateAsync,
+      mutate: mockMutateAsync,
+      isPending: false,
+      isError: false,
+      error: null,
+      reset: vi.fn(),
+    } as unknown as ReturnType<typeof useChangePassword>);
   });
 
   it("renders all three password fields", () => {
@@ -76,7 +85,7 @@ describe("ChangePasswordForm", () => {
     ).toBeInTheDocument();
   });
 
-  it("calls api.changePassword on valid submit", async () => {
+  it("calls the change-password mutation on valid submit", async () => {
     const user = userEvent.setup();
     render(<ChangePasswordForm />);
     await user.type(screen.getByLabelText("Current password"), "OldPass123");
@@ -88,7 +97,7 @@ describe("ChangePasswordForm", () => {
     await user.click(
       screen.getByRole("button", { name: /update password/i }),
     );
-    expect(mockChangePassword).toHaveBeenCalledWith({
+    expect(mockMutateAsync).toHaveBeenCalledWith({
       currentPassword: "OldPass123",
       newPassword: "NewPass456",
     });

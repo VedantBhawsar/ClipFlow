@@ -31,9 +31,13 @@ describe("SignUpForm", () => {
       status: "unauthenticated",
       user: null,
       profile: null,
+      preferences: null,
+      youtubeConnection: null,
       onboardingCompleted: false,
       setOnboardingCompleted: vi.fn(),
-    } as ReturnType<typeof useAuth>);
+      setPreferences: vi.fn(),
+      patchPreferences: vi.fn(),
+    } as unknown as ReturnType<typeof useAuth>);
   });
 
   it("renders sign up form with all fields", () => {
