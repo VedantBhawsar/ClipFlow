@@ -4,21 +4,44 @@
  * All auth-domain business logic lives here. Controllers stay thin and
  * delegate to this module — easy to unit-test in isolation, and keeps
  * the HTTP/Express concerns out of the data layer.
+ *
+ * Token model:
+ *  - Access: short-lived HS256 JWT (15m default, env-controlled). Carried
+ *    in `Authorization: Bearer <accessToken>` on every authenticated
+ *    request. Verified by `middleware/auth.ts`.
+ *  - Refresh: long-lived opaque token (7d default, env-controlled). Sent
+ *    in the body of `POST /api/auth/refresh`. Stored as a SHA-256 hash
+ *    server-side. Rotation + reuse detection — see `lib/refresh-token.ts`.
  */
-import type { AuthProvider, AuthResponse, AuthUser, MeResponse, UserProfile } from "@clipflow/types";
+import type {
+  AuthProvider,
+  AuthResponse,
+  AuthUser,
+  LogoutRequest,
+  MeResponse,
+  RefreshResponse,
+  UserProfile,
+} from "@clipflow/types";
 import { AppError } from "../../errors/AppError.js";
 import { prisma } from "../../lib/prisma.js";
 import { requireDatabase } from "../../lib/db-guard.js";
 import { hashPassword, verifyPassword } from "../../lib/password.js";
 import { signJwt } from "../../lib/jwt.js";
+import {
+  issueRefreshToken,
+  parseDurationMs,
+  revokeRefreshToken,
+  rotateRefreshToken,
+} from "../../lib/refresh-token.js";
 import type { Env } from "@clipflow/config";
 import type { LoginInput, RegisterInput } from "./auth.schemas.js";
 
+const refreshTtlMs = (env: Env): number => parseDurationMs(env.REFRESH_TOKEN_EXPIRES_IN);
+
+const accessTtlMs = (env: Env): number => parseDurationMs(env.JWT_EXPIRES_IN);
+
 /**
  * Map a Prisma `User` row to the wire-format `AuthUser` DTO.
- *
- * @param user The Prisma row.
- * @returns DTO suitable for `AuthResponse.user`.
  */
 const toAuthUser = (user: {
   id: string;
@@ -41,9 +64,6 @@ const toAuthUser = (user: {
 /**
  * Map a Prisma `UserProfile` row to the wire-format `UserProfile` DTO,
  * or `null` if no row exists.
- *
- * @param profile The Prisma row or `null`.
- * @returns DTO suitable for `MeResponse.profile`.
  */
 const toProfileDto = (
   profile:
@@ -62,9 +82,6 @@ const toProfileDto = (
   return {
     id: profile.id,
     displayName: profile.displayName,
-    // Casts: Prisma returns the enum values as strings; the DTO accepts the
-    // matching string union types. Safe because the columns are constrained
-    // by the Prisma enum.
     niche: profile.niche as UserProfile["niche"],
     uploadFrequency: profile.uploadFrequency as UserProfile["uploadFrequency"],
     primaryGoal: profile.primaryGoal as UserProfile["primaryGoal"],
@@ -74,12 +91,37 @@ const toProfileDto = (
 };
 
 /**
+ * Mint a fresh access JWT + refresh-token row and combine into the
+ * wire-format `AuthResponse`. Caller passes the user (already loaded)
+ * to avoid a second DB hit.
+ */
+const mintAuthResponse = async (
+  user: {
+    id: string;
+    email: string;
+    name: string | null;
+    authProvider: AuthProvider;
+    emailVerifiedAt: Date | null;
+    createdAt: Date;
+  },
+  env: Env,
+): Promise<AuthResponse> => {
+  const accessToken = signJwt({ sub: user.id, email: user.email }, env);
+  const refresh = await issueRefreshToken(prisma, user.id, {
+    ttlMs: refreshTtlMs(env),
+  });
+  return {
+    user: toAuthUser(user),
+    accessToken,
+    refreshToken: refresh.rawToken,
+    accessTokenExpiresAt: Date.now() + accessTtlMs(env),
+    refreshTokenExpiresAt: refresh.expiresAt.getTime(),
+  };
+};
+
+/**
  * Register a new email/password user. Throws `EMAIL_TAKEN` if the email
  * is already in use.
- *
- * @param input Validated register input.
- * @param env Validated env (for JWT signing).
- * @returns `AuthResponse` for the newly created user.
  */
 export const register = async (
   input: RegisterInput,
@@ -106,22 +148,13 @@ export const register = async (
     },
   });
 
-  const token = signJwt({ sub: user.id, email: user.email }, env);
-
-  return {
-    user: toAuthUser(user),
-    token,
-  };
+  return mintAuthResponse(user, env);
 };
 
 /**
  * Authenticate an existing user. Throws `INVALID_CREDENTIALS` on bad
  * email or password — single generic message to avoid leaking whether
  * the email exists.
- *
- * @param input Validated login input.
- * @param env Validated env (for JWT signing).
- * @returns `AuthResponse` on success.
  */
 export const login = async (input: LoginInput, env: Env): Promise<AuthResponse> => {
   requireDatabase();
@@ -141,28 +174,47 @@ export const login = async (input: LoginInput, env: Env): Promise<AuthResponse> 
       "Email or password is incorrect.",
     );
   }
-  const token = signJwt({ sub: user.id, email: user.email }, env);
+  return mintAuthResponse(user, env);
+};
+
+/**
+ * Rotate a refresh token. Throws `INVALID_REFRESH_TOKEN` (401) on any
+ * failure: unknown token, expired token, or REUSE DETECTED (the latter
+ * also revokes the entire family as a side effect).
+ */
+export const refresh = async (
+  presentedRefreshToken: string,
+  env: Env,
+): Promise<RefreshResponse> => {
+  requireDatabase();
+  const rotated = await rotateRefreshToken(
+    prisma,
+    presentedRefreshToken,
+    env,
+    { ttlMs: refreshTtlMs(env) },
+  );
   return {
-    user: toAuthUser(user),
-    token,
+    accessToken: rotated.accessToken,
+    refreshToken: rotated.refreshToken,
+    accessTokenExpiresAt: Date.now() + accessTtlMs(env),
+    refreshTokenExpiresAt: rotated.expiresAt.getTime(),
   };
 };
 
 /**
- * Logout. Stateless JWT — the client drops the token. This route is
- * reserved for a future token blacklist / refresh-token rotation flow.
- * Always returns 204.
+ * Logout. Revokes the presented refresh token (if any). Idempotent —
+ * the access token is client-discarded; only the refresh token is
+ * stored server-side and worth revoking.
  */
-export const logout = async (): Promise<void> => {
-  return Promise.resolve();
+export const logout = async (input: LogoutRequest | undefined): Promise<void> => {
+  if (!input?.refreshToken) return;
+  requireDatabase();
+  await revokeRefreshToken(prisma, input.refreshToken);
 };
 
 /**
  * Google sign-in. Stub for the next slice: returns 501 so the route is
  * obviously wired and the controller contract is exercised end-to-end.
- *
- * The scaffolding is intentionally real (validation + controller + service
- * call), only the actual token verification is deferred.
  */
 export const googleSignIn = async (_idToken: string): Promise<AuthResponse> => {
   throw new AppError(
@@ -175,9 +227,6 @@ export const googleSignIn = async (_idToken: string): Promise<AuthResponse> => {
 /**
  * Fetch the authenticated user along with their profile (if any) and
  * onboarding completion flag. Used by `GET /api/auth/me`.
- *
- * @param userId The authenticated user's id (from JWT).
- * @returns `MeResponse`.
  */
 export const me = async (userId: string): Promise<MeResponse> => {
   requireDatabase();
@@ -186,7 +235,6 @@ export const me = async (userId: string): Promise<MeResponse> => {
     include: { profile: true },
   });
   if (!user) {
-    // Token references a deleted user — treat as unauthenticated.
     throw new AppError(401, "UNAUTHENTICATED", "Your session is no longer valid.");
   }
   const profile = toProfileDto(user.profile);

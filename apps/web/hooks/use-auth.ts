@@ -1,17 +1,14 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 
-import { useAuthContext } from "@/lib/auth-context";
 import { queryKeys } from "@/lib/query-keys";
 import { useUpdatePreferences } from "@/hooks/use-update-preferences";
 import { useUserBundle } from "@/hooks/use-user-bundle";
 import type {
-  AuthResponse,
   AuthUser,
-  LoginRequest,
-  RegisterRequest,
   UpdatePreferencesRequest,
   UserPreferences,
   UserProfile,
@@ -21,62 +18,59 @@ import type {
 /**
  * Combined auth + server-data hook for components.
  *
- * The shape is preserved from the pre-TanStack-Query era so existing
- * call sites (Sidebar, settings forms, onboarding wizard, signin/signup
- * forms) keep working with the minimum diff. Internally:
+ * Surface preserved from the pre-NextAuth era so existing call sites
+ * (Sidebar, settings forms, onboarding wizard, signin/signup forms)
+ * keep working with the minimum diff. Internally:
  *
- *   - status, signIn, signUp, signOut come from AuthContext (which
- *     owns auth state and action wrappers around the mutation hooks).
+ *   - status comes from NextAuth's `useSession()`.
  *   - user, profile, preferences, youtubeConnection, onboardingCompleted
- *     come from useUserBundle() — the canonical read for everything
- *     server-derived.
- *   - refresh, setOnboardingCompleted, setPreferences, patchPreferences
- *     are thin wrappers over the QueryClient / mutation hooks so
- *     components that previously did `await refresh()` keep working.
+ *     come from `useUserBundle()` — same as before.
+ *   - signIn / signUp / signOut are no longer methods on this hook.
+ *     Components call NextAuth's `signIn` / `signOut` from `@/auth`
+ *     directly inside their event handlers. (NextAuth's `signIn`
+ *     navigates / performs a form post by design, so it doesn't fit
+ *     behind a `useMutation`-shaped facade.)
+ *   - refresh is `useSession().update()` (NextAuth's manual session
+ *     refresh); kept as a method for API parity with the pre-NextAuth
+ *     `useAuth().refresh()`.
+ *   - setOnboardingCompleted / setPreferences / patchPreferences are
+ *     thin wrappers over the QueryClient / mutation hooks so call
+ *     sites that did `await patchPreferences(...)` keep their shape.
  *
  * New code is welcome to call the query hooks directly
  * (useUserBundle, useUpdatePreferences, useConnectYouTube, …) instead
  * of going through this facade — the facade exists only to avoid
- * re-wiring 12+ files in a single PR.
+ * re-wiring every call site in a single PR.
  */
 export interface UseAuthValue {
-  status: ReturnType<typeof useAuthContext>["status"];
+  status: "loading" | "authenticated" | "unauthenticated";
   user: AuthUser | null;
   profile: UserProfile | null;
   preferences: UserPreferences | null;
   youtubeConnection: YouTubeConnection | null;
   onboardingCompleted: boolean;
-  signIn: (body: LoginRequest) => Promise<AuthResponse>;
-  signUp: (body: RegisterRequest) => Promise<AuthResponse>;
-  signOut: () => Promise<void>;
   /**
-   * Refetch the user bundle. Kept for API compatibility with the
-   * pre-TanStack-Query call sites; prefer queryClient.invalidateQueries
-   * in new code.
+   * Manually refresh the NextAuth session. Forces the `jwt` callback
+   * to run, which transparently rotates the access token if needed.
    */
   refresh: () => Promise<void>;
   /**
    * Optimistically mark onboarding complete from a freshly-submitted
-   * UserProfile without waiting for the bundle refetch. Kept for
-   * API compatibility; the onboarding wizard doesn't need it anymore
-   * since the mutation's onSuccess already updates the cache.
+   * UserProfile without waiting for the bundle refetch.
    */
   setOnboardingCompleted: (profile: UserProfile) => void;
   /**
-   * Optimistically replace the cached preferences. Kept for API
-   * compatibility; mutation onSuccess already does this.
+   * Optimistically replace the cached preferences.
    */
   setPreferences: (next: UserPreferences) => void;
   /**
-   * PATCH /api/user/preferences and update the cache. Thin wrapper
-   * over useUpdatePreferences; kept so call sites that imported
-   * `patchPreferences` from useAuth keep their shape.
+   * PATCH /api/user/preferences and update the cache.
    */
   patchPreferences: (body: UpdatePreferencesRequest) => Promise<UserPreferences>;
 }
 
 export function useAuth(): UseAuthValue {
-  const { status, signIn, signUp, signOut } = useAuthContext();
+  const { status, update } = useSession();
   const bundle = useUserBundle();
   const qc = useQueryClient();
   const updatePrefs = useUpdatePreferences();
@@ -87,39 +81,32 @@ export function useAuth(): UseAuthValue {
   const youtubeConnection = bundle.data?.youtubeConnection ?? null;
   const onboardingCompleted = bundle.data?.onboardingCompleted ?? false;
 
-  const refresh = useCallback(async (): Promise<void> => {
-    await qc.invalidateQueries({ queryKey: queryKeys.user.bundle() });
-  }, [qc]);
+  const refresh = async (): Promise<void> => {
+    await update();
+  };
 
-  const setOnboardingCompleted = useCallback(
-    (next: UserProfile) => {
-      qc.setQueryData(queryKeys.user.bundle(), (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          profile: next,
-          onboardingCompleted: next.onboardingCompletedAt !== null,
-        };
-      });
-    },
-    [qc],
-  );
+  const setOnboardingCompleted = (next: UserProfile): void => {
+    qc.setQueryData(queryKeys.user.bundle(), (old) => {
+      if (!old) return old;
+      return {
+        ...old,
+        profile: next,
+        onboardingCompleted: next.onboardingCompletedAt !== null,
+      };
+    });
+  };
 
-  const setPreferences = useCallback(
-    (next: UserPreferences) => {
-      qc.setQueryData(queryKeys.user.bundle(), (old) =>
-        old ? { ...old, preferences: next } : old,
-      );
-    },
-    [qc],
-  );
+  const setPreferences = (next: UserPreferences): void => {
+    qc.setQueryData(queryKeys.user.bundle(), (old) =>
+      old ? { ...old, preferences: next } : old,
+    );
+  };
 
-  const patchPreferences = useCallback(
-    async (body: UpdatePreferencesRequest): Promise<UserPreferences> => {
-      return updatePrefs.mutateAsync(body);
-    },
-    [updatePrefs],
-  );
+  const patchPreferences = async (
+    body: UpdatePreferencesRequest,
+  ): Promise<UserPreferences> => {
+    return updatePrefs.mutateAsync(body);
+  };
 
   return useMemo<UseAuthValue>(
     () => ({
@@ -129,9 +116,6 @@ export function useAuth(): UseAuthValue {
       preferences,
       youtubeConnection,
       onboardingCompleted,
-      signIn,
-      signUp,
-      signOut,
       refresh,
       setOnboardingCompleted,
       setPreferences,
@@ -144,9 +128,6 @@ export function useAuth(): UseAuthValue {
       preferences,
       youtubeConnection,
       onboardingCompleted,
-      signIn,
-      signUp,
-      signOut,
       refresh,
       setOnboardingCompleted,
       setPreferences,

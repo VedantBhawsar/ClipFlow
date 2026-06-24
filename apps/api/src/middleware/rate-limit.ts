@@ -10,13 +10,13 @@
  *     user id with IP fallback, so a single user can't brute-force
  *     password changes even across many IPs.
  *
- * Returns 429 with the `ApiErrorBody` shape so the frontend gets a
- * consistent error contract.
+ * Every limiter returns 429 in the standard `ApiFailure` envelope so the
+ * frontend gets a consistent error contract from every error source.
  */
 import rateLimit, { type RateLimitRequestHandler } from "express-rate-limit";
 import type { Request } from "express";
 import type { Env } from "@clipflow/config";
-import type { ApiErrorBody } from "@clipflow/types";
+import type { ApiFailure } from "@clipflow/types";
 
 /**
  * Build the default (global) rate limiter.
@@ -31,9 +31,11 @@ export const buildGlobalRateLimiter = (env: Env): RateLimitRequestHandler => {
     standardHeaders: true,
     legacyHeaders: false,
     handler: (_req, res) => {
-      const body: ApiErrorBody = {
-        error: "RATE_LIMITED",
+      const body: ApiFailure = {
+        success: false,
         message: "Too many requests. Please slow down and try again shortly.",
+        data: null,
+        error: "RATE_LIMITED",
       };
       res.status(429).json(body);
     },
@@ -53,9 +55,11 @@ export const buildAuthRateLimiter = (env: Env): RateLimitRequestHandler => {
     standardHeaders: true,
     legacyHeaders: false,
     handler: (_req, res) => {
-      const body: ApiErrorBody = {
-        error: "RATE_LIMITED",
+      const body: ApiFailure = {
+        success: false,
         message: "Too many sign-in attempts. Please wait a few minutes and try again.",
+        data: null,
+        error: "RATE_LIMITED",
       };
       res.status(429).json(body);
     },
@@ -108,9 +112,11 @@ export const buildPerUserRateLimiter = (
       return `ip:${req.ip ?? "unknown"}`;
     },
     handler: (_req, res) => {
-      const body: ApiErrorBody = {
-        error: "RATE_LIMITED",
+      const body: ApiFailure = {
+        success: false,
         message: `Too many ${options.resource}. Please wait a few minutes and try again.`,
+        data: null,
+        error: "RATE_LIMITED",
       };
       res.status(429).json(body);
     },

@@ -1,16 +1,20 @@
 /**
  * Central error handler.
  *
- * Maps thrown errors to the `ApiErrorBody` JSON shape. Typed `AppError`
- * instances pass through with their declared `statusCode`/`code`; unknown
- * errors are converted to a generic 500 (with the stack logged but never
- * returned to the client). The request ID is included in 500 responses so
- * support can correlate the failure with logs.
+ * Maps every thrown error to the `ApiFailure` envelope:
+ *
+ *   { success: false, message, data: null, error?, details? }
+ *
+ * Typed `AppError` instances pass through with their declared
+ * `statusCode`/`code`; unknown errors are converted to a generic 500
+ * (with the stack logged but never returned to the client). The
+ * request ID is included in 500 responses so support can correlate the
+ * failure with logs.
  */
 import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import { AppError } from "../errors/AppError.js";
-import type { ApiErrorBody } from "@clipflow/types";
+import type { ApiFailure } from "@clipflow/types";
 import type { Logger } from "../lib/logger.js";
 
 /**
@@ -31,9 +35,11 @@ export const buildErrorHandler = (logger: Logger) => {
           code: i.code,
         })),
       };
-      const body: ApiErrorBody = {
-        error: "VALIDATION_ERROR",
+      const body: ApiFailure = {
+        success: false,
         message: "Request input is invalid.",
+        data: null,
+        error: "VALIDATION_ERROR",
         details,
       };
       logger.warn(
@@ -45,9 +51,11 @@ export const buildErrorHandler = (logger: Logger) => {
     }
 
     if (err instanceof AppError) {
-      const body: ApiErrorBody = {
-        error: err.code,
+      const body: ApiFailure = {
+        success: false,
         message: err.message,
+        data: null,
+        error: err.code,
         ...(err.details ? { details: err.details } : {}),
       };
       const level = err.statusCode >= 500 ? "error" : "warn";
@@ -71,9 +79,11 @@ export const buildErrorHandler = (logger: Logger) => {
       },
       "Unhandled error",
     );
-    const body: ApiErrorBody = {
-      error: "INTERNAL_SERVER_ERROR",
+    const body: ApiFailure = {
+      success: false,
       message: "Something went wrong. Please try again.",
+      data: null,
+      error: "INTERNAL_SERVER_ERROR",
       details: { requestId: req.id },
     };
     res.status(500).json(body);
@@ -81,13 +91,16 @@ export const buildErrorHandler = (logger: Logger) => {
 };
 
 /**
- * Catch-all for unmatched routes. Returns a 404 with the same body shape
- * as other errors so the frontend gets a consistent error contract.
+ * Catch-all for unmatched routes. Returns a 404 in the same envelope
+ * shape as other errors so the frontend gets a consistent error
+ * contract.
  */
 export const notFoundHandler = (req: Request, res: Response): void => {
-  const body: ApiErrorBody = {
-    error: "NOT_FOUND",
+  const body: ApiFailure = {
+    success: false,
     message: `No route matches ${req.method} ${req.path}.`,
+    data: null,
+    error: "NOT_FOUND",
   };
   res.status(404).json(body);
 };

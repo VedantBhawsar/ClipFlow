@@ -5,32 +5,40 @@
  * of the `me:${userId}` / `user:${userId}` bundle that other modules
  * cache, so writes don't need to call `cache.del`. The dashboard reads
  * videos via TanStack Query (`useVideos`) which invalidates on its own.
+ *
+ * Every response is routed through the centralized envelope helpers
+ * (`sendOk`, `sendCreated`, `sendEmpty`). The two inline helpers
+ * (`requireUser`, `requireEnv`) now throw `AppError` instead of
+ * writing a response directly, so the central error middleware is
+ * the only place that emits failure bodies.
  */
 import type { Request, Response } from "express";
 import type { Env } from "@clipflow/config";
+import { sendCreated, sendEmpty, sendOk } from "../../lib/response.js";
+import { AppError } from "../../errors/AppError.js";
 import * as videosService from "./videos.service.js";
 import type { CreateVideoInput, ListVideosQuery } from "./videos.schemas.js";
 import "../auth/auth.types.js";
 
-const requireUser = (req: Request, res: Response): string | null => {
+/**
+ * Resolve the authenticated user id, or throw a 401 that the central
+ * error middleware will wrap in the failure envelope.
+ */
+const requireUser = (req: Request): string => {
   if (!req.user) {
-    res.status(401).json({
-      error: "UNAUTHENTICATED",
-      message: "Authentication required.",
-    });
-    return null;
+    throw new AppError(401, "UNAUTHENTICATED", "Authentication required.");
   }
   return req.user.id;
 };
 
-const requireEnv = (req: Request, res: Response): Env | null => {
+/**
+ * Resolve the request-scoped env, or throw a 500 that the central
+ * error middleware will wrap in the failure envelope.
+ */
+const requireEnv = (req: Request): Env => {
   const env = req.app.get("env") as Env | undefined;
   if (!env) {
-    res.status(500).json({
-      error: "ENV_UNAVAILABLE",
-      message: "Server is not configured.",
-    });
-    return null;
+    throw new AppError(500, "ENV_UNAVAILABLE", "Server is not configured.");
   }
   return env;
 };
@@ -46,13 +54,11 @@ export const createVideoController = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  const userId = requireUser(req, res);
-  if (!userId) return;
-  const env = requireEnv(req, res);
-  if (!env) return;
+  const userId = requireUser(req);
+  const env = requireEnv(req);
   const input = req.body as CreateVideoInput;
   const result = await videosService.createVideo(userId, input, env);
-  res.status(201).json(result);
+  sendCreated(res, result, "Video upload ready.");
 };
 
 /**
@@ -65,17 +71,14 @@ export const getUploadUrlController = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  const userId = requireUser(req, res);
-  if (!userId) return;
-  const env = requireEnv(req, res);
-  if (!env) return;
+  const userId = requireUser(req);
+  const env = requireEnv(req);
   const id = (req.params as { id?: string }).id;
   if (!id) {
-    res.status(400).json({ error: "INVALID_REQUEST", message: "id required." });
-    return;
+    throw new AppError(400, "INVALID_REQUEST", "Pending upload id is required.");
   }
   const result = await videosService.getUploadUrl(userId, id, env);
-  res.status(200).json(result);
+  sendOk(res, result, "Upload URL minted.");
 };
 
 /**
@@ -87,40 +90,35 @@ export const finalizeVideoController = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  const userId = requireUser(req, res);
-  if (!userId) return;
-  const env = requireEnv(req, res);
-  if (!env) return;
+  const userId = requireUser(req);
+  const env = requireEnv(req);
   const id = (req.params as { id?: string }).id;
   if (!id) {
-    res.status(400).json({ error: "INVALID_REQUEST", message: "id required." });
-    return;
+    throw new AppError(400, "INVALID_REQUEST", "Pending upload id is required.");
   }
   const result = await videosService.finalizeUpload(userId, id, env);
-  res.status(200).json(result);
+  sendOk(res, result, "Upload finalized.");
 };
 
 /**
  * DELETE /api/videos/pending/:id
  *
  * Cancels an in-flight upload: best-effort S3 delete + cache eviction.
- * Idempotent.
+ * Idempotent. Returns 200 with `data: null` so the envelope contract
+ * stays uniform across every endpoint.
  */
 export const cancelPendingUploadController = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  const userId = requireUser(req, res);
-  if (!userId) return;
-  const env = requireEnv(req, res);
-  if (!env) return;
+  const userId = requireUser(req);
+  const env = requireEnv(req);
   const id = (req.params as { id?: string }).id;
   if (!id) {
-    res.status(400).json({ error: "INVALID_REQUEST", message: "id required." });
-    return;
+    throw new AppError(400, "INVALID_REQUEST", "Pending upload id is required.");
   }
   await videosService.cancelPendingUpload(userId, id, env);
-  res.status(204).send();
+  sendEmpty(res, "Pending upload cancelled.");
 };
 
 /**
@@ -130,11 +128,10 @@ export const listVideosController = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  const userId = requireUser(req, res);
-  if (!userId) return;
+  const userId = requireUser(req);
   const query = (req.query ?? {}) as ListVideosQuery;
   const result = await videosService.listVideos(userId, query);
-  res.status(200).json({ videos: result });
+  sendOk(res, { videos: result }, "Videos retrieved.");
 };
 
 /**
@@ -150,10 +147,9 @@ export const listPublishedVideosController = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  const userId = requireUser(req, res);
-  if (!userId) return;
+  const userId = requireUser(req);
   const result = await videosService.listPublishedVideos(userId);
-  res.status(200).json({ videos: result });
+  sendOk(res, { videos: result }, "Published videos retrieved.");
 };
 
 /**
@@ -163,15 +159,13 @@ export const getVideoController = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  const userId = requireUser(req, res);
-  if (!userId) return;
+  const userId = requireUser(req);
   const id = (req.params as { id?: string }).id;
   if (!id) {
-    res.status(400).json({ error: "INVALID_REQUEST", message: "id required." });
-    return;
+    throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
   }
   const result = await videosService.getVideo(userId, id);
-  res.status(200).json(result);
+  sendOk(res, result, "Video retrieved.");
 };
 
 /**
@@ -181,17 +175,14 @@ export const deleteVideoController = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  const userId = requireUser(req, res);
-  if (!userId) return;
-  const env = requireEnv(req, res);
-  if (!env) return;
+  const userId = requireUser(req);
+  const env = requireEnv(req);
   const id = (req.params as { id?: string }).id;
   if (!id) {
-    res.status(400).json({ error: "INVALID_REQUEST", message: "id required." });
-    return;
+    throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
   }
   await videosService.deleteVideo(userId, id, env);
-  res.status(204).send();
+  sendEmpty(res, "Video deleted.");
 };
 
 /**
@@ -209,15 +200,12 @@ export const unpublishVideoController = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  const userId = requireUser(req, res);
-  if (!userId) return;
-  const env = requireEnv(req, res);
-  if (!env) return;
+  const userId = requireUser(req);
+  const env = requireEnv(req);
   const id = (req.params as { id?: string }).id;
   if (!id) {
-    res.status(400).json({ error: "INVALID_REQUEST", message: "id required." });
-    return;
+    throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
   }
   const result = await videosService.unpublishVideo(userId, id, env);
-  res.status(200).json(result);
+  sendOk(res, result, "Video unpublished.");
 };

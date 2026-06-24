@@ -3,7 +3,9 @@ import {
   registerSchema,
   loginSchema,
   googleAuthSchema,
+  logoutSchema,
   passwordSchema,
+  refreshSchema,
 } from "./auth.schemas.js";
 
 describe("auth.schemas", () => {
@@ -160,6 +162,44 @@ describe("auth.schemas", () => {
       const result = googleAuthSchema.safeParse({
         idToken: "",
       });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("refreshSchema", () => {
+    it("accepts a non-empty refreshToken", () => {
+      const result = refreshSchema.safeParse({
+        refreshToken: "opaque-refresh-token-value",
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects empty refreshToken", () => {
+      const result = refreshSchema.safeParse({ refreshToken: "" });
+      expect(result.success).toBe(false);
+    });
+
+    it("rejects missing refreshToken", () => {
+      const result = refreshSchema.safeParse({});
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("logoutSchema", () => {
+    it("accepts an empty body (refreshToken is optional)", () => {
+      const result = logoutSchema.safeParse({});
+      expect(result.success).toBe(true);
+    });
+
+    it("accepts a refreshToken when provided", () => {
+      const result = logoutSchema.safeParse({
+        refreshToken: "opaque-refresh-token-value",
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects an empty refreshToken string", () => {
+      const result = logoutSchema.safeParse({ refreshToken: "" });
       expect(result.success).toBe(false);
     });
   });

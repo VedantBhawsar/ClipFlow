@@ -2,13 +2,9 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { api } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-api";
 import { queryKeys } from "@/lib/query-keys";
-import type {
-  UpdatePreferencesRequest,
-  UserBundleResponse,
-  UserPreferences,
-} from "@clipflow/types";
+import type { UpdatePreferencesRequest, UserPreferences } from "@clipflow/types";
 
 /**
  * Partial update of the authenticated user's preferences. The server
@@ -21,11 +17,12 @@ import type {
  * mutation reconciles the cache once the server confirms.
  */
 export function useUpdatePreferences() {
+  const api = useApi();
   const qc = useQueryClient();
   return useMutation<UserPreferences, Error, UpdatePreferencesRequest>({
     mutationFn: (body) => api.updatePreferences(body),
     onSuccess: (preferences) => {
-      qc.setQueryData<UserBundleResponse>(queryKeys.user.bundle(), (old) =>
+      qc.setQueryData(queryKeys.user.bundle(), (old) =>
         old ? { ...old, preferences } : old,
       );
       void qc.invalidateQueries({ queryKey: queryKeys.user.bundle() });
