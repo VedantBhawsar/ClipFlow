@@ -5,7 +5,13 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
-import { Select } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { useUpdatePreferences } from "@/hooks/use-update-preferences";
 import {
@@ -118,12 +124,19 @@ export function GenerationForm() {
       >
         <Select
           value={chapterBehavior}
-          onChange={(e) => setChapterBehavior(e.target.value as ChapterBehavior)}
-          options={CHAPTER_BEHAVIOR_OPTIONS.map((o) => ({
-            value: o.value,
-            label: o.label,
-          }))}
-        />
+          onValueChange={(v) => setChapterBehavior(v as ChapterBehavior)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select a behavior" />
+          </SelectTrigger>
+          <SelectContent>
+            {CHAPTER_BEHAVIOR_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <p className="text-xs text-muted-foreground">
           {CHAPTER_BEHAVIOR_OPTIONS.find((o) => o.value === chapterBehavior)?.description}
         </p>
@@ -135,12 +148,19 @@ export function GenerationForm() {
       >
         <Select
           value={thumbnailStyle}
-          onChange={(e) => setThumbnailStyle(e.target.value as ThumbnailStyle)}
-          options={THUMBNAIL_STYLE_OPTIONS.map((o) => ({
-            value: o.value,
-            label: o.label,
-          }))}
-        />
+          onValueChange={(v) => setThumbnailStyle(v as ThumbnailStyle)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select a style" />
+          </SelectTrigger>
+          <SelectContent>
+            {THUMBNAIL_STYLE_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <p className="text-xs text-muted-foreground">
           {THUMBNAIL_STYLE_OPTIONS.find((o) => o.value === thumbnailStyle)?.description}
         </p>

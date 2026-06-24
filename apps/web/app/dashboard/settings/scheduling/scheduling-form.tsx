@@ -6,7 +6,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { COMMON_TIMEZONES } from "@clipflow/types";
 import { useAuth } from "@/hooks/use-auth";
 import { useUpdatePreferences } from "@/hooks/use-update-preferences";
@@ -109,11 +115,18 @@ export function SchedulingForm() {
       >
         <div className="flex items-stretch gap-2">
           <div className="flex-1">
-            <Select
-              value={timezone}
-              onChange={(e) => setTimezone(e.target.value)}
-              options={tzOptions.map((tz) => ({ value: tz, label: tz }))}
-            />
+            <Select value={timezone} onValueChange={setTimezone}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a timezone" />
+              </SelectTrigger>
+              <SelectContent>
+                {tzOptions.map((tz) => (
+                  <SelectItem key={tz} value={tz}>
+                    {tz}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <Button
             type="button"

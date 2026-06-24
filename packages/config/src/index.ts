@@ -40,6 +40,30 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GOOGLE_REDIRECT_URI: z.string().url().optional(),
 
+  // S3 / MinIO / Cloudflare R2 (used for the upload-publish slice).
+  // Same SDK config works against MinIO and R2 — only S3_ENDPOINT and
+  // S3_FORCE_PATH_STYLE change between them.
+  S3_ENDPOINT: z.string().url(),
+  S3_REGION: z.string().default("us-east-1"),
+  S3_ACCESS_KEY_ID: z.string().min(1),
+  S3_SECRET_ACCESS_KEY: z.string().min(1),
+  S3_BUCKET: z.string().min(1),
+  S3_FORCE_PATH_STYLE: z.coerce.boolean().default(false),
+
+  // BullMQ (used by API for enqueue, by worker for consume).
+  // Optional in API dev — enqueue becomes a 503 when missing. The worker
+  // asserts it's set at boot.
+  BULLMQ_PREFIX: z.string().default("clipflow"),
+
+  // YouTube limits (defaults match PRD.md 60min / 5GB).
+  YOUTUBE_CATEGORY_DEFAULT: z.string().regex(/^\d{1,2}$/).default("22"),
+  YOUTUBE_MAX_VIDEO_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(5 * 1024 * 1024 * 1024),
+  YOUTUBE_PRESIGNED_POST_TTL: z.coerce.number().int().positive().default(900),
+
   // Rate limiting (per-IP defaults; tighten per-route later)
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),

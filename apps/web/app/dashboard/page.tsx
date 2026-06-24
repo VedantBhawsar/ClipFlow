@@ -6,7 +6,7 @@ import { Settings as SettingsIcon } from "lucide-react";
 import type { UserBundleResponse } from "@clipflow/types";
 
 import { YouTubeConnectCard } from "@/components/dashboard/youtube-connect-card";
-import { EmptyState } from "@/components/dashboard/empty-state";
+import { VideoList } from "@/components/dashboard/video-list";
 import { Button } from "@/components/ui/button";
 import { AUTH_TOKEN_COOKIE } from "@/lib/api-client";
 import { env } from "@/lib/env";
@@ -83,7 +83,7 @@ export default async function DashboardPage() {
           </h2>
         </div>
 
-        <EmptyState connected={channelConnected} />
+        <VideoList channelConnected={channelConnected} />
       </section>
 
       <section

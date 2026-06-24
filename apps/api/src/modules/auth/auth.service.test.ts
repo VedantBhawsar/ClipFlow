@@ -43,6 +43,16 @@ const mockEnv: Env = {
   GOOGLE_REDIRECT_URI: undefined,
   RATE_LIMIT_WINDOW_MS: 900000,
   RATE_LIMIT_MAX: 100,
+  S3_ENDPOINT: "http://localhost:9000",
+  S3_REGION: "us-east-1",
+  S3_ACCESS_KEY_ID: "minioadmin",
+  S3_SECRET_ACCESS_KEY: "minioadmin",
+  S3_BUCKET: "clipflow-videos",
+  S3_FORCE_PATH_STYLE: true,
+  BULLMQ_PREFIX: "clipflow",
+  YOUTUBE_CATEGORY_DEFAULT: "22",
+  YOUTUBE_MAX_VIDEO_BYTES: 5 * 1024 * 1024 * 1024,
+  YOUTUBE_PRESIGNED_POST_TTL: 900,
 };
 
 const mockUser = {
@@ -51,8 +61,10 @@ const mockUser = {
   name: "Test User",
   passwordHash: "hashed_password",
   authProvider: "EMAIL" as const,
+  googleId: null,
   emailVerifiedAt: null,
   createdAt: new Date("2024-01-01"),
+  updatedAt: new Date("2024-01-01"),
 };
 
 describe("auth.service", () => {
