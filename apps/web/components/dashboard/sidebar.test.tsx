@@ -75,11 +75,16 @@ describe("Sidebar", () => {
     expect(emailLink).toHaveAttribute("href", "/dashboard/settings/profile");
   });
 
-  it("still shows Videos and Billing as disabled placeholders", () => {
+  it("links the Published entry to /dashboard/published as an enabled nav item", () => {
     render(<Sidebar />);
-    const videos = screen.getByText("Videos").closest("span");
+    const published = screen.getByText("Published").closest("a");
+    expect(published).not.toHaveAttribute("aria-disabled");
+    expect(published).toHaveAttribute("href", "/dashboard/published");
+  });
+
+  it("still shows Billing as a disabled placeholder", () => {
+    render(<Sidebar />);
     const billing = screen.getByText("Billing").closest("span");
-    expect(videos).toHaveAttribute("aria-disabled", "true");
     expect(billing).toHaveAttribute("aria-disabled", "true");
   });
 

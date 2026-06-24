@@ -9,7 +9,7 @@
 import type { Request, Response } from "express";
 import type { Env } from "@clipflow/config";
 import * as videosService from "./videos.service.js";
-import type { CreateVideoInput } from "./videos.schemas.js";
+import type { CreateVideoInput, ListVideosQuery } from "./videos.schemas.js";
 import "../auth/auth.types.js";
 
 const requireUser = (req: Request, res: Response): string | null => {
@@ -132,7 +132,27 @@ export const listVideosController = async (
 ): Promise<void> => {
   const userId = requireUser(req, res);
   if (!userId) return;
-  const result = await videosService.listVideos(userId);
+  const query = (req.query ?? {}) as ListVideosQuery;
+  const result = await videosService.listVideos(userId, query);
+  res.status(200).json({ videos: result });
+};
+
+/**
+ * GET /api/videos/published
+ *
+ * Powers the SSR `/dashboard/published` page. Distinct path rather
+ * than `?status=PUBLISHED` so the wire contract and ordering
+ * (`publishedAt desc`) stay explicit — a future PUBLISHED-only join
+ * (e.g. synced stats) can land here without touching the generic
+ * list path.
+ */
+export const listPublishedVideosController = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  const result = await videosService.listPublishedVideos(userId);
   res.status(200).json({ videos: result });
 };
 
@@ -172,4 +192,32 @@ export const deleteVideoController = async (
   }
   await videosService.deleteVideo(userId, id, env);
   res.status(204).send();
+};
+
+/**
+ * POST /api/videos/:id/unpublish
+ *
+ * Flips a live video's `privacyStatus` back to `private` on YouTube
+ * and mirrors the change on the row. Returns the updated DTO so the
+ * client can refresh its local view without a follow-up GET.
+ *
+ * 404 for unknown / foreign id (consistent with the rest of the
+ * module). 409 surfaces from `unpublishVideo` via
+ * `PermanentPublishError` with code `VIDEO_NOT_PUBLISHED`.
+ */
+export const unpublishVideoController = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  const env = requireEnv(req, res);
+  if (!env) return;
+  const id = (req.params as { id?: string }).id;
+  if (!id) {
+    res.status(400).json({ error: "INVALID_REQUEST", message: "id required." });
+    return;
+  }
+  const result = await videosService.unpublishVideo(userId, id, env);
+  res.status(200).json(result);
 };

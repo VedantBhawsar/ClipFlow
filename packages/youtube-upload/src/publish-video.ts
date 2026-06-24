@@ -13,6 +13,12 @@
  * Errors are classified by `startResumableUploadSession` and
  * `uploadVideoBytes`. The DB is updated to PUBLISH_FAILED on
  * permanent failure; transient failures are re-thrown so BullMQ retries.
+ *
+ * Companion: `unpublishVideo` flips a live video's `privacyStatus`
+ * back to `private` via `videos.update`. The DB row's `privacyStatus`
+ * column is updated to mirror what YouTube now reports, so the UI
+ * can render an honest "Unpublished on YouTube" state without a
+ * second round-trip.
  */
 import type { Env } from "@clipflow/config";
 import type { Logger } from "pino";
@@ -20,7 +26,11 @@ import type { PrismaClient } from "@prisma/client";
 import { buildS3Config, getObjectStream, getS3Client } from "@clipflow/s3";
 import { PermanentPublishError } from "./errors.js";
 import { refreshAccessToken } from "./token-refresh.js";
-import { startResumableUploadSession, uploadVideoBytes } from "./youtube-api.js";
+import {
+  startResumableUploadSession,
+  updateVideoStatus,
+  uploadVideoBytes,
+} from "./youtube-api.js";
 
 export interface PublishVideoContext {
   prisma: PrismaClient;
@@ -124,15 +134,7 @@ export const publishVideo = async (
       tags: video.tags,
       categoryId: video.categoryId,
     },
-    status: {
-      privacyStatus: video.privacyStatus as
-        | "private"
-        | "unlisted"
-        | "public",
-      ...(video.scheduledPublishAt
-        ? { publishAt: video.scheduledPublishAt.toISOString() }
-        : {}),
-    },
+    status: buildStatusFromVideo(video),
     contentLength: Number(video.fileSizeBytes),
     contentType: video.contentType,
   });
@@ -185,6 +187,108 @@ export const publishVideo = async (
 
   return { youtubeVideoId: uploaded.youtubeVideoId, publishedAt };
 };
+
+/**
+ * Flip a live (PUBLISHED) video's `privacyStatus` back to `private` on
+ * YouTube and mirror that on the row. The DB update is conditional on
+ * the row still being PUBLISHED so a concurrent retry doesn't silently
+ * flip it back. The row keeps `status = "PUBLISHED"` — a "live but
+ * private" video is still a published video from ClipFlow's POV; the
+ * `privacyStatus` column carries the YouTube-side truth.
+ *
+ * @throws PermanentPublishError for unknown id, not-owned id, or
+ *   not-yet-published rows. YouTube-side errors are surfaced as
+ *   TransientPublishError / PermanentPublishError via `updateVideoStatus`.
+ */
+export const unpublishVideo = async (
+  input: PublishVideoInput,
+  ctx: PublishVideoContext,
+): Promise<void> => {
+  const { prisma, env, logger } = ctx;
+
+  const video = await prisma.video.findUnique({
+    where: { id: input.videoId },
+    include: { youtubeChannel: true },
+  });
+  if (!video) {
+    throw new PermanentPublishError(
+      "VIDEO_NOT_FOUND",
+      `Video ${input.videoId} not found.`,
+    );
+  }
+  if (video.status !== "PUBLISHED") {
+    throw new PermanentPublishError(
+      "VIDEO_NOT_PUBLISHED",
+      `Video ${video.id} is ${video.status}, not PUBLISHED.`,
+    );
+  }
+  if (!video.youtubeVideoId) {
+    // The DB invariant says PUBLISHED implies a youtubeVideoId, but a
+    // half-migrated row could break that. Treat as not-published so
+    // the UI surfaces a recoverable error instead of a 500.
+    throw new PermanentPublishError(
+      "VIDEO_NOT_PUBLISHED",
+      `Video ${video.id} has no YouTube id yet.`,
+    );
+  }
+  if (video.youtubeChannel.status !== "CONNECTED") {
+    throw new PermanentPublishError(
+      "CHANNEL_NOT_CONNECTED",
+      `Channel ${video.youtubeChannel.id} is ${video.youtubeChannel.status}.`,
+    );
+  }
+
+  const refreshed = await refreshAccessToken(prisma, video.youtubeChannel, env);
+
+  await updateVideoStatus(refreshed.accessToken, video.youtubeVideoId, {
+    privacyStatus: "private",
+    // YouTube rejects `publishAt` paired with `private`; the unpublish
+    // path is a status flip, not a re-schedule, so leave it out.
+    selfDeclaredMadeForKids: video.madeForKids,
+    ageRestriction: video.ageRestriction,
+    embeddable: video.embeddable,
+    license: video.license,
+    publicStatsViewable: video.publicStatsViewable,
+    commentPolicy: video.commentPolicy,
+  });
+
+  await prisma.video.update({
+    where: { id: video.id },
+    data: { privacyStatus: "private" },
+  });
+
+  logger.info(
+    { videoId: video.id, youtubeVideoId: video.youtubeVideoId },
+    "Video unpublished on YouTube.",
+  );
+};
+
+/**
+ * Project a Video row into the shape `startResumableUploadSession`
+ * expects on the `status` block. Centralised so publishVideo and
+ * unpublishVideo can't drift on which fields they send.
+ */
+const buildStatusFromVideo = (video: {
+  privacyStatus: string;
+  scheduledPublishAt: Date | null;
+  madeForKids: boolean;
+  ageRestriction: string;
+  embeddable: boolean;
+  license: string;
+  publicStatsViewable: boolean;
+  commentPolicy: string;
+}) => ({
+  privacyStatus: video.privacyStatus as "private" | "unlisted" | "public",
+  ...(video.scheduledPublishAt
+    ? { publishAt: video.scheduledPublishAt.toISOString() }
+    : {}),
+  selfDeclaredMadeForKids: video.madeForKids,
+  ageRestriction: video.ageRestriction,
+  embeddable: video.embeddable,
+  license: video.license,
+  publicStatsViewable: video.publicStatsViewable,
+  commentPolicy: video.commentPolicy,
+});
 
 /**
  * Re-export the error classes so callers (worker) can `instanceof`-check.

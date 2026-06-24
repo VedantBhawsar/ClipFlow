@@ -15,6 +15,7 @@ export type PermanentReasonCode =
   | "CHANNEL_NOT_CONNECTED"
   | "CHANNEL_NEEDS_REAUTH"
   | "VIDEO_NOT_FOUND"
+  | "VIDEO_NOT_PUBLISHED"
   | "MALFORMED_RESPONSE";
 
 /**

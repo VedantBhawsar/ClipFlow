@@ -38,6 +38,7 @@ vi.mock("../../lib/prisma.js", () => ({
       create: vi.fn(),
       update: vi.fn(),
       findUnique: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
       findMany: vi.fn(),
       delete: vi.fn(),
     },
@@ -62,6 +63,34 @@ vi.mock("../../lib/queue.js", () => ({
 
 vi.mock("@clipflow/youtube-upload", () => ({
   publishVideo: vi.fn(),
+  unpublishVideo: vi.fn(),
+  // Re-exported by the package; the propagation test constructs one
+  // and passes it through `unpublishVideo`. The class lives in
+  // `@clipflow/youtube-upload` at runtime so the mock needs it too.
+  PermanentPublishError: class PermanentPublishError extends Error {
+    public readonly code = "PERMANENT_PUBLISH_ERROR" as const;
+    public readonly reasonCode: string;
+    public readonly httpStatus?: number;
+    constructor(
+      reasonCode: string,
+      message: string,
+      httpStatus?: number,
+    ) {
+      super(message);
+      this.name = "PermanentPublishError";
+      this.reasonCode = reasonCode;
+      this.httpStatus = httpStatus;
+    }
+  },
+  TransientPublishError: class TransientPublishError extends Error {
+    public readonly code = "TRANSIENT_PUBLISH_ERROR" as const;
+    public readonly httpStatus?: number;
+    constructor(message: string, httpStatus?: number) {
+      super(message);
+      this.name = "TransientPublishError";
+      this.httpStatus = httpStatus;
+    }
+  },
 }));
 
 vi.mock("../../lib/logger.js", () => ({
@@ -72,10 +101,15 @@ import { prisma } from "../../lib/prisma.js";
 import { cache } from "../../lib/cache.js";
 import { headObject, deleteObject, createPresignedPostUrl } from "@clipflow/s3";
 import { enqueuePublishJob } from "../../lib/queue.js";
+import { unpublishVideo as unpublishOnYouTube } from "@clipflow/youtube-upload";
 
 const mockFindChannel = vi.mocked(prisma.youTubeChannel.findUnique);
 const mockVideoCreate = vi.mocked(prisma.video.create);
 const mockVideoUpdate = vi.mocked(prisma.video.update);
+const mockVideoFindUnique = vi.mocked(prisma.video.findUnique);
+const mockVideoFindUniqueOrThrow = vi.mocked(prisma.video.findUniqueOrThrow);
+const mockVideoFindMany = vi.mocked(prisma.video.findMany);
+const mockUnpublishOnYouTube = vi.mocked(unpublishOnYouTube);
 const mockCacheGet = vi.mocked(cache.get);
 const mockCacheSet = vi.mocked(cache.set);
 const mockCacheDel = vi.mocked(cache.del);
@@ -95,6 +129,12 @@ const baseInput = {
   tags: ["a", "b"],
   categoryId: "22",
   privacyStatus: "private" as const,
+  madeForKids: false,
+  ageRestriction: "none" as const,
+  embeddable: true,
+  license: "standard" as const,
+  publicStatsViewable: true,
+  commentPolicy: "allowAll" as const,
   originalFilename: "clip.mp4",
   contentType: "video/mp4",
   fileSizeBytes: 1024,
@@ -128,6 +168,12 @@ const basePending = {
     privacyStatus: "private",
     originalFilename: "clip.mp4",
     scheduledPublishAt: null,
+    madeForKids: false,
+    ageRestriction: "none",
+    embeddable: true,
+    license: "standard",
+    publicStatsViewable: true,
+    commentPolicy: "allowAll",
   },
 };
 
@@ -147,6 +193,12 @@ type StubVideo = {
   tags: string[];
   categoryId: string;
   privacyStatus: string;
+  madeForKids: boolean;
+  ageRestriction: string;
+  embeddable: boolean;
+  license: string;
+  publicStatsViewable: boolean;
+  commentPolicy: string;
   originalFilename: string;
   fileSizeBytes: bigint;
   contentType: string;
@@ -169,6 +221,12 @@ const stubCreatedVideo: StubVideo = {
   tags: ["a", "b"],
   categoryId: "22",
   privacyStatus: "private",
+  madeForKids: false,
+  ageRestriction: "none",
+  embeddable: true,
+  license: "standard",
+  publicStatsViewable: true,
+  commentPolicy: "allowAll",
   originalFilename: "clip.mp4",
   fileSizeBytes: BigInt(1024),
   contentType: "video/mp4",
@@ -389,6 +447,96 @@ describe("videos.service", () => {
         videosService.cancelPendingUpload("user-1", "pu_xxx", baseEnv),
       ).resolves.toBeUndefined();
       expect(mockCacheDel).toHaveBeenCalledWith("pendingUpload:pu_xxx");
+    });
+  });
+
+  describe("listVideos", () => {
+    it("returns every committed video when no status filter is given", async () => {
+      mockVideoFindMany.mockResolvedValue([stubCreatedVideo]);
+      const result = await videosService.listVideos("user-1");
+      expect(mockVideoFindMany).toHaveBeenCalledWith({
+        where: { userId: "user-1" },
+        orderBy: { createdAt: "desc" },
+      });
+      expect(result).toHaveLength(1);
+    });
+
+    it("filters by status when provided", async () => {
+      mockVideoFindMany.mockResolvedValue([]);
+      await videosService.listVideos("user-1", { status: "PUBLISHED" });
+      expect(mockVideoFindMany).toHaveBeenCalledWith({
+        where: { userId: "user-1", status: "PUBLISHED" },
+        orderBy: { createdAt: "desc" },
+      });
+    });
+  });
+
+  describe("listPublishedVideos", () => {
+    it("queries only PUBLISHED rows, newest publishedAt first", async () => {
+      mockVideoFindMany.mockResolvedValue([]);
+      await videosService.listPublishedVideos("user-1");
+      expect(mockVideoFindMany).toHaveBeenCalledWith({
+        where: { userId: "user-1", status: "PUBLISHED" },
+        orderBy: { publishedAt: "desc" },
+      });
+    });
+  });
+
+  describe("unpublishVideo", () => {
+    const publishedRow = {
+      ...stubCreatedVideo,
+      status: "PUBLISHED" as const,
+      youtubeVideoId: "yt_abc123",
+    };
+
+    it("happy path: calls YouTube unpublish and re-reads the row", async () => {
+      mockVideoFindUnique.mockResolvedValue(publishedRow);
+      mockUnpublishOnYouTube.mockResolvedValue(undefined);
+      mockVideoFindUniqueOrThrow.mockResolvedValue({
+        ...publishedRow,
+        privacyStatus: "private",
+      });
+
+      const result = await videosService.unpublishVideo(
+        "user-1",
+        publishedRow.id,
+        baseEnv,
+      );
+
+      expect(mockUnpublishOnYouTube).toHaveBeenCalledTimes(1);
+      expect(mockVideoFindUniqueOrThrow).toHaveBeenCalledWith({
+        where: { id: publishedRow.id },
+      });
+      expect(result.privacyStatus).toBe("private");
+      expect(result.status).toBe("PUBLISHED");
+    });
+
+    it("returns 404 for an unknown video id", async () => {
+      mockVideoFindUnique.mockResolvedValue(null);
+      await expect(
+        videosService.unpublishVideo("user-1", "vid_missing", baseEnv),
+      ).rejects.toMatchObject({ statusCode: 404, code: "VIDEO_NOT_FOUND" });
+      expect(mockUnpublishOnYouTube).not.toHaveBeenCalled();
+    });
+
+    it("returns 404 for a video owned by another user", async () => {
+      mockVideoFindUnique.mockResolvedValue({ ...publishedRow, userId: "someone-else" });
+      await expect(
+        videosService.unpublishVideo("user-1", publishedRow.id, baseEnv),
+      ).rejects.toMatchObject({ statusCode: 404, code: "VIDEO_NOT_FOUND" });
+      expect(mockUnpublishOnYouTube).not.toHaveBeenCalled();
+    });
+
+    it("propagates VIDEO_NOT_PUBLISHED from the upload package", async () => {
+      mockVideoFindUnique.mockResolvedValue({ ...publishedRow, status: "READY" });
+      const { PermanentPublishError } = await import("@clipflow/youtube-upload");
+      mockUnpublishOnYouTube.mockRejectedValue(
+        new PermanentPublishError("VIDEO_NOT_PUBLISHED", "Video is READY, not PUBLISHED."),
+      );
+      await expect(
+        videosService.unpublishVideo("user-1", publishedRow.id, baseEnv),
+      ).rejects.toMatchObject({ reasonCode: "VIDEO_NOT_PUBLISHED" });
+      expect(mockVideoFindUniqueOrThrow).not.toHaveBeenCalled();
     });
   });
 });

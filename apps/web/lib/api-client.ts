@@ -15,6 +15,7 @@ import type {
   UserPreferences,
   UserProfile,
   Video,
+  VideoStatus,
   YouTubeConnection,
   ApiErrorBody,
 } from "@clipflow/types";
@@ -136,6 +137,62 @@ async function request<T>(
   // path don't read the result.
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
+}
+
+// ---------- Server-side fetch (RSC) ----------
+//
+// `request()` above reads the JWT from `document.cookie` (browser-only).
+// Server components pass the token explicitly via `cookies()` from
+// `next/headers`. This helper mirrors `request()`'s shape so a server
+// component and a client component can hit the same endpoint with
+// matching error semantics, but skips the 401-redirect path (the
+// dashboard's own auth middleware handles missing-token via
+// `redirect("/signin")`).
+export class ServerApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ServerApiError";
+  }
+}
+
+export async function serverFetch<T>(
+  token: string,
+  path: string,
+  init?: { method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; body?: unknown },
+): Promise<T> {
+  const url = `${env.apiBaseUrl}${path}`;
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/json",
+  };
+  if (init?.body !== undefined) headers["Content-Type"] = "application/json";
+
+  const res = await fetch(url, {
+    method: init?.method ?? "GET",
+    headers,
+    body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    let code = "UNKNOWN";
+    let message = `Request failed: ${res.status}`;
+    try {
+      const data = (await res.json()) as Partial<ApiErrorBody>;
+      if (data?.error) code = data.error;
+      if (data?.message) message = data.message;
+    } catch {
+      // body wasn't JSON; keep the generic message
+    }
+    throw new ServerApiError(res.status, code, message);
+  }
+
+  if (res.status === 204) return undefined as T;
+  return (await res.json()) as T;
 }
 
 // ---------- Public typed API surface ----------
@@ -277,9 +334,24 @@ export const api = {
    * List the current user's committed videos, newest first.
    * Pending uploads (in-flight, no row yet) are intentionally not
    * included.
+   *
+   * `status` is optional; omitting it returns every status. The
+   * server validates the value against the `VideoStatus` enum.
    */
-  listVideos(): Promise<{videos: Video[]}> {
-    return request("GET", "/api/videos");
+  listVideos(params?: { status?: VideoStatus }): Promise<{videos: Video[]}> {
+    const qs = params?.status ? `?status=${encodeURIComponent(params.status)}` : "";
+    return request("GET", `/api/videos${qs}`);
+  },
+
+  /**
+   * List the current user's PUBLISHED videos, newest published first.
+   * Powers the `/dashboard/published` page. Kept distinct from
+   * `listVideos({ status: "PUBLISHED" })` so a future published-only
+   * join (e.g. synced stats) can land here without disturbing the
+   * generic list path.
+   */
+  listPublishedVideos(): Promise<{videos: Video[]}> {
+    return request("GET", "/api/videos/published");
   },
 
   /**
@@ -294,5 +366,15 @@ export const api = {
    */
   deleteVideo(id: string): Promise<void> {
     return request<void>("DELETE", `/api/videos/${id}`);
+  },
+
+  /**
+   * Unpublish a live video: flips `privacyStatus` back to `private`
+   * on YouTube and mirrors the change on the row. The row keeps
+   * `status = "PUBLISHED"` (a live-but-private video is still a
+   * published video from ClipFlow's POV). Returns the updated DTO.
+   */
+  unpublishVideo(id: string): Promise<Video> {
+    return request("POST", `/api/videos/${id}/unpublish`);
   },
 } as const;

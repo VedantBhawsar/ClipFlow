@@ -74,6 +74,30 @@ const contentTypeSchema = z
   .regex(/^video\//, "contentType must start with 'video/'.")
   .default("video/mp4");
 
+// ---- YouTube content controls (status block) ----
+//
+// These mirror the fields the YouTube Data API v3 accepts under
+// `status.*` on `videos.insert`. Defaults match the row defaults so a
+// client that doesn't care about them still produces a valid upload.
+
+const madeForKidsSchema = z.boolean().default(false);
+
+const ageRestrictionSchema = z
+  .enum(["none", "18+"])
+  .default("none");
+
+const embeddableSchema = z.boolean().default(true);
+
+const licenseSchema = z
+  .enum(["standard", "creativeCommon"])
+  .default("standard");
+
+const publicStatsViewableSchema = z.boolean().default(true);
+
+const commentPolicySchema = z
+  .enum(["allowAll", "holdAll", "disable"])
+  .default("allowAll");
+
 /**
  * Body for `POST /api/videos`. The metadata submitted at create time;
  * the file is uploaded separately via the presigned POST URL.
@@ -85,6 +109,12 @@ export const createVideoSchema = z.object({
   categoryId: categoryIdSchema,
   privacyStatus: privacyStatusSchema,
   scheduledPublishAt: scheduledPublishAtSchema,
+  madeForKids: madeForKidsSchema,
+  ageRestriction: ageRestrictionSchema,
+  embeddable: embeddableSchema,
+  license: licenseSchema,
+  publicStatsViewable: publicStatsViewableSchema,
+  commentPolicy: commentPolicySchema,
   originalFilename: z
     .string()
     .trim()
@@ -98,3 +128,24 @@ export const createVideoSchema = z.object({
 });
 
 export type CreateVideoInput = z.infer<typeof createVideoSchema>;
+
+/**
+ * Query for `GET /api/videos?status=...`. Powering the SSR dashboard
+ * (excludes PUBLISHED) and the published page (`status=PUBLISHED`).
+ * Anything else is rejected at the edge so the service can rely on
+ * the enum shape.
+ */
+export const listVideosQuerySchema = z.object({
+  status: z
+    .enum([
+      "UPLOADED",
+      "READY",
+      "SCHEDULED",
+      "PUBLISHING",
+      "PUBLISHED",
+      "PUBLISH_FAILED",
+    ])
+    .optional(),
+});
+
+export type ListVideosQuery = z.infer<typeof listVideosQuerySchema>;

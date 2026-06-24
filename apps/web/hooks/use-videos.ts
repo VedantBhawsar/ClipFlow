@@ -102,6 +102,36 @@ export function useDeleteVideo() {
   });
 }
 
+/**
+ * List the current user's PUBLISHED videos, newest published first.
+ * Powers the `/dashboard/published` page (its server component is
+ * the SSR source of truth; this hook is for any client-driven
+ * refresh, e.g. after a successful unpublish from the detail page).
+ */
+export function useListPublishedVideos() {
+  return useQuery<{ videos: Video[] }>({
+    queryKey: queryKeys.videos.published(),
+    queryFn: () => api.listPublishedVideos(),
+  });
+}
+
+/**
+ * Unpublish a live video. Invalidates the published list (the row's
+ * `privacyStatus` flipped to `private`, but it remains in the
+ * published list until a future slice distinguishes the two — for
+ * now we just invalidate so any open views refetch).
+ */
+export function useUnpublishVideo() {
+  const qc = useQueryClient();
+  return useMutation<Video, Error, string>({
+    mutationFn: (id) => api.unpublishVideo(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.videos.published() });
+      void qc.invalidateQueries({ queryKey: queryKeys.videos.list() });
+    },
+  });
+}
+
 export interface UploadProgress {
   loaded: number;
   total: number;

@@ -1,5 +1,6 @@
 /**
- * YouTube Data API v3 — two-step resumable upload for videos.insert.
+ * YouTube Data API v3 — two-step resumable upload for videos.insert
+ * plus a small `videos.update` helper for the unpublish path.
  *
  * Step 1: POST metadata to
  *   https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status
@@ -10,11 +11,17 @@
  *
  * The metadata shape we send matches `videos.insert`:
  *   snippet: { title, description, tags[], categoryId }
- *   status:  { privacyStatus, publishAt?, selfDeclaredMadeForKids: false }
+ *   status:  { privacyStatus, publishAt?, selfDeclaredMadeForKids,
+ *              ageRestriction, embeddable, license, publicStatsViewable,
+ *              commentPolicy }
  *
  * `publishAt` is YouTube's native mechanism for scheduled publish —
  * YouTube auto-transitions to public at that wall-clock time. We only
  * pass it for scheduled videos; immediate publishes omit it.
+ *
+ * Unpublish path: `PUT /videos?part=status` with the same status block,
+ * used to flip a live video's `privacyStatus` back to `private`. Same
+ * error-classification rules as the insert path.
  */
 import {
   isTransientHttpStatus,
@@ -25,6 +32,8 @@ import {
 const YOUTUBE_UPLOAD_ENDPOINT =
   "https://www.googleapis.com/upload/youtube/v3/videos";
 
+const YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3/videos";
+
 export interface VideoMetadataInput {
   title: string;
   description: string;
@@ -32,10 +41,34 @@ export interface VideoMetadataInput {
   categoryId: string;
 }
 
+/**
+ * Full `status` block for `videos.insert`. Every field maps to a
+ * `status.*` property on the row (see `packages/db/schema.prisma`) and
+ * has a sensible default that matches YouTube's own defaults, so the
+ * API can omit any field the creator didn't touch.
+ *
+ * Values are kept narrow where the API contract is closed (privacy,
+ * license, comment policy) and stored as plain strings where YouTube
+ * reserves the right to add new ones (age restriction, which already
+ * differs by region).
+ */
 export interface VideoStatusInput {
   privacyStatus: "private" | "unlisted" | "public";
   /** ISO8601 string. Omit for immediate publish. */
   publishAt?: string;
+  /** COPPA self-declaration. Once true, can only be unset via Studio. */
+  selfDeclaredMadeForKids: boolean;
+  /** "none" (default) | "18+" — kept as string so future values are
+   *  additive without a package change. */
+  ageRestriction: string;
+  /** Allow other sites to embed this video. */
+  embeddable: boolean;
+  /** "standard" | "creativeCommon". */
+  license: string;
+  /** Show the public view count on the watch page. */
+  publicStatsViewable: boolean;
+  /** "allowAll" | "holdAll" | "disable". */
+  commentPolicy: string;
 }
 
 export interface StartResumableUploadInput {
@@ -70,11 +103,7 @@ export const startResumableUploadSession = async (
         },
         body: JSON.stringify({
           snippet: input.metadata,
-          status: {
-            privacyStatus: input.status.privacyStatus,
-            ...(input.status.publishAt ? { publishAt: input.status.publishAt } : {}),
-            selfDeclaredMadeForKids: false,
-          },
+          status: buildStatusBlock(input.status),
         }),
       },
     );
@@ -186,6 +215,79 @@ export const uploadVideoBytes = async (
     youtubeVideoId: data.id,
     status: data.status ?? { privacyStatus: "private" },
   };
+};
+
+/**
+ * `PUT /videos?part=status` — update an existing video's status block.
+ * Used today by the unpublish path (privacyStatus = private); the
+ * shape of the body is the same status block used at insert time so
+ * any future status-only edit (license flip, comments off, etc.) can
+ * reuse this helper without a new endpoint.
+ *
+ * @throws TransientPublishError on 5xx / 408 / 429 / network.
+ * @throws PermanentPublishError on other 4xx.
+ */
+export const updateVideoStatus = async (
+  accessToken: string,
+  videoId: string,
+  status: VideoStatusInput,
+): Promise<void> => {
+  let res: Response;
+  try {
+    res = await fetch(`${YOUTUBE_API_BASE}?part=status`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json; charset=UTF-8",
+      },
+      body: JSON.stringify({
+        id: videoId,
+        status: buildStatusBlock(status),
+      }),
+    });
+  } catch (err) {
+    throw new TransientPublishError(
+      `Network failure updating YouTube video status: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    if (isTransientHttpStatus(res.status)) {
+      throw new TransientPublishError(
+        `YouTube status update transient failure (${res.status}): ${body.slice(0, 200)}`,
+        res.status,
+      );
+    }
+    throw new PermanentPublishError(
+      "FORBIDDEN",
+      `YouTube rejected status update (${res.status}): ${body.slice(0, 300)}`,
+      res.status,
+    );
+  }
+};
+
+/**
+ * Shape the `status` block the Data API expects. `publishAt` is
+ * included only when set, since YouTube rejects an explicit `publishAt`
+ * in the past on a non-private video.
+ */
+const buildStatusBlock = (input: VideoStatusInput): Record<string, unknown> => {
+  const block: Record<string, unknown> = {
+    privacyStatus: input.privacyStatus,
+    selfDeclaredMadeForKids: input.selfDeclaredMadeForKids,
+    ageRestriction: input.ageRestriction,
+    embeddable: input.embeddable,
+    license: input.license,
+    publicStatsViewable: input.publicStatsViewable,
+    commentPolicy: input.commentPolicy,
+  };
+  if (input.publishAt) {
+    block.publishAt = input.publishAt;
+  }
+  return block;
 };
 
 /**

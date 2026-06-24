@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { ExternalLink, Loader2, AlertCircle } from "lucide-react";
 import type { TimelineStatus } from "@/components/dashboard/status-timeline";
 import { StatusTimeline } from "@/components/dashboard/status-timeline";
@@ -87,8 +88,18 @@ export function VideoCard({ video, onCancel, isCancelling }: VideoCardProps) {
 
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex items-baseline gap-2">
+            {/* Title is the link target — drilling into a video opens
+                its detail page. Wrapping just the title (not the whole
+                card) so the right-side action buttons stay clickable
+                and so the row itself doesn't get an ambiguous "link"
+                treatment under focus. */}
             <h3 className="truncate text-sm font-medium text-foreground">
-              {video.title}
+              <Link
+                href={`/dashboard/videos/${video.id}`}
+                className="rounded-sm outline-none transition-colors hover:text-foreground/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                {video.title}
+              </Link>
             </h3>
             <StatusBadge status={video.status} />
           </div>
