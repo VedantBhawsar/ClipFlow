@@ -3,12 +3,12 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Settings as SettingsIcon } from "lucide-react";
-import type { UserBundleResponse } from "@clipflow/types";
+import type { UserBundleResponse, Video } from "@clipflow/types";
 
 import { YouTubeConnectCard } from "@/components/dashboard/youtube-connect-card";
 import { VideoList } from "@/components/dashboard/video-list";
 import { Button } from "@/components/ui/button";
-import { AUTH_TOKEN_COOKIE } from "@/lib/api-client";
+import { AUTH_TOKEN_COOKIE, serverFetch } from "@/lib/api-client";
 import { env } from "@/lib/env";
 
 export const metadata: Metadata = {
@@ -19,15 +19,18 @@ export const metadata: Metadata = {
 /**
  * Dashboard home.
  *
+ * SSR source of truth. We fetch the user bundle AND the in-progress
+ * videos list server-side so the first paint includes the video list
+ * with real titles and status badges — no skeleton, no client-side
+ * round-trip. The published videos live on a separate page
+ * (`/dashboard/published`) so the dashboard stays focused on the
+ * "what's in flight" view.
+ *
  * v1 states (per AppFlow.md Section 9 + Design.md Section 3):
  * - Header greets the user by display name if set, otherwise neutrally.
  * - Channel-connection card sits at the top of the content area until
- *   the user connects YouTube. This is the "persistent" connection
- *   health indicator — not buried in settings.
+ *   the user connects YouTube.
  * - Videos section shows the empty state until the first upload.
- *   The empty state itself gates on channel-connection state: if
- *   not connected, it points at /youtube-connect; if connected, it
- *   shows the "upload your first video" CTA.
  * - A small "Settings" quick-action card sits at the bottom for
  *   users with no videos yet — gives them somewhere to go.
  */
@@ -44,12 +47,17 @@ export default async function DashboardPage() {
   }
 
   let bundle: UserBundleResponse | null = null;
+  let videos: Video[] = [];
   try {
-    bundle = await fetchUserBundle(token);
+    [bundle, videos] = await Promise.all([
+      fetchUserBundle(token),
+      fetchInProgressVideos(token),
+    ]);
   } catch {
     // Stale / invalid cookie — fall through to the unauthenticated
     // state. The client auth refresh will re-attempt and redirect.
     bundle = null;
+    videos = [];
   }
 
   const displayName =
@@ -79,11 +87,19 @@ export default async function DashboardPage() {
             id="videos-heading"
             className="text-sm font-semibold text-foreground"
           >
-            Videos
+            In progress
           </h2>
         </div>
 
-        <VideoList channelConnected={channelConnected} />
+        <VideoList
+          videos={videos}
+          channelConnected={channelConnected}
+          emptyHint={
+            channelConnected
+              ? "Up to 5 GB per video. MP4, MOV, or WebM."
+              : "Connect your YouTube channel above to get started."
+          }
+        />
       </section>
 
       <section
@@ -133,4 +149,26 @@ async function fetchUserBundle(token: string): Promise<UserBundleResponse> {
     throw new Error(`bundle fetch failed: ${res.status}`);
   }
   return (await res.json()) as UserBundleResponse;
+}
+
+/**
+ * Fetch the in-progress videos for the SSR dashboard.
+ *
+ * The dashboard is the "what's in flight" view — uploads that are
+ * mid-processing, scheduled, publishing, or failed. PUBLISHED videos
+ * live on `/dashboard/published` so they don't double-render here.
+ *
+ * In v1 we achieve the "exclude PUBLISHED" semantics client-side by
+ * pulling the full list and filtering in JS — the volume per user is
+ * tiny (tens, not thousands), and keeping a single endpoint keeps the
+ * route table simple. A future slice can add a server-side filter
+ * (`?status=NOT_PUBLISHED`) and drop the JS filter.
+ */
+async function fetchInProgressVideos(token: string): Promise<Video[]> {
+  try {
+    const data = await serverFetch<{ videos: Video[] }>(token, "/api/videos");
+    return data.videos.filter((v) => v.status !== "PUBLISHED");
+  } catch {
+    return [];
+  }
 }

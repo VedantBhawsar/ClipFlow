@@ -49,7 +49,7 @@ import {
   getS3Client,
   headObject,
 } from "@clipflow/s3";
-import { publishVideo } from "@clipflow/youtube-upload";
+import { publishVideo, unpublishVideo as unpublishVideoOnYouTube } from "@clipflow/youtube-upload";
 import { pino } from "pino";
 import { AppError } from "../../errors/AppError.js";
 import { prisma } from "../../lib/prisma.js";
@@ -57,7 +57,7 @@ import { requireDatabase } from "../../lib/db-guard.js";
 import { cache } from "../../lib/cache.js";
 import { enqueuePublishJob } from "../../lib/queue.js";
 import { toVideoDto } from "./videos.types.js";
-import type { CreateVideoInput } from "./videos.schemas.js";
+import type { CreateVideoInput, ListVideosQuery } from "./videos.schemas.js";
 
 const ALLOWED_DELETE_STATUSES: ReadonlySet<VideoStatus> = new Set([
   "UPLOADED",
@@ -93,6 +93,12 @@ interface PendingUpload {
     privacyStatus: string;
     originalFilename: string;
     scheduledPublishAt: string | null;
+    madeForKids: boolean;
+    ageRestriction: string;
+    embeddable: boolean;
+    license: string;
+    publicStatsViewable: boolean;
+    commentPolicy: string;
   };
 }
 
@@ -176,6 +182,12 @@ export const createVideo = async (
       scheduledPublishAt: input.scheduledPublishAt
         ? new Date(input.scheduledPublishAt).toISOString()
         : null,
+      madeForKids: input.madeForKids,
+      ageRestriction: input.ageRestriction,
+      embeddable: input.embeddable,
+      license: input.license,
+      publicStatsViewable: input.publicStatsViewable,
+      commentPolicy: input.commentPolicy,
     },
   };
   await cache.set(
@@ -299,6 +311,12 @@ export const finalizeUpload = async (
       tags: pending.metadata.tags,
       categoryId: pending.metadata.categoryId,
       privacyStatus: pending.metadata.privacyStatus,
+      madeForKids: pending.metadata.madeForKids,
+      ageRestriction: pending.metadata.ageRestriction,
+      embeddable: pending.metadata.embeddable,
+      license: pending.metadata.license,
+      publicStatsViewable: pending.metadata.publicStatsViewable,
+      commentPolicy: pending.metadata.commentPolicy,
       originalFilename: pending.metadata.originalFilename,
       fileSizeBytes: BigInt(head.contentLength),
       contentType: head.contentType ?? pending.contentType,
@@ -393,12 +411,36 @@ export const deleteVideo = async (
  * List the current user's committed videos, newest first. Pending
  * uploads are intentionally not visible — they live in the dialog
  * state and have no DB row.
+ *
+ * The optional `status` filter powers the SSR dashboard (`status`
+ * omitted = everything except PUBLISHED) and the published page
+ * (`status = PUBLISHED`). The schema-level union in `videos.schemas.ts`
+ * ensures only valid values reach here.
  */
-export const listVideos = async (userId: string): Promise<Video[]> => {
+export const listVideos = async (
+  userId: string,
+  query: ListVideosQuery = {},
+): Promise<Video[]> => {
   requireDatabase();
   const rows = await prisma.video.findMany({
-    where: { userId },
+    where: { userId, ...(query.status ? { status: query.status } : {}) },
     orderBy: { createdAt: "desc" },
+  });
+  return rows.map(toVideoDto);
+};
+
+/**
+ * List the current user's PUBLISHED videos, newest first. Powers the
+ * `/dashboard/published` page. Kept as a distinct helper (rather than
+ * `listVideos(userId, { status: "PUBLISHED" })`) so future PUBLISHED-only
+ * columns (e.g. joined stats) can land here without touching the
+ * generic list path.
+ */
+export const listPublishedVideos = async (userId: string): Promise<Video[]> => {
+  requireDatabase();
+  const rows = await prisma.video.findMany({
+    where: { userId, status: "PUBLISHED" },
+    orderBy: { publishedAt: "desc" },
   });
   return rows.map(toVideoDto);
 };
@@ -410,6 +452,38 @@ export const getVideo = async (userId: string, videoId: string): Promise<Video> 
   requireDatabase();
   const video = await loadVideoForOwner(userId, videoId);
   return toVideoDto(video);
+};
+
+/**
+ * Unpublish a live video: flips its `privacyStatus` back to `private`
+ * on YouTube and mirrors the change on the row. The row keeps
+ * `status = "PUBLISHED"` — a live-but-private video is still a
+ * published video from ClipFlow's perspective.
+ *
+ * YouTube-side failures surface as `PermanentPublishError` /
+ * `TransientPublishError` from `@clipflow/youtube-upload`; we re-throw
+ * so the central error middleware can map them. The DB row is only
+ * updated after YouTube confirms the flip, so a failed unpublish
+ * leaves the row honest (it still claims `public` until YouTube
+ * says otherwise).
+ */
+export const unpublishVideo = async (
+  userId: string,
+  videoId: string,
+  env: Env,
+): Promise<Video> => {
+  requireDatabase();
+  // Ownership + existence check first — gives the standard 404 (not
+  // 409 / 412) for the "wrong user" path, matching the rest of the
+  // module. The YouTube-side publish check (VIDEO_NOT_PUBLISHED) is
+  // delegated to `unpublishVideo` in the upload package.
+  await loadVideoForOwner(userId, videoId);
+  await unpublishVideoOnYouTube(
+    { videoId },
+    { prisma, env, logger: buildConsoleLogger("api") },
+  );
+  const updated = await prisma.video.findUniqueOrThrow({ where: { id: videoId } });
+  return toVideoDto(updated);
 };
 
 /**

@@ -277,10 +277,38 @@ export const VIDEO_PRIVACY_STATUSES = [
 export type VideoPrivacyStatus = (typeof VIDEO_PRIVACY_STATUSES)[number];
 
 /**
+ * YouTube content rating. `none` = no restriction (default).
+ * The 18+ rating covers the v1 surface; YouTube's regional systems
+ * add more values which we'll model when a customer needs them.
+ */
+export const VIDEO_AGE_RESTRICTIONS = ["none", "18+"] as const;
+export type VideoAgeRestriction = (typeof VIDEO_AGE_RESTRICTIONS)[number];
+
+/**
+ * YouTube video license. `standard` = default YouTube license;
+ * `creativeCommon` = CC BY (the only CC flavor YouTube offers).
+ */
+export const VIDEO_LICENSES = ["standard", "creativeCommon"] as const;
+export type VideoLicense = (typeof VIDEO_LICENSES)[number];
+
+/**
+ * YouTube comment policy. `allowAll` = default. `holdAll` = every
+ * comment held for review. `disable` = comments off.
+ */
+export const VIDEO_COMMENT_POLICIES = ["allowAll", "holdAll", "disable"] as const;
+export type VideoCommentPolicy = (typeof VIDEO_COMMENT_POLICIES)[number];
+
+/**
  * Body for `POST /api/videos`. The metadata the user submits when
  * creating a new video. The actual file bytes are uploaded directly
  * to S3/MinIO via the presigned URL returned by that endpoint — the
  * API never sees the bytes.
+ *
+ * Every field after `fileSizeBytes` is optional and has a sensible
+ * default that matches YouTube's own default behavior. They're
+ * surfaced in the create-video form so the creator doesn't have to
+ * bounce to YouTube Studio to set made-for-kids, age restriction,
+ * embeddable, license, public stats viewable, or comment policy.
  */
 export interface CreateVideoRequest {
   title: string;
@@ -290,6 +318,18 @@ export interface CreateVideoRequest {
   privacyStatus?: VideoPrivacyStatus;
   /** ISO8601 string. Omit for immediate publish. */
   scheduledPublishAt?: string;
+  /** COPPA self-declaration. Default false. */
+  madeForKids?: boolean;
+  /** YouTube content rating. Default "none". */
+  ageRestriction?: VideoAgeRestriction;
+  /** Allow other sites to embed this video. Default true. */
+  embeddable?: boolean;
+  /** Default "standard". */
+  license?: VideoLicense;
+  /** Show the public view count on the watch page. Default true. */
+  publicStatsViewable?: boolean;
+  /** Default "allowAll". */
+  commentPolicy?: VideoCommentPolicy;
   originalFilename: string;
   contentType?: string;
   /** Client-declared byte size. Server re-checks on finalize. */
@@ -335,6 +375,12 @@ export interface Video {
   tags: string[];
   categoryId: string;
   privacyStatus: string;
+  madeForKids: boolean;
+  ageRestriction: VideoAgeRestriction;
+  embeddable: boolean;
+  license: VideoLicense;
+  publicStatsViewable: boolean;
+  commentPolicy: VideoCommentPolicy;
   originalFilename: string;
   fileSizeBytes: number;
   contentType: string;

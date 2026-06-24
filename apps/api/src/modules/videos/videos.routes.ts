@@ -8,9 +8,11 @@
  *   POST   /api/videos/pending/:id/upload-url  → in-flight: refresh URL
  *   POST   /api/videos/pending/:id/finalize    → in-flight: commit
  *   DELETE /api/videos/pending/:id             → in-flight: cancel
- *   GET    /api/videos                         → committed: list
+ *   GET    /api/videos                         → committed: list (?status=…)
+ *   GET    /api/videos/published               → committed: list PUBLISHED
  *   GET    /api/videos/:id                     → committed: read
  *   DELETE /api/videos/:id                     → committed: cancel
+ *   POST   /api/videos/:id/unpublish           → committed: unpublish
  *
  * The pending/committed split is enforced by separate zod schemas
  * (see `./videos.schemas.ts`) so a request to `/api/videos/vid_xxx/finalize`
@@ -31,10 +33,13 @@ import {
   finalizeVideoController,
   getUploadUrlController,
   getVideoController,
+  listPublishedVideosController,
   listVideosController,
+  unpublishVideoController,
 } from "./videos.controller.js";
 import {
   createVideoSchema,
+  listVideosQuerySchema,
   pendingUploadIdParamsSchema,
   videoIdParamsSchema,
 } from "./videos.schemas.js";
@@ -92,7 +97,16 @@ export const buildVideosRouter = (env: Env): Router => {
     cancelPendingUploadController,
   );
 
-  router.get("/", auth, listVideosController);
+  router.get(
+    "/",
+    auth,
+    validate({ query: listVideosQuerySchema }),
+    listVideosController,
+  );
+
+  // Mounted BEFORE the `/:id` route so `/published` isn't matched as
+  // an id parameter (Express matches in declaration order).
+  router.get("/published", auth, listPublishedVideosController);
 
   router.get(
     "/:id",
@@ -106,6 +120,13 @@ export const buildVideosRouter = (env: Env): Router => {
     auth,
     validate({ params: videoIdParamsSchema }),
     deleteVideoController,
+  );
+
+  router.post(
+    "/:id/unpublish",
+    auth,
+    validate({ params: videoIdParamsSchema }),
+    unpublishVideoController,
   );
 
   return router;

@@ -20,7 +20,11 @@ interface NavItem {
 
 const PRIMARY_NAV: ReadonlyArray<NavItem> = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, enabled: true },
-  { href: "/videos", label: "Videos", icon: Film, enabled: false },
+  // "Published" — the user's library of videos already on YouTube.
+  // The dashboard itself shows only in-progress / not-yet-published
+  // videos; this entry is the home for the live library. Routed under
+  // /dashboard/published so it stays inside the dashboard shell.
+  { href: "/dashboard/published", label: "Published", icon: Film, enabled: true },
   { href: "/billing", label: "Billing", icon: CreditCard, enabled: false },
   // Settings lives under /dashboard/settings/* — see apps/web/app/dashboard/settings.
   { href: "/dashboard/settings", label: "Settings", icon: Settings, enabled: true },

@@ -24,6 +24,8 @@ export const queryKeys = {
   videos: {
     /** All videos for the current user. */
     list: () => ["videos", "list"] as const,
+    /** PUBLISHED videos for the current user (sidebar destination). */
+    published: () => ["videos", "published"] as const,
     /** Single video by id. */
     detail: (id: string) => ["videos", "detail", id] as const,
   },

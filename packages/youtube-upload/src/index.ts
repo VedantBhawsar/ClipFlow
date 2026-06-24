@@ -3,6 +3,7 @@
  */
 export {
   publishVideo,
+  unpublishVideo,
   type PublishVideoContext,
   type PublishVideoInput,
   type PublishVideoResult,
@@ -15,6 +16,7 @@ export {
 export {
   startResumableUploadSession,
   uploadVideoBytes,
+  updateVideoStatus,
   type VideoMetadataInput,
   type VideoStatusInput,
   type StartResumableUploadInput,

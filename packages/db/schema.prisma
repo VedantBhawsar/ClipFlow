@@ -267,6 +267,25 @@ model Video {
   categoryId      String        @default("22")
   privacyStatus   String        @default("private")
 
+  // ---- YouTube content controls (status block) ----
+  // Defaults match YouTube's own default behavior on `videos.insert`
+  // so an absent field in the API still produces a sensible upload.
+  // See @clipflow/types for the wire-shape union of each field.
+  /// COPPA self-declaration. Once true on YouTube, can only be unset
+  /// via Studio — we surface the choice prominently at upload time
+  /// for that reason.
+  madeForKids         Boolean @default(false)
+  /// "none" (default, no restriction) | "18+" (YouTube content rating).
+  ageRestriction      String  @default("none")
+  /// status.embeddable — allow other sites to embed this video.
+  embeddable          Boolean @default(true)
+  /// status.license — "standard" | "creativeCommon".
+  license             String  @default("standard")
+  /// status.publicStatsViewable — show the public view count.
+  publicStatsViewable Boolean @default(true)
+  /// status.commentPolicy — "allowAll" | "holdAll" | "disable".
+  commentPolicy       String  @default("allowAll")
+
   originalFilename String
   /// BigInt so we can represent up to the 5GB cap; `Int` is int4 (~2.1GB max).
   fileSizeBytes   BigInt

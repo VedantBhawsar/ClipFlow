@@ -35,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
@@ -47,6 +48,9 @@ import {
 } from "@/hooks/use-videos";
 import type {
   CreateVideoResponse,
+  VideoAgeRestriction,
+  VideoCommentPolicy,
+  VideoLicense,
   VideoPrivacyStatus,
 } from "@clipflow/types";
 
@@ -77,6 +81,60 @@ const PRIVACY_OPTIONS: ReadonlyArray<{
   { value: "public", label: "Public", description: "Everyone can find it" },
 ];
 
+// ---- YouTube content controls (status block) ----
+//
+// These mirror the fields the API stores on the row and the upload
+// package sends under `status.*` on `videos.insert`. Defaults match
+// YouTube's own defaults so an absent UI choice still produces a
+// sensible upload.
+
+const AGE_RESTRICTION_OPTIONS: ReadonlyArray<{
+  value: VideoAgeRestriction;
+  label: string;
+}> = [
+  { value: "none", label: "None (default)" },
+  { value: "18+", label: "18+ (age restricted)" },
+];
+
+const LICENSE_OPTIONS: ReadonlyArray<{
+  value: VideoLicense;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "standard",
+    label: "Standard YouTube license",
+    description: "Default — all rights reserved.",
+  },
+  {
+    value: "creativeCommon",
+    label: "Creative Commons — Attribution",
+    description: "Others can reuse with credit.",
+  },
+];
+
+const COMMENT_POLICY_OPTIONS: ReadonlyArray<{
+  value: VideoCommentPolicy;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "allowAll",
+    label: "Allow all",
+    description: "Comments post automatically.",
+  },
+  {
+    value: "holdAll",
+    label: "Hold for review",
+    description: "You approve each comment.",
+  },
+  {
+    value: "disable",
+    label: "Disable",
+    description: "Comments are turned off.",
+  },
+];
+
 // Validation messages read like product copy, not stack traces.
 // Each message tells the user what to do, not what went wrong.
 const createVideoFormSchema = z.object({
@@ -96,6 +154,14 @@ const createVideoFormSchema = z.object({
   categoryId: z.string().regex(/^\d{1,2}$/).default("22"),
   privacyStatus: z.enum(["private", "unlisted", "public"]).default("private"),
   scheduledPublishAt: z.string().optional(),
+  madeForKids: z.boolean().default(false),
+  ageRestriction: z.enum(["none", "18+"]).default("none"),
+  embeddable: z.boolean().default(true),
+  license: z.enum(["standard", "creativeCommon"]).default("standard"),
+  publicStatsViewable: z.boolean().default(true),
+  commentPolicy: z
+    .enum(["allowAll", "holdAll", "disable"])
+    .default("allowAll"),
   file: z
     .instanceof(File, {
       message: "Please select a video file to upload.",
@@ -228,6 +294,12 @@ export function CreateVideoDialog({
       categoryId: "22",
       privacyStatus: "private",
       scheduledPublishAt: "",
+      madeForKids: false,
+      ageRestriction: "none",
+      embeddable: true,
+      license: "standard",
+      publicStatsViewable: true,
+      commentPolicy: "allowAll",
     },
   });
 
@@ -305,6 +377,12 @@ export function CreateVideoDialog({
           categoryId: values.categoryId,
           privacyStatus: values.privacyStatus,
           ...(scheduledPublishAt ? { scheduledPublishAt } : {}),
+          madeForKids: values.madeForKids,
+          ageRestriction: values.ageRestriction,
+          embeddable: values.embeddable,
+          license: values.license,
+          publicStatsViewable: values.publicStatsViewable,
+          commentPolicy: values.commentPolicy,
           originalFilename: values.file.name,
           contentType: values.file.type || "video/mp4",
           fileSizeBytes: values.file.size,
@@ -431,11 +509,30 @@ export function CreateVideoDialog({
   }, [router]);
 
   const addTag = (raw: string) => {
-    const tag = raw.trim();
+    // Normalize: trim, collapse internal whitespace, lowercase. YouTube
+    // tags are case-insensitive so "Gaming" and "gaming" should be the
+    // same tag — we dedup against the lowercased form and store the
+    // original casing of the first occurrence.
+    const tag = raw.trim().replace(/\s+/g, " ").toLowerCase();
     if (!tag) return;
     const current = getValues("tags");
-    if (current.includes(tag) || current.length >= 15) return;
+    if (
+      current.some((t) => t.toLowerCase() === tag) ||
+      current.length >= 15
+    ) {
+      setTagInput("");
+      return;
+    }
     setValue("tags", [...current, tag], { shouldValidate: true });
+    setTagInput("");
+  };
+
+  const addTagsFromPaste = (raw: string) => {
+    // Split on commas / newlines / whitespace — covers "a, b, c",
+    // "a\nb\nc", and "a b c" all with one helper.
+    for (const piece of raw.split(/[,\n\s]+/)) {
+      if (piece.trim()) addTag(piece);
+    }
     setTagInput("");
   };
 
@@ -443,7 +540,7 @@ export function CreateVideoDialog({
     const current = getValues("tags");
     setValue(
       "tags",
-      current.filter((t) => t !== tag),
+      current.filter((t) => t.toLowerCase() !== tag.toLowerCase()),
       { shouldValidate: true },
     );
   };
@@ -478,7 +575,10 @@ export function CreateVideoDialog({
         // While uploading / finalizing, hide Radix's built-in X close
         // so the user can't accidentally dismiss the modal mid-XHR.
         showCloseButton={!dismissLockedPhase}
-        className="max-w-xl"
+        // Widened from max-w-xl to fit Audience / Distribution /
+        // Comments. lg breakpoint gets extra room for the side-by-side
+        // switches under Distribution.
+        className="max-w-2xl lg:max-w-3xl"
       >
         {phase === "connect-youtube" ? (
           <div className="flex flex-col gap-5">
@@ -597,7 +697,7 @@ export function CreateVideoDialog({
 
             <FormField
               label="Tags"
-              description={`${tags.length}/15. Press Enter or comma to add.`}
+              description="Type a tag and press Enter (max 15). Paste a comma-separated list to add many at once."
               error={errors.tags?.message}
             >
               <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-input bg-transparent px-2 py-1.5 transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
@@ -630,13 +730,28 @@ export function CreateVideoDialog({
                       removeTag(tags[tags.length - 1]!);
                     }
                   }}
+                  onPaste={(e) => {
+                    const pasted = e.clipboardData.getData("text");
+                    if (/[,\n\s]/.test(pasted)) {
+                      e.preventDefault();
+                      addTagsFromPaste(pasted);
+                    }
+                  }}
                   onBlur={() => {
                     if (tagInput) addTag(tagInput);
                   }}
-                  placeholder={tags.length === 0 ? "Type and press Enter…" : ""}
+                  placeholder={tags.length === 0 ? "Type a tag and press Enter…" : ""}
                   className="min-w-[140px] flex-1 bg-transparent px-1 py-0.5 text-sm outline-none placeholder:text-muted-foreground"
+                  aria-describedby="create-video-tags-count"
                 />
               </div>
+              <p
+                id="create-video-tags-count"
+                aria-live="polite"
+                className="text-xs text-muted-foreground"
+              >
+                {tags.length} of 15 tags
+              </p>
             </FormField>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -726,6 +841,214 @@ export function CreateVideoDialog({
                         </span>
                       </span>
                     </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+
+            {/* ---- Audience ----
+                COPPA self-declaration (`madeForKids`) and YouTube
+                content rating. Once `madeForKids = true` lands on
+                YouTube it can only be unset via Studio — that's why
+                we surface the choice explicitly here. */}
+            <fieldset className="space-y-3">
+              <legend className="text-sm font-medium leading-none text-foreground">
+                Audience
+              </legend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Controller
+                  control={control}
+                  name="madeForKids"
+                  render={({ field }) => (
+                    <div className="flex flex-col gap-2 rounded-md border border-input bg-background p-3">
+                      <span className="text-sm font-medium">
+                        Made for kids?
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        Required by COPPA. Once set on YouTube, it can
+                        only be changed in YouTube Studio.
+                      </span>
+                      <div className="flex gap-2 pt-1">
+                        {(
+                          [
+                            { value: false, label: "No, it's not" },
+                            { value: true, label: "Yes, it's made for kids" },
+                          ] as const
+                        ).map((opt) => {
+                          const selected = field.value === opt.value;
+                          return (
+                            <button
+                              key={String(opt.value)}
+                              type="button"
+                              role="radio"
+                              aria-checked={selected}
+                              onClick={() => field.onChange(opt.value)}
+                              className={cn(
+                                "flex-1 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
+                                selected
+                                  ? "border-foreground bg-foreground text-background"
+                                  : "border-input bg-background hover:bg-muted/40",
+                              )}
+                            >
+                              {opt.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                />
+
+                <FormField label="Age restriction">
+                  <Controller
+                    control={control}
+                    name="ageRestriction"
+                    render={({ field, fieldState }) => (
+                      <Select
+                        value={field.value}
+                        onValueChange={(v) => field.onChange(v as VideoAgeRestriction)}
+                        name={field.name}
+                      >
+                        <SelectTrigger
+                          aria-invalid={fieldState.invalid ? true : undefined}
+                          className="w-full"
+                        >
+                          <SelectValue placeholder="No restriction" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {AGE_RESTRICTION_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </FormField>
+              </div>
+            </fieldset>
+
+            {/* ---- Distribution ----
+                Three toggles / selects the Data API v3 accepts under
+                status.* — embeddable, license, publicStatsViewable.
+                Switches for the booleans (idiomatic shadcn pattern),
+                select for the license enum. */}
+            <fieldset className="space-y-3">
+              <legend className="text-sm font-medium leading-none text-foreground">
+                Distribution
+              </legend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Controller
+                  control={control}
+                  name="embeddable"
+                  render={({ field }) => (
+                    <SwitchRow
+                      label="Allow embedding"
+                      description="Other sites can embed this video."
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="publicStatsViewable"
+                  render={({ field }) => (
+                    <SwitchRow
+                      label="Show view count"
+                      description="Public stats viewable on the watch page."
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  )}
+                />
+              </div>
+              <FormField
+                label="License"
+                description="Standard keeps all rights reserved. Creative Commons lets others reuse with credit."
+              >
+                <Controller
+                  control={control}
+                  name="license"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={(v) => field.onChange(v as VideoLicense)}
+                      name={field.name}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LICENSE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </FormField>
+            </fieldset>
+
+            {/* ---- Comments ----
+                YouTube's three comment policies. Radio cards match
+                the Privacy section's visual language. */}
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium leading-none text-foreground">
+                Comments
+              </legend>
+              <div className="grid gap-2">
+                {COMMENT_POLICY_OPTIONS.map((opt) => {
+                  return (
+                    <Controller
+                      key={opt.value}
+                      control={control}
+                      name="commentPolicy"
+                      render={({ field }) => {
+                        const selected = field.value === opt.value;
+                        return (
+                          <label
+                            className={cn(
+                              "flex cursor-pointer items-start gap-2 rounded-md border bg-background p-3 text-sm shadow-xs transition-colors hover:bg-muted/40",
+                              selected
+                                ? "border-foreground ring-1 ring-foreground/10"
+                                : "border-input",
+                            )}
+                          >
+                            <input
+                              type="radio"
+                              value={opt.value}
+                              checked={selected}
+                              onChange={() => field.onChange(opt.value)}
+                              className="sr-only"
+                              name={field.name}
+                            />
+                            <span
+                              className={cn(
+                                "mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
+                                selected
+                                  ? "border-foreground bg-foreground text-background"
+                                  : "border-input bg-background",
+                              )}
+                              aria-hidden
+                            >
+                              {selected ? <Check className="h-3 w-3" /> : null}
+                            </span>
+                            <span className="flex flex-col gap-0.5">
+                              <span className="font-medium leading-none">
+                                {opt.label}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {opt.description}
+                              </span>
+                            </span>
+                          </label>
+                        );
+                      }}
+                    />
                   );
                 })}
               </div>
@@ -851,3 +1174,38 @@ const formatBytes = (n: number): string => {
   if (n >= 1024) return `${(n / 1024).toFixed(0)} KB`;
   return `${n} B`;
 };
+
+interface SwitchRowProps {
+  label: string;
+  description?: string;
+  checked: boolean;
+  onCheckedChange: (next: boolean) => void;
+}
+
+/**
+ * Two-line switch row used by the Distribution section.
+ * Label on the left, switch on the right; description underneath the
+ * label so the row stays single-line on `sm+`.
+ */
+function SwitchRow({
+  label,
+  description,
+  checked,
+  onCheckedChange,
+}: SwitchRowProps) {
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-md border border-input bg-background p-3">
+      <div className="flex flex-col gap-0.5">
+        <span className="text-sm font-medium leading-none">{label}</span>
+        {description ? (
+          <span className="text-xs text-muted-foreground">{description}</span>
+        ) : null}
+      </div>
+      <Switch
+        checked={checked}
+        onCheckedChange={onCheckedChange}
+        label={label}
+      />
+    </div>
+  );
+}

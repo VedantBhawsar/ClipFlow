@@ -1,53 +1,66 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 
-import { Skeleton } from "@/components/ui/skeleton";
 import { CreateVideoDialog } from "@/components/dashboard/create-video-dialog";
 import { VideoCard } from "@/components/dashboard/video-card";
-import { useDeleteVideo, useVideos } from "@/hooks/use-videos";
+import { useDeleteVideo } from "@/hooks/use-videos";
+import type { Video } from "@clipflow/types";
 
 interface VideoListProps {
+  /**
+   * The already-fetched videos to render. In the SSR dashboard flow
+   * this comes from the server component's `fetchVideos` call; in the
+   * published page from `fetchPublishedVideos`. The component does
+   * not call `useVideos()` itself — the server is the source of truth.
+   */
+  videos: Video[];
   /**
    * Whether the user has connected a YouTube channel. The create-video
    * CTA is gated on this — uploading without a connection would fail
    * server-side with YOUTUBE_NOT_CONNECTED.
    */
   channelConnected: boolean;
+  /**
+   * Optional empty-state hint shown under the create-video CTA on the
+   * `empty-state` variant. Mirrors what the original `<EmptyState>`
+   * showed (file size / format guidance).
+   */
+  emptyHint?: string;
 }
 
 /**
- * Dashboard videos section. Replaces the old `<EmptyState>` —
- * fetches via TanStack Query, handles its own empty state, and the
- * create-video dialog wraps its own trigger via `<DialogTrigger>`.
+ * Dashboard / published-page videos section.
+ *
+ * Presentational + actions. The server component hands us the videos
+ * (so the very first paint is meaningful); we own the per-row delete
+ * mutation and the post-mutation `router.refresh()` so the server
+ * re-renders with fresh data.
+ *
+ * The `useDeleteVideo` mutation still hits TanStack Query's cache so
+ * concurrent consumers (e.g. a future "videos" badge on the sidebar)
+ * stay consistent; the `router.refresh()` afterwards is what makes
+ * THIS page re-render with the new server truth.
  */
-export function VideoList({ channelConnected }: VideoListProps) {
-  const videosQuery = useVideos();
+export function VideoList({
+  videos,
+  channelConnected,
+  emptyHint,
+}: VideoListProps) {
+  const router = useRouter();
   const deleteMutation = useDeleteVideo();
-
-  const videos = videosQuery.data?.videos ?? [];
-  const isLoading = videosQuery.isLoading;
-
-
-  console.log("vidoes", videos)
-
-  const handleCancel = (id: string) => {
-    if (!confirm("Cancel this video? The file will be removed.")) return;
-    deleteMutation.mutate(id);
-  };
 
   const disabledReason = channelConnected
     ? undefined
     : "Connect your YouTube channel first";
 
-  if (isLoading) {
-    return (
-      <div className="space-y-3">
-        <Skeleton className="h-24 bg-card" />
-        <Skeleton className="h-24 bg-card" />
-      </div>
-    );
-  }
+  const handleCancel = (id: string) => {
+    if (!confirm("Cancel this video? The file will be removed.")) return;
+    deleteMutation.mutate(id, {
+      onSuccess: () => router.refresh(),
+    });
+  };
 
   if (videos.length === 0) {
     return (
@@ -72,11 +85,15 @@ export function VideoList({ channelConnected }: VideoListProps) {
             channelConnected={channelConnected}
             {...(disabledReason ? { disabledReason } : {})}
           />
-          <p className="text-xs text-muted-foreground">
-            {channelConnected
-              ? "Up to 5 GB per video. MP4, MOV, or WebM."
-              : "Connect your YouTube channel above to get started."}
-          </p>
+          {emptyHint ? (
+            <p className="text-xs text-muted-foreground">{emptyHint}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {channelConnected
+                ? "Up to 5 GB per video. MP4, MOV, or WebM."
+                : "Connect your YouTube channel above to get started."}
+            </p>
+          )}
         </div>
       </section>
     );
