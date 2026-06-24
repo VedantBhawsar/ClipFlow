@@ -6,7 +6,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   NICHE_OPTIONS,
   PRIMARY_GOAL_OPTIONS,
@@ -123,12 +129,19 @@ export function ProfileForm() {
       >
         <Select
           value={niche}
-          onChange={(e) => setNiche(e.target.value as ContentNiche | "")}
-          options={[
-            { value: "", label: "Select a niche…" },
-            ...NICHE_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
-          ]}
-        />
+          onValueChange={(v) => setNiche(v as ContentNiche | "")}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select a niche…" />
+          </SelectTrigger>
+          <SelectContent>
+            {NICHE_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </FormField>
 
       <FormField
@@ -137,15 +150,19 @@ export function ProfileForm() {
       >
         <Select
           value={uploadFrequency}
-          onChange={(e) => setUploadFrequency(e.target.value as UploadFrequency | "")}
-          options={[
-            { value: "", label: "Select a frequency…" },
-            ...UPLOAD_FREQUENCY_OPTIONS.map((o) => ({
-              value: o.value,
-              label: o.label,
-            })),
-          ]}
-        />
+          onValueChange={(v) => setUploadFrequency(v as UploadFrequency | "")}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select a frequency…" />
+          </SelectTrigger>
+          <SelectContent>
+            {UPLOAD_FREQUENCY_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </FormField>
 
       <FormField
@@ -154,15 +171,19 @@ export function ProfileForm() {
       >
         <Select
           value={primaryGoal}
-          onChange={(e) => setPrimaryGoal(e.target.value as PrimaryGoal | "")}
-          options={[
-            { value: "", label: "Select a goal…" },
-            ...PRIMARY_GOAL_OPTIONS.map((o) => ({
-              value: o.value,
-              label: o.label,
-            })),
-          ]}
-        />
+          onValueChange={(v) => setPrimaryGoal(v as PrimaryGoal | "")}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select a goal…" />
+          </SelectTrigger>
+          <SelectContent>
+            {PRIMARY_GOAL_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </FormField>
 
       <div className="flex items-center justify-end gap-2 pt-2">

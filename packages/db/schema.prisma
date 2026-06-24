@@ -1,21 +1,36 @@
 // packages/db/schema.prisma
 //
-// ClipFlow database schema. Mirrors docs/Schema.md, scoped down to the
-// tables needed for the v1 onboarding slice (Steps 1-5 of AppFlow.md),
-// v1 settings slice, and YouTube OAuth slice:
+// ClipFlow database schema. Mirrors docs/Schema.md, scoped to the tables
+// needed for the v1 onboarding, settings, YouTube OAuth, and video
+// upload → publish slices:
 //
 //   - User (auth identity)
 //   - UserProfile (onboarding answers — niche/freq/goal)
 //   - UserPreferences (runtime preferences — notifications, scheduling,
 //     generation behavior)
 //   - YouTubeChannel (OAuth connection for publishing)
+//   - Video (uploaded videos + their publish lifecycle)
 //
-// Video, Plan, Subscription, WebhookEvent, etc. are intentionally
+// Plan, Subscription, WebhookEvent, VideoStats, etc. are intentionally
 // omitted from this file until their slices are built, to keep migrations
 // honest and avoid declaring indexes/columns that nothing queries yet.
 //
+// VideoStatus is a 6-value subset for the upload-publish slice. The
+// transcript / thumbnail / chapter-generation slice will extend the enum
+// via a follow-up migration to add EXTRACTING / TRANSCRIBING / GENERATING
+// / READY_FOR_REVIEW / FAILED.
+//
 // See docs/Schema.md for the full v1 picture and the v1.5 / v2 forward
 // notes (VideoStats, multi-channel, etc.).
+//
+// Indexing strategy: v1 queries are dominated by owner-scoped lookups
+// ("show me this user's profile / preferences / YouTube / videos") and
+// the worker's scheduler scan ("videos with status=SCHEDULED whose
+// scheduledPublishAt has passed"). Each model carries explicit composite
+// indexes for those hot paths, in addition to the unique constraints
+// on natural keys (id, email, googleId, userId 1:1s). FK columns already
+// get an implicit index from Prisma; we only declare extras for query
+// shapes that need a non-FK ordering or filter.
 
 generator client {
   provider = "prisma-client-js"
@@ -97,12 +112,62 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile       UserProfile?
-  preferences   UserPreferences?
+  profile        UserProfile?
+  preferences    UserPreferences?
   youtubeChannel YouTubeChannel?
+  videos         Video[]
+  refreshTokens  RefreshToken[]
 
   @@map("users")
-  @@index([id])
+}
+
+// ---------- Refresh tokens (rotation chain) ----------
+
+/// One row per issued refresh token. Login mints the first row of a new
+/// "family"; every successful /api/auth/refresh marks the presented token
+/// as revoked and mints a new row in the SAME family. Presenting a token
+/// that has already been revoked (i.e. was rotated past) revokes the
+/// entire family — that's the standard OAuth 2.0 reuse-detection guard.
+///
+/// We store only the SHA-256 hash of the raw token; the raw value is sent
+/// to the client and never persisted, so a DB compromise cannot replay
+/// active sessions.
+model RefreshToken {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// SHA-256 hash of the raw token (hex-encoded). The raw token is sent
+  /// to the client in the response and never persisted.
+  tokenHash String @unique
+
+  /// Family groups the rotation chain. Login creates the first row of a
+  /// new family; each rotation adds a new row with the SAME familyId.
+  /// Reuse detection revokes every non-revoked row in the family.
+  familyId String
+
+  expiresAt DateTime
+
+  /// Set when this token is rotated OR explicitly logged out. Used by
+  /// the reuse-detection check on /api/auth/refresh.
+  revokedAt DateTime?
+
+  /// Best-effort audit fields. Populated when the issuer has access to
+  /// the request — not enforced.
+  userAgent String?
+  ip        String?
+
+  createdAt DateTime @default(now())
+
+  // For "list this user's active sessions" admin views / future
+  // "log out everywhere" UI.
+  @@index([userId])
+  // For bulk revocation when reuse is detected.
+  @@index([familyId])
+  // For background cleanup of expired rows.
+  @@index([expiresAt])
+
+  @@map("refresh_tokens")
 }
 
 // ---------- UserProfile ----------
@@ -198,5 +263,102 @@ model YouTubeChannel {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  videos Video[]
+
+  // For admin/ops lookups keyed by the upstream YouTube channel ID
+  // (e.g. reverse-mapping an inbound Google webhook to a ClipFlow user).
+  // userId already has a unique index (1:1 with User).
+  @@index([youtubeChannelId])
+  // For "find channels that need reauth" admin scans.
+  @@index([status])
+
   @@map("youtube_channels")
+}
+
+// ---------- Video ----------
+
+/// Lifecycle states for an uploaded video. Six values for the
+/// upload-publish slice; the transcript / thumbnail / chapter slice
+/// extends this enum via a follow-up migration.
+enum VideoStatus {
+  /// Row exists, no bytes in S3 yet (or upload in progress).
+  UPLOADED
+  /// Bytes in S3, metadata accepted, ready to publish.
+  READY
+  /// `scheduledPublishAt` is in the future; BullMQ will pick it up later.
+  SCHEDULED
+  /// Worker has started the YouTube videos.insert call.
+  PUBLISHING
+  /// YouTube returned a videoId; `youtubeVideoId` and `publishedAt` are set.
+  PUBLISHED
+  /// Retries exhausted; see `failureReason` for the last error.
+  PUBLISH_FAILED
+}
+
+/// One row per uploaded video. Created in `UPLOADED` status when the
+/// client submits metadata; transitions through the `VideoStatus` enum
+/// as the upload → publish pipeline runs.
+///
+/// Cascade on `youtubeChannelId`: disconnecting the YouTube channel
+/// deletes its videos (DB + S3) — matches the existing
+/// User → UserProfile cascade pattern. We treat the channel as the
+/// authoritative owner of the video; reconnection does not restore
+/// deleted rows.
+model Video {
+  id              String        @id @default(cuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  youtubeChannelId String
+  youtubeChannel  YouTubeChannel @relation(fields: [youtubeChannelId], references: [id], onDelete: Cascade)
+
+  title           String
+  description     String?
+  tags            String[]
+  categoryId      String        @default("22")
+  privacyStatus   String        @default("private")
+
+  // ---- YouTube content controls (status block) ----
+  // Defaults match YouTube's own default behavior on `videos.insert`
+  // so an absent field in the API still produces a sensible upload.
+  // See @clipflow/types for the wire-shape union of each field.
+  /// COPPA self-declaration. Once true on YouTube, can only be unset
+  /// via Studio — we surface the choice prominently at upload time
+  /// for that reason.
+  madeForKids         Boolean @default(false)
+  /// "none" (default, no restriction) | "18+" (YouTube content rating).
+  ageRestriction      String  @default("none")
+  /// status.embeddable — allow other sites to embed this video.
+  embeddable          Boolean @default(true)
+  /// status.license — "standard" | "creativeCommon".
+  license             String  @default("standard")
+  /// status.publicStatsViewable — show the public view count.
+  publicStatsViewable Boolean @default(true)
+  /// status.commentPolicy — "allowAll" | "holdAll" | "disable".
+  commentPolicy       String  @default("allowAll")
+
+  originalFilename String
+  /// BigInt so we can represent up to the 5GB cap; `Int` is int4 (~2.1GB max).
+  fileSizeBytes   BigInt
+  contentType     String        @default("video/mp4")
+
+  s3KeyOriginal   String        @unique
+
+  status          VideoStatus   @default(UPLOADED)
+  failureReason   String?
+
+  scheduledPublishAt DateTime?
+  youtubeVideoId  String?       @unique
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  publishedAt     DateTime?
+
+  @@index([userId, status])
+  // Dashboard's "my videos, newest first" list. The composite (userId,
+  // createdAt DESC) lets Postgres satisfy both the filter and the
+  // ordering from the index without a sort step.
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([scheduledPublishAt])
+  @@index([status, scheduledPublishAt])
+  @@map("videos")
 }

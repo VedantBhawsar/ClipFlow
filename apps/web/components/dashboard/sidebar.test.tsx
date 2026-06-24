@@ -1,19 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { Sidebar } from "./sidebar.js";
 
 vi.mock("next/navigation", () => ({
   usePathname: vi.fn(() => "/dashboard"),
+  useRouter: vi.fn(() => ({
+    push: vi.fn(),
+    refresh: vi.fn(),
+  })),
 }));
 
 vi.mock("@/hooks/use-auth", () => ({
   useAuth: vi.fn(),
 }));
 
+vi.mock("@/hooks/use-sign-out", () => ({
+  useSignOut: vi.fn(),
+}));
+
+import { Sidebar } from "./sidebar.js";
 import { useAuth, type UseAuthValue } from "@/hooks/use-auth";
+import { useSignOut } from "@/hooks/use-sign-out";
 import type { YouTubeConnection } from "@clipflow/types";
 
 const mockUseAuth = vi.mocked(useAuth);
+const mockUseSignOut = vi.mocked(useSignOut);
 
 const AUTH_BASE: UseAuthValue = {
   status: "authenticated",
@@ -29,9 +39,6 @@ const AUTH_BASE: UseAuthValue = {
   preferences: null,
   youtubeConnection: null,
   onboardingCompleted: true,
-  signIn: vi.fn(),
-  signUp: vi.fn(),
-  signOut: vi.fn(),
   refresh: vi.fn(),
   setOnboardingCompleted: vi.fn(),
   setPreferences: vi.fn(),
@@ -60,6 +67,14 @@ describe("Sidebar", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseAuth.mockReturnValue(AUTH_BASE);
+    mockUseSignOut.mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue(undefined),
+      mutate: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+      reset: vi.fn(),
+    } as unknown as ReturnType<typeof useSignOut>);
   });
 
   it("renders the Settings nav link enabled", () => {
@@ -75,11 +90,16 @@ describe("Sidebar", () => {
     expect(emailLink).toHaveAttribute("href", "/dashboard/settings/profile");
   });
 
-  it("still shows Videos and Billing as disabled placeholders", () => {
+  it("links the Published entry to /dashboard/published as an enabled nav item", () => {
     render(<Sidebar />);
-    const videos = screen.getByText("Videos").closest("span");
+    const published = screen.getByText("Published").closest("a");
+    expect(published).not.toHaveAttribute("aria-disabled");
+    expect(published).toHaveAttribute("href", "/dashboard/published");
+  });
+
+  it("still shows Billing as a disabled placeholder", () => {
+    render(<Sidebar />);
     const billing = screen.getByText("Billing").closest("span");
-    expect(videos).toHaveAttribute("aria-disabled", "true");
     expect(billing).toHaveAttribute("aria-disabled", "true");
   });
 

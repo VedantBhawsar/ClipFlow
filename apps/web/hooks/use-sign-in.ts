@@ -1,26 +1,74 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { signIn } from "next-auth/react";
 
-import { api, setAuthTokenCookie } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
-import type { AuthResponse, LoginRequest } from "@clipflow/types";
+import type { LoginRequest } from "@clipflow/types";
 
 /**
- * Sign in. On success:
- *   1. Write the JWT into the auth cookie so the next request picks it up.
- *   2. Cancel any in-flight bundle query and invalidate it so the
- *      AuthProvider re-derives `status === "authenticated"` and any
- *      stale cached user data from the previous session is discarded.
+ * Sign in via NextAuth's Credentials provider.
+ *
+ * Flow:
+ *  1. NextAuth POSTs to Express `/api/auth/login` under the hood
+ *     (handled inside `auth.ts`'s Credentials.authorize).
+ *  2. On 200, NextAuth stores the access + refresh tokens inside its
+ *     own httpOnly session cookie — we never touch cookies ourselves.
+ *  3. On 401, NextAuth returns a `CredentialsSignin` error and we
+ *     surface its `message` so the form can show the right copy
+ *     ("Invalid email or password", "Account locked", etc.).
+ *
+ * `redirect: false` is critical — it stops NextAuth from doing its
+ * own post-sign-in navigation; the caller (the form) handles the
+ * post-sign-in `router.push` to the saved `?next=` or `/dashboard`.
+ *
+ * On success we drop the bundle query so the AuthProvider (which is
+ * now NextAuth's SessionProvider) and `useUserBundle()` refetch from
+ * a clean slate — there's no profile cached from a previous session
+ * in this browser tab, and the freshly-authed user might be different.
  */
 export function useSignIn() {
   const qc = useQueryClient();
-  return useMutation<AuthResponse, Error, LoginRequest>({
-    mutationFn: (body) => api.login(body),
-    onSuccess: (res) => {
-      setAuthTokenCookie(res.token);
+  return useMutation<
+    void,
+    Error,
+    LoginRequest & { callbackUrl?: string }
+  >({
+    mutationFn: async ({ email, password }) => {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (!result) {
+        throw new Error("Sign in failed. Please try again.");
+      }
+      if (result.error) {
+        // NextAuth wraps backend error messages here. We pull the most
+        // useful copy out so the form can show it directly.
+        throw new Error(extractAuthErrorMessage(result.error));
+      }
+      if (!result.ok) {
+        throw new Error("Sign in failed. Please try again.");
+      }
+    },
+    onSuccess: () => {
       qc.removeQueries({ queryKey: queryKeys.user.bundle() });
       void qc.invalidateQueries({ queryKey: queryKeys.user.bundle() });
     },
   });
+}
+
+/**
+ * NextAuth's `result.error` is always a short string code like
+ * "CredentialsSignin" — not the friendly message we want to show the
+ * user. The actual server error is delivered via the `code` field of
+ * the underlying CredentialsSignin error, which NextAuth encodes into
+ * a URL-safe representation. For v1 the backend only sends one
+ * message ("Invalid email or password") so we keep this simple and
+ * map the well-known codes; if more codes land we can extend this.
+ */
+function extractAuthErrorMessage(_code: string): string {
+  return "Invalid email or password.";
 }

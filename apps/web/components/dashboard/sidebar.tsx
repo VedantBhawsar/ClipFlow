@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { LayoutDashboard, Film, CreditCard, Settings, LogOut } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -9,6 +9,7 @@ import { Logo } from "@/components/shared/logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { useSignOut } from "@/hooks/use-sign-out";
 
 interface NavItem {
   href: string;
@@ -20,7 +21,11 @@ interface NavItem {
 
 const PRIMARY_NAV: ReadonlyArray<NavItem> = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, enabled: true },
-  { href: "/videos", label: "Videos", icon: Film, enabled: false },
+  // "Published" — the user's library of videos already on YouTube.
+  // The dashboard itself shows only in-progress / not-yet-published
+  // videos; this entry is the home for the live library. Routed under
+  // /dashboard/published so it stays inside the dashboard shell.
+  { href: "/dashboard/published", label: "Published", icon: Film, enabled: true },
   { href: "/billing", label: "Billing", icon: CreditCard, enabled: false },
   // Settings lives under /dashboard/settings/* — see apps/web/app/dashboard/settings.
   { href: "/dashboard/settings", label: "Settings", icon: Settings, enabled: true },
@@ -46,10 +51,17 @@ const PRIMARY_NAV: ReadonlyArray<NavItem> = [
  *
  * The user-email row at the bottom is a link to /settings/profile
  * so a user can reach their profile from anywhere in the dashboard.
+ *
+ * Sign-out: delegated to `useSignOut()` which calls NextAuth's
+ * `signOut()`. NextAuth clears the session cookie and fires the
+ * `events.signOut` callback in `auth.ts` to revoke the refresh token
+ * server-side. Then we route to /signin.
  */
 export function Sidebar() {
   const pathname = usePathname();
-  const { user, youtubeConnection, signOut } = useAuth();
+  const router = useRouter();
+  const { user, youtubeConnection } = useAuth();
+  const signOutMutation = useSignOut();
 
   const channelState: "connected" | "unconnected" =
     youtubeConnection?.status === "connected" ? "connected" : "unconnected";
@@ -59,6 +71,12 @@ export function Sidebar() {
       : youtubeConnection?.status === "needs_reauth"
         ? "Reconnect required"
         : "Channel not connected";
+
+  const handleSignOut = async (): Promise<void> => {
+    await signOutMutation.mutateAsync();
+    router.push("/signin");
+    router.refresh();
+  };
 
   return (
     <aside
@@ -145,7 +163,7 @@ export function Sidebar() {
             variant="ghost"
             size="icon"
             onClick={() => {
-              void signOut();
+              void handleSignOut();
             }}
             aria-label="Sign out"
           >

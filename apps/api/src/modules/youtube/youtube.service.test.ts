@@ -2,6 +2,21 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { AppError } from "../../errors/AppError.js";
 import * as youtubeService from "./youtube.service.js";
 
+vi.mock("@clipflow/youtube-upload", () => ({
+  refreshAccessToken: vi.fn(),
+  PermanentPublishError: class PermanentPublishError extends Error {
+    readonly code = "PERMANENT_PUBLISH_ERROR" as const;
+    readonly reasonCode: string;
+    readonly httpStatus?: number;
+    constructor(reasonCode: string, message: string, httpStatus?: number) {
+      super(message);
+      this.name = "PermanentPublishError";
+      this.reasonCode = reasonCode;
+      this.httpStatus = httpStatus;
+    }
+  },
+}));
+
 vi.mock("../../lib/prisma.js", () => ({
   prisma: {
     youTubeChannel: {
@@ -19,7 +34,6 @@ vi.mock("../../lib/db-guard.js", () => ({
 
 vi.mock("../../lib/crypto.js", () => ({
   encryptToken: vi.fn().mockReturnValue("encrypted_token"),
-  decryptToken: vi.fn().mockReturnValue("refresh_token"),
 }));
 
 vi.mock("../../lib/logger.js", () => ({
@@ -35,14 +49,18 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 import { prisma } from "../../lib/prisma.js";
-import { encryptToken, decryptToken } from "../../lib/crypto.js";
+import { encryptToken } from "../../lib/crypto.js";
+import {
+  refreshAccessToken,
+  PermanentPublishError,
+} from "@clipflow/youtube-upload";
 
 const mockUpsert = vi.mocked(prisma.youTubeChannel.upsert);
 const mockFindUnique = vi.mocked(prisma.youTubeChannel.findUnique);
 const mockDeleteMany = vi.mocked(prisma.youTubeChannel.deleteMany);
 const mockUpdate = vi.mocked(prisma.youTubeChannel.update);
 const mockEncrypt = vi.mocked(encryptToken);
-const mockDecrypt = vi.mocked(decryptToken);
+const mockRefreshAccessToken = vi.mocked(refreshAccessToken);
 
 const baseEnv = {
   GOOGLE_CLIENT_ID: "test-client-id",
@@ -254,23 +272,30 @@ describe("youtube.service", () => {
 
   describe("refreshAccessToken", () => {
     it("returns new access token on success", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ access_token: "new-access-token", expires_in: 3600 }),
+      mockRefreshAccessToken.mockResolvedValue({
+        accessToken: "new-access-token",
+        expiresAt: new Date(),
       });
 
       const result = await youtubeService.refreshAccessToken(baseChannelRow, baseEnv);
 
       expect(result.accessToken).toBe("new-access-token");
       expect(result.expiresAt instanceof Date).toBe(true);
-      expect(mockDecrypt).toHaveBeenCalledWith(baseChannelRow.refreshTokenEncrypted, baseEnv.ENCRYPTION_KEY);
+      expect(mockRefreshAccessToken).toHaveBeenCalledWith(
+        prisma,
+        baseChannelRow,
+        baseEnv,
+      );
     });
 
-    it("marks channel as NEEDS_REAUTH when refresh fails", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        json: () => Promise.resolve({ error: "invalid_grant" }),
-      });
+    it("translates CHANNEL_NEEDS_REAUTH into the legacy AppError shape", async () => {
+      mockRefreshAccessToken.mockRejectedValue(
+        new PermanentPublishError(
+          "CHANNEL_NEEDS_REAUTH",
+          "refresh token no longer valid",
+          400,
+        ),
+      );
 
       await expect(
         youtubeService.refreshAccessToken(baseChannelRow, baseEnv),
@@ -278,10 +303,9 @@ describe("youtube.service", () => {
         statusCode: 401,
         code: "YOUTUBE_TOKEN_REFRESH_FAILED",
       });
-      expect(mockUpdate).toHaveBeenCalledWith({
-        where: { id: baseChannelRow.id },
-        data: { status: "NEEDS_REAUTH" },
-      });
+      // The package itself marks NEEDS_REAUTH; the API wrapper doesn't
+      // need to do it again.
+      expect(mockUpdate).not.toHaveBeenCalled();
     });
   });
 });

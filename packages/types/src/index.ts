@@ -115,7 +115,41 @@ export interface AuthUser {
 
 export interface AuthResponse {
   user: AuthUser;
-  token: string;
+  /**
+   * Short-lived (15-minute) JWT. Sent in `Authorization: Bearer <accessToken>`
+   * on every authenticated request. Frontend stores inside NextAuth's
+   * session cookie via the Credentials provider.
+   */
+  accessToken: string;
+  /**
+   * Long-lived (7-day) opaque token used to mint fresh access tokens via
+   * `POST /api/auth/refresh`. Stored as a SHA-256 hash server-side.
+   * Rotation: each successful refresh invalidates the presented token and
+   * returns a new pair. Reuse detection: presenting a revoked refresh
+   * token revokes the entire family.
+   */
+  refreshToken: string;
+  /** Unix-ms timestamp at which `accessToken` expires. */
+  accessTokenExpiresAt: number;
+  /** Unix-ms timestamp at which `refreshToken` expires. */
+  refreshTokenExpiresAt: number;
+}
+
+export interface RefreshRequest {
+  refreshToken: string;
+}
+
+export interface RefreshResponse {
+  accessToken: string;
+  refreshToken: string;
+  accessTokenExpiresAt: number;
+  refreshTokenExpiresAt: number;
+}
+
+export interface LogoutRequest {
+  /** Refresh token to revoke. Optional — omitting it revokes nothing
+   * server-side and only clears the client session. */
+  refreshToken?: string;
 }
 
 export interface MeResponse {
@@ -243,10 +277,191 @@ export interface UserBundleResponse {
   youtubeConnection: YouTubeConnection;
 }
 
-// ---------- Errors ----------
+// ---------- API response envelope ----------
 
-export interface ApiErrorBody {
-  error: string;
+/**
+ * Successful API response shape. Every endpoint returns this wrapper on
+ * 2xx so the frontend has a single, predictable contract:
+ *
+ *   { success: true, message: string, data: <payload> }
+ *
+ * For endpoints that don't carry a payload (logout, change-password,
+ * disconnect, cancel upload, delete video), `data` is `null`.
+ */
+export interface ApiSuccess<T> {
+  success: true;
   message: string;
+  data: T;
+}
+
+/**
+ * Failed API response shape. Every endpoint — and the central error
+ * middleware — returns this wrapper on non-2xx so the frontend has a
+ * single, predictable contract:
+ *
+ *   { success: false, message: string, data: null, error?, details? }
+ *
+ * `error` is a stable machine-readable code (e.g. `EMAIL_TAKEN`,
+ * `INVALID_CREDENTIALS`) for programmatic UI handling; `message` is
+ * the human-friendly text safe to show to the user. `details` is an
+ * optional structured payload (validation issues, request id, etc.).
+ */
+export interface ApiFailure {
+  success: false;
+  message: string;
+  data: null;
+  error?: string;
   details?: Record<string, unknown>;
+}
+
+/** Discriminated union of the two envelope shapes. */
+export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
+
+/**
+ * @deprecated Use {@link ApiFailure} (and {@link ApiResponse}) instead.
+ * Kept as an alias so older consumers that imported `ApiErrorBody`
+ * keep compiling during the migration.
+ */
+export type ApiErrorBody = ApiFailure;
+
+// ---------- Video upload → publish ----------
+
+/**
+ * Lifecycle states for an uploaded video. Six values for the
+ * upload-publish slice; the transcript / thumbnail / chapter slice
+ * extends this enum via a follow-up migration. Mirrors the Prisma
+ * `VideoStatus` enum in packages/db.
+ */
+export const VIDEO_STATUSES = [
+  "UPLOADED",
+  "READY",
+  "SCHEDULED",
+  "PUBLISHING",
+  "PUBLISHED",
+  "PUBLISH_FAILED",
+] as const;
+export type VideoStatus = (typeof VIDEO_STATUSES)[number];
+
+export const VIDEO_PRIVACY_STATUSES = [
+  "private",
+  "unlisted",
+  "public",
+] as const;
+export type VideoPrivacyStatus = (typeof VIDEO_PRIVACY_STATUSES)[number];
+
+/**
+ * YouTube content rating. `none` = no restriction (default).
+ * The 18+ rating covers the v1 surface; YouTube's regional systems
+ * add more values which we'll model when a customer needs them.
+ */
+export const VIDEO_AGE_RESTRICTIONS = ["none", "18+"] as const;
+export type VideoAgeRestriction = (typeof VIDEO_AGE_RESTRICTIONS)[number];
+
+/**
+ * YouTube video license. `standard` = default YouTube license;
+ * `creativeCommon` = CC BY (the only CC flavor YouTube offers).
+ */
+export const VIDEO_LICENSES = ["standard", "creativeCommon"] as const;
+export type VideoLicense = (typeof VIDEO_LICENSES)[number];
+
+/**
+ * YouTube comment policy. `allowAll` = default. `holdAll` = every
+ * comment held for review. `disable` = comments off.
+ */
+export const VIDEO_COMMENT_POLICIES = ["allowAll", "holdAll", "disable"] as const;
+export type VideoCommentPolicy = (typeof VIDEO_COMMENT_POLICIES)[number];
+
+/**
+ * Body for `POST /api/videos`. The metadata the user submits when
+ * creating a new video. The actual file bytes are uploaded directly
+ * to S3/MinIO via the presigned URL returned by that endpoint — the
+ * API never sees the bytes.
+ *
+ * Every field after `fileSizeBytes` is optional and has a sensible
+ * default that matches YouTube's own default behavior. They're
+ * surfaced in the create-video form so the creator doesn't have to
+ * bounce to YouTube Studio to set made-for-kids, age restriction,
+ * embeddable, license, public stats viewable, or comment policy.
+ */
+export interface CreateVideoRequest {
+  title: string;
+  description?: string;
+  tags?: string[];
+  categoryId?: string;
+  privacyStatus?: VideoPrivacyStatus;
+  /** ISO8601 string. Omit for immediate publish. */
+  scheduledPublishAt?: string;
+  /** COPPA self-declaration. Default false. */
+  madeForKids?: boolean;
+  /** YouTube content rating. Default "none". */
+  ageRestriction?: VideoAgeRestriction;
+  /** Allow other sites to embed this video. Default true. */
+  embeddable?: boolean;
+  /** Default "standard". */
+  license?: VideoLicense;
+  /** Show the public view count on the watch page. Default true. */
+  publicStatsViewable?: boolean;
+  /** Default "allowAll". */
+  commentPolicy?: VideoCommentPolicy;
+  originalFilename: string;
+  contentType?: string;
+  /** Client-declared byte size. Server re-checks on finalize. */
+  fileSizeBytes: number;
+}
+
+/**
+ * Response from `POST /api/videos`. The browser uses `postUrl` + `fields`
+ * to submit the file via multipart/form-data.
+ *
+ * The server does NOT create a `Video` row at this point. The returned
+ * `pendingUploadId` is the handle for the in-flight upload; a row only
+ * gets committed after the browser PUTs the file and the server confirms
+ * it via `POST /api/videos/pending/:id/finalize`. If the user never
+ * finalizes (closes the tab, network dies, etc.) the row simply never
+ * exists — no cleanup needed.
+ */
+export interface CreateVideoResponse {
+  pendingUploadId: string;
+  s3KeyOriginal: string;
+  postUrl: string;
+  fields: Record<string, string>;
+  /** Hard cap the presigned POST will accept (== env.YOUTUBE_MAX_VIDEO_BYTES). */
+  contentLengthMaxBytes: number;
+}
+
+export interface UploadUrlResponse {
+  postUrl: string;
+  fields: Record<string, string>;
+  contentLengthMaxBytes: number;
+}
+
+/**
+ * Wire DTO for a Video row. Dates are ISO strings; the BigInt
+ * `fileSizeBytes` is serialized to a number (still safe — 5GB ≈ 5.4e9,
+ * well under 2^53).
+ */
+export interface Video {
+  id: string;
+  status: VideoStatus;
+  title: string;
+  description: string | null;
+  tags: string[];
+  categoryId: string;
+  privacyStatus: string;
+  madeForKids: boolean;
+  ageRestriction: VideoAgeRestriction;
+  embeddable: boolean;
+  license: VideoLicense;
+  publicStatsViewable: boolean;
+  commentPolicy: VideoCommentPolicy;
+  originalFilename: string;
+  fileSizeBytes: number;
+  contentType: string;
+  s3KeyOriginal: string;
+  failureReason: string | null;
+  scheduledPublishAt: string | null;
+  youtubeVideoId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt: string | null;
 }

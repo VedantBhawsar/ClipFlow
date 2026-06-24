@@ -1,26 +1,27 @@
 {
-  "name": "@clipflow/ui",
+  "name": "@clipflow/crypto",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "exports": {
-    "./*": "./src/*.tsx"
+    ".": "./src/index.ts"
   },
   "scripts": {
+    "check-types": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
-    "generate:component": "turbo gen react-component",
-    "check-types": "tsc --noEmit"
+    "self-test": "tsx scripts/self-test.ts"
+  },
+  "dependencies": {
+    "@clipflow/config": "workspace:*"
   },
   "devDependencies": {
     "@clipflow/eslint-config": "workspace:*",
     "@clipflow/typescript-config": "workspace:*",
     "@types/node": "^22.15.3",
-    "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.2",
     "eslint": "^9.39.1",
+    "tsx": "^4.19.2",
     "typescript": "5.9.2"
-  },
-  "dependencies": {
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
   }
 }
