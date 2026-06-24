@@ -7,16 +7,30 @@
 import { z } from "zod";
 
 /**
- * Video ids are minted server-side as `vid_<uuid>` (see
- * `videos.service.ts → createVideo`). We validate the full prefixed shape
- * here so a malformed id fails fast at the edge with 400 instead of
- * reaching Prisma's `findUnique` and surfacing as a confusing 404.
+ * Committed video ids are minted server-side as `vid_<uuid>` (see
+ * `videos.service.ts → finalizeUpload`). We validate the full prefixed
+ * shape here so a malformed id fails fast at the edge with 400 instead
+ * of reaching Prisma's `findUnique` and surfacing as a confusing 404.
  */
 const VIDEO_ID_REGEX =
   /^vid_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const videoIdParamsSchema = z.object({
   id: z.string().regex(VIDEO_ID_REGEX, "Invalid video id."),
+});
+
+/**
+ * Pending upload ids are minted by `createVideo` and used to track an
+ * in-flight S3 upload until the browser calls `finalize`. The shape
+ * matches `videoIdParamsSchema`'s structure (caller's `:id` URL param)
+ * but uses the `pu_` prefix so a route that expects a committed video
+ * can't accidentally accept an in-flight id (or vice versa).
+ */
+const PENDING_UPLOAD_ID_REGEX =
+  /^pu_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const pendingUploadIdParamsSchema = z.object({
+  id: z.string().regex(PENDING_UPLOAD_ID_REGEX, "Invalid upload id."),
 });
 
 const titleSchema = z

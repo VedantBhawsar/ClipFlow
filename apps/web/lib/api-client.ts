@@ -236,46 +236,61 @@ export const api = {
   // ---------- Videos (upload → publish) ----------
 
   /**
-   * Create a Video row in UPLOADED status and return a presigned POST
-   * URL the browser uses to upload the file directly to S3/MinIO.
-   * The API never sees the bytes.
+   * Mint a `pendingUploadId` and a presigned POST URL the browser uses
+   * to upload the file directly to S3/MinIO. **No `Video` row is
+   * created at this point** — the row only gets committed after the
+   * API confirms the upload via `finalizeUpload` (so an abandoned
+   * upload never leaves a row in the DB).
    */
   createVideo(body: CreateVideoRequest): Promise<CreateVideoResponse> {
     return request("POST", "/api/videos", body);
   },
 
   /**
-   * Mint a fresh presigned POST URL if the first one expired (15 min).
+   * Mint a fresh presigned POST URL for an in-flight upload whose
+   * original URL has expired (15 min default).
    */
-  getUploadUrl(id: string): Promise<UploadUrlResponse> {
-    return request("POST", `/api/videos/${id}/upload-url`);
+  getUploadUrl(pendingUploadId: string): Promise<UploadUrlResponse> {
+    return request("POST", `/api/videos/pending/${pendingUploadId}/upload-url`);
   },
 
   /**
    * Notify the API that the browser has finished uploading to S3.
-   * The API HEADs the object, transitions the row, and (for immediate
-   * publishes) enqueues the BullMQ publish job.
+   * The API HEADs the object, validates the size matches the declared
+   * size, then creates the `Video` row and (for immediate publishes)
+   * enqueues the BullMQ publish job. No row is created if the upload
+   * is missing or partial.
    */
-  finalizeUpload(id: string): Promise<Video> {
-    return request("POST", `/api/videos/${id}/finalize`);
+  finalizeUpload(pendingUploadId: string): Promise<Video> {
+    return request("POST", `/api/videos/pending/${pendingUploadId}/finalize`);
   },
 
   /**
-   * List the current user's videos, newest first.
+   * Cancel an in-flight upload: best-effort S3 delete + cache eviction.
+   * Idempotent — a missing pending upload returns 204.
+   */
+  cancelPendingUpload(pendingUploadId: string): Promise<void> {
+    return request<void>("DELETE", `/api/videos/pending/${pendingUploadId}`);
+  },
+
+  /**
+   * List the current user's committed videos, newest first.
+   * Pending uploads (in-flight, no row yet) are intentionally not
+   * included.
    */
   listVideos(): Promise<{videos: Video[]}> {
     return request("GET", "/api/videos");
   },
 
   /**
-   * Read a single video.
+   * Read a single committed video.
    */
   getVideo(id: string): Promise<Video> {
     return request("GET", `/api/videos/${id}`);
   },
 
   /**
-   * Cancel + delete a video that hasn't been published yet.
+   * Cancel + delete a committed, not-yet-published video.
    */
   deleteVideo(id: string): Promise<void> {
     return request<void>("DELETE", `/api/videos/${id}`);

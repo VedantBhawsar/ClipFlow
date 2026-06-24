@@ -69,6 +69,7 @@ export function VideoList({ channelConnected }: VideoListProps) {
           <CreateVideoDialog
             variant="empty-state"
             disabled={!channelConnected}
+            channelConnected={channelConnected}
             {...(disabledReason ? { disabledReason } : {})}
           />
           <p className="text-xs text-muted-foreground">
@@ -90,6 +91,7 @@ export function VideoList({ channelConnected }: VideoListProps) {
         <CreateVideoDialog
           variant="compact"
           disabled={!channelConnected}
+          channelConnected={channelConnected}
           {...(disabledReason ? { disabledReason } : {})}
         />
       </div>

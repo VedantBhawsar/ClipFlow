@@ -299,9 +299,16 @@ export interface CreateVideoRequest {
 /**
  * Response from `POST /api/videos`. The browser uses `postUrl` + `fields`
  * to submit the file via multipart/form-data.
+ *
+ * The server does NOT create a `Video` row at this point. The returned
+ * `pendingUploadId` is the handle for the in-flight upload; a row only
+ * gets committed after the browser PUTs the file and the server confirms
+ * it via `POST /api/videos/pending/:id/finalize`. If the user never
+ * finalizes (closes the tab, network dies, etc.) the row simply never
+ * exists — no cleanup needed.
  */
 export interface CreateVideoResponse {
-  id: string;
+  pendingUploadId: string;
   s3KeyOriginal: string;
   postUrl: string;
   fields: Record<string, string>;
