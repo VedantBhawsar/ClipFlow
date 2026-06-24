@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
-import { useAuthContext } from "@/lib/auth-context";
+import { useSession } from "next-auth/react";
 
 interface AuthGuardProps {
   children: ReactNode;
@@ -13,23 +13,18 @@ interface AuthGuardProps {
 }
 
 /**
- * Client-side guard. While the auth context is hydrating we render a
- * minimal placeholder so the protected page doesn't flash into view.
- * Once we know the user is unauthenticated, we redirect.
+ * Client-side guard. Renders a "Loading…" placeholder while NextAuth
+ * resolves the session; once we know the user is unauthenticated,
+ * redirects to /signin (preserving the original path via `callbackUrl`,
+ * which NextAuth threads through the sign-in → post-sign-in flow).
  *
- * Preserves the current path on redirect via ?next= so the sign-in
- * flow can return the user where they were headed. We skip the
- * redirect when already on /signin or /signup to avoid loops, and we
- * never carry a `next` from an auth-route onto itself.
- *
- * NOTE: this is intentionally client-only. The token lives in a regular
- * cookie (see api-client.ts for the trade-off comment) so middleware
- * *could* in principle read it on the server, but doing so would require
- * duplicating the redirect logic and would risk drift. The client guard
- * is the single source of truth for v1.
+ * Skips the redirect when already on /signin or /signup to avoid
+ * loops. Edge middleware (apps/web/middleware.ts) handles the cheap
+ * cookie-presence redirect before this even runs — this component is
+ * the source of truth for the finer client-side gating.
  */
 export function AuthGuard({ children, redirectTo = "/signin" }: AuthGuardProps) {
-  const { status } = useAuthContext();
+  const { status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -41,7 +36,7 @@ export function AuthGuard({ children, redirectTo = "/signin" }: AuthGuardProps) 
 
     const target =
       pathname && pathname !== redirectTo
-        ? `${redirectTo}?next=${encodeURIComponent(pathname)}`
+        ? `${redirectTo}?callbackUrl=${encodeURIComponent(pathname)}`
         : redirectTo;
     router.replace(target);
   }, [status, redirectTo, pathname, router]);

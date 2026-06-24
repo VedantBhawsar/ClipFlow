@@ -2,12 +2,11 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { api } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-api";
 import { queryKeys } from "@/lib/query-keys";
 import type {
   PatchProfileRequest,
   UpdateProfileRequest,
-  UserBundleResponse,
   UserProfile,
 } from "@clipflow/types";
 
@@ -23,9 +22,10 @@ import type {
  * onboardingCompleted so the OnboardingGuard reroutes correctly.
  */
 export function useUpdateProfile() {
+  const api = useApi();
   const qc = useQueryClient();
-  const writeProfile = (profile: UserProfile) => {
-    qc.setQueryData<UserBundleResponse>(queryKeys.user.bundle(), (old) => {
+  const writeProfile = (profile: UserProfile): void => {
+    qc.setQueryData(queryKeys.user.bundle(), (old) => {
       if (!old) return old;
       return {
         ...old,

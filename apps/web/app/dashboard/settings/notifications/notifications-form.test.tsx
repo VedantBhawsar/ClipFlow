@@ -62,9 +62,6 @@ describe("NotificationsForm", () => {
       profile: null,
       youtubeConnection: null,
       onboardingCompleted: true,
-      signIn: vi.fn(),
-      signUp: vi.fn(),
-      signOut: vi.fn(),
       setOnboardingCompleted: vi.fn(),
       setPreferences: vi.fn(),
     } as unknown as ReturnType<typeof useAuth>);

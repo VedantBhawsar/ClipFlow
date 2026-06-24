@@ -6,11 +6,16 @@
  * as `meController` — so the dashboard's repeated hydration calls
  * don't all hit Postgres. PATCH and POST invalidate the relevant
  * cache keys so the next read sees the fresh state.
+ *
+ * Every response is routed through the centralized envelope helpers.
  */
 import type { Request, Response } from "express";
 import { cache } from "../../lib/cache.js";
+import { sendEmpty, sendOk } from "../../lib/response.js";
+import { AppError } from "../../errors/AppError.js";
 import * as preferencesService from "./preferences.service.js";
 import type { ChangePasswordInput, UpdatePreferencesInput } from "./preferences.schemas.js";
+import type { UserPreferences } from "@clipflow/types";
 import "../auth/auth.types.js";
 
 const PREFERENCES_CACHE_TTL_SECONDS = 30;
@@ -36,22 +41,20 @@ export const getPreferencesController = async (
   res: Response,
 ): Promise<void> => {
   if (!req.user) {
-    res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication required." });
-    return;
+    throw new AppError(401, "UNAUTHENTICATED", "Authentication required.");
   }
   const userId = req.user.id;
   const key = preferencesCacheKey(userId);
   const cached = await cache.get(key);
   if (cached) {
     res.setHeader("X-Cache", "HIT");
-    res.status(200).type("application/json").send(cached);
+    sendOk(res, JSON.parse(cached) as UserPreferences, "Preferences retrieved.");
     return;
   }
   const result = await preferencesService.getPreferences(userId);
-  const payload = JSON.stringify(result);
-  await cache.set(key, payload, PREFERENCES_CACHE_TTL_SECONDS);
+  await cache.set(key, JSON.stringify(result), PREFERENCES_CACHE_TTL_SECONDS);
   res.setHeader("X-Cache", "MISS");
-  res.status(200).type("application/json").send(payload);
+  sendOk(res, result, "Preferences retrieved.");
 };
 
 /**
@@ -62,27 +65,25 @@ export const updatePreferencesController = async (
   res: Response,
 ): Promise<void> => {
   if (!req.user) {
-    res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication required." });
-    return;
+    throw new AppError(401, "UNAUTHENTICATED", "Authentication required.");
   }
   const input = req.body as UpdatePreferencesInput;
   const result = await preferencesService.updatePreferences(req.user.id, input);
   await invalidatePreferencesCache(req.user.id);
-  res.status(200).json(result);
+  sendOk(res, result, "Preferences updated.");
 };
 
 /**
  * POST /api/user/change-password — verifies current, writes new.
- * 204 on success (no body — the client doesn't need a re-issued token
- * because the JWT is unchanged; client just keeps using it).
+ * Returns 200 with `data: null` so the frontend has a single envelope
+ * contract for every endpoint (no 204 special case).
  */
 export const changePasswordController = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
   if (!req.user) {
-    res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication required." });
-    return;
+    throw new AppError(401, "UNAUTHENTICATED", "Authentication required.");
   }
   const input = req.body as ChangePasswordInput;
   await preferencesService.changePassword(req.user.id, input);
@@ -91,5 +92,5 @@ export const changePasswordController = async (
   // so any future "fetch all settings in one call" endpoint stays
   // honest about post-change state.
   await invalidatePreferencesCache(req.user.id);
-  res.status(204).send();
+  sendEmpty(res, "Password updated.");
 };

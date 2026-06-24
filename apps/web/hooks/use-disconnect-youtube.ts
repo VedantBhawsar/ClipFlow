@@ -2,9 +2,9 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { api } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-api";
 import { queryKeys } from "@/lib/query-keys";
-import type { UserBundleResponse, YouTubeConnection } from "@clipflow/types";
+import type { YouTubeConnection } from "@clipflow/types";
 
 const DISCONNECTED_YT: YouTubeConnection = {
   status: "disconnected",
@@ -25,29 +25,57 @@ const DISCONNECTED_YT: YouTubeConnection = {
  * server-of-record wins on disagreement.
  */
 export function useDisconnectYouTube() {
+  const api = useApi();
   const qc = useQueryClient();
-  return useMutation<void, Error, void, { previous: UserBundleResponse | undefined }>({
+  return useMutation<
+    void,
+    Error,
+    void,
+    {
+      previousBundle: { youtubeConnection: YouTubeConnection } | undefined;
+      previousConnection: YouTubeConnection | undefined;
+    }
+  >({
     mutationFn: () => api.disconnectYouTube(),
     onMutate: async () => {
       await qc.cancelQueries({ queryKey: queryKeys.user.bundle() });
-      const previous = qc.getQueryData<UserBundleResponse>(
+      await qc.cancelQueries({ queryKey: queryKeys.user.youtubeConnection() });
+
+      const bundle = qc.getQueryData<{ youtubeConnection: YouTubeConnection }>(
         queryKeys.user.bundle(),
       );
-      if (previous) {
-        qc.setQueryData<UserBundleResponse>(queryKeys.user.bundle(), {
-          ...previous,
+      const connection = qc.getQueryData<YouTubeConnection>(
+        queryKeys.user.youtubeConnection(),
+      );
+
+      const previousBundle = bundle ? { youtubeConnection: bundle.youtubeConnection } : undefined;
+      const previousConnection = connection;
+
+      if (bundle) {
+        qc.setQueryData(queryKeys.user.bundle(), {
+          ...bundle,
           youtubeConnection: DISCONNECTED_YT,
         });
       }
-      return { previous };
+      qc.setQueryData(queryKeys.user.youtubeConnection(), DISCONNECTED_YT);
+
+      return { previousBundle, previousConnection };
     },
     onError: (_err, _vars, ctx) => {
-      if (ctx?.previous) {
-        qc.setQueryData(queryKeys.user.bundle(), ctx.previous);
+      if (ctx?.previousBundle) {
+        qc.setQueryData(queryKeys.user.bundle(), (old) =>
+          old
+            ? { ...old, youtubeConnection: ctx.previousBundle!.youtubeConnection }
+            : old,
+        );
+      }
+      if (ctx?.previousConnection !== undefined) {
+        qc.setQueryData(queryKeys.user.youtubeConnection(), ctx.previousConnection);
       }
     },
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: queryKeys.user.bundle() });
+      void qc.invalidateQueries({ queryKey: queryKeys.user.youtubeConnection() });
     },
   });
 }

@@ -1,46 +1,44 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { SignInForm } from "./signin-form.js";
 
-vi.mock("@/hooks/use-auth", () => ({
-  useAuth: vi.fn(),
+vi.mock("@/hooks/use-sign-in", () => ({
+  useSignIn: vi.fn(),
 }));
+
+const mockPush = vi.fn();
+const mockRefresh = vi.fn();
+const mockGetSearchParam = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({
-    push: vi.fn(),
-    refresh: vi.fn(),
+    push: mockPush,
+    refresh: mockRefresh,
   })),
   useSearchParams: vi.fn(() => ({
-    get: vi.fn(),
+    get: mockGetSearchParam,
   })),
 }));
 
-import { useAuth } from "@/hooks/use-auth";
+import { SignInForm } from "./signin-form.js";
+import { useSignIn } from "@/hooks/use-sign-in";
 
-const mockUseAuth = vi.mocked(useAuth);
+const mockUseSignIn = vi.mocked(useSignIn);
 
 describe("SignInForm", () => {
-  const mockSignIn = vi.fn().mockResolvedValue(undefined);
+  const mockMutateAsync = vi.fn().mockResolvedValue(undefined);
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseAuth.mockReturnValue({
-      signIn: mockSignIn,
-      signUp: vi.fn(),
-      signOut: vi.fn(),
-      refresh: vi.fn(),
-      status: "unauthenticated",
-      user: null,
-      profile: null,
-      preferences: null,
-      youtubeConnection: null,
-      onboardingCompleted: false,
-      setOnboardingCompleted: vi.fn(),
-      setPreferences: vi.fn(),
-      patchPreferences: vi.fn(),
-    } as unknown as ReturnType<typeof useAuth>);
+    mockUseSignIn.mockReturnValue({
+      mutateAsync: mockMutateAsync,
+      mutate: vi.fn(),
+      isPending: false,
+      isError: false,
+      error: null,
+      reset: vi.fn(),
+    } as unknown as ReturnType<typeof useSignIn>);
+    mockGetSearchParam.mockReturnValue(null);
   });
 
   it("renders sign in form with email and password fields", () => {
@@ -79,7 +77,7 @@ describe("SignInForm", () => {
     expect(await screen.findByText("Enter your password.")).toBeInTheDocument();
   });
 
-  it("calls signIn with correct values on submit", async () => {
+  it("calls signIn mutation with correct values on submit", async () => {
     const user = userEvent.setup();
     render(<SignInForm />);
 
@@ -87,27 +85,74 @@ describe("SignInForm", () => {
     await user.type(screen.getByLabelText("Password"), "Password123");
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
-    expect(mockSignIn).toHaveBeenCalledWith({
+    expect(mockMutateAsync).toHaveBeenCalledWith({
       email: "test@example.com",
       password: "Password123",
     });
   });
 
+  it("navigates to /dashboard by default after successful sign-in", async () => {
+    const user = userEvent.setup();
+    render(<SignInForm />);
+
+    await user.type(screen.getByLabelText("Email"), "test@example.com");
+    await user.type(screen.getByLabelText("Password"), "Password123");
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await vi.waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/dashboard");
+    });
+  });
+
+  it("honors callbackUrl from search params", async () => {
+    const user = userEvent.setup();
+    mockGetSearchParam.mockImplementation((key: string) =>
+      key === "callbackUrl" ? "/onboarding/profile" : null,
+    );
+    render(<SignInForm />);
+
+    await user.type(screen.getByLabelText("Email"), "test@example.com");
+    await user.type(screen.getByLabelText("Password"), "Password123");
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await vi.waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/onboarding/profile");
+    });
+  });
+
+  it("rejects off-site callbackUrl (starts with //)", async () => {
+    const user = userEvent.setup();
+    mockGetSearchParam.mockImplementation((key: string) =>
+      key === "callbackUrl" ? "//evil.com/foo" : null,
+    );
+    render(<SignInForm />);
+
+    await user.type(screen.getByLabelText("Email"), "test@example.com");
+    await user.type(screen.getByLabelText("Password"), "Password123");
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await vi.waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/dashboard");
+    });
+  });
+
   it("displays server error message when signIn throws", async () => {
     const user = userEvent.setup();
-    mockSignIn.mockRejectedValue(new Error("Invalid credentials"));
+    mockMutateAsync.mockRejectedValue(new Error("Invalid email or password."));
     render(<SignInForm />);
 
     await user.type(screen.getByLabelText("Email"), "test@example.com");
     await user.type(screen.getByLabelText("Password"), "WrongPassword");
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Invalid credentials");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Invalid email or password.",
+    );
   });
 
   it("shows generic error when signIn throws non-Error", async () => {
     const user = userEvent.setup();
-    mockSignIn.mockRejectedValue("string error");
+    mockMutateAsync.mockRejectedValue("string error");
     render(<SignInForm />);
 
     await user.type(screen.getByLabelText("Email"), "test@example.com");
@@ -121,7 +166,7 @@ describe("SignInForm", () => {
 
   it("disables button while submitting", async () => {
     const user = userEvent.setup();
-    mockSignIn.mockImplementation(
+    mockMutateAsync.mockImplementation(
       () => new Promise((resolve) => setTimeout(resolve, 100)),
     );
     render(<SignInForm />);

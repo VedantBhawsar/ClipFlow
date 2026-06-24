@@ -1,231 +1,333 @@
+/**
+ * Typed API surface for talking to the Express backend.
+ *
+ * Auth model: NextAuth stores the short-lived access JWT (15 min) and
+ * the long-lived refresh token (7 d) inside its own httpOnly session
+ * cookie. Components get the access token via the `useApi()` hook,
+ * which feeds it into the methods on `api`. The api-client itself is
+ * a factory (`createApiClient`) — there is no shared module-level
+ * instance with token state, because the token only exists inside
+ * NextAuth's session React context.
+ *
+ * The refresh flow lives entirely inside `auth.ts`'s `jwt` callback;
+ * by the time a request leaves the browser the access token is
+ * always fresh. Components never see a 401 from token expiry — they
+ * only see 401s that mean "your refresh token is dead, you need to
+ * sign in again", and those surface as `SessionExpiredError`.
+ *
+ * Wire contract: every response is the centralized envelope
+ * `{ success, message, data }` (success) or `{ success: false,
+ * message, data: null, error?, details? }` (failure). This module
+ * unwraps `data` on success and reads `message`/`error` on failure so
+ * the rest of the web app can keep working with flat DTOs.
+ */
+import { env } from "@/lib/env";
 import type {
+  ApiFailure,
+  ApiResponse,
   AuthResponse,
   ChangePasswordRequest,
+  CreateVideoRequest,
+  CreateVideoResponse,
   LoginRequest,
+  LogoutRequest,
   MeResponse,
   OnboardingStatusResponse,
   PatchProfileRequest,
+  RefreshRequest,
+  RefreshResponse,
   RegisterRequest,
   UpdatePreferencesRequest,
   UpdateProfileRequest,
+  UploadUrlResponse,
   UserBundleResponse,
   UserPreferences,
   UserProfile,
+  Video,
+  VideoStatus,
   YouTubeConnection,
-  ApiErrorBody,
 } from "@clipflow/types";
-import { env } from "@/lib/env";
 
 /**
- * Name of the cookie we use to keep the JWT available to both the client
- * (for fetch Authorization header) and middleware (for redirect gating).
- *
- * NOTE: this is set as a regular (non-httpOnly) cookie via document.cookie.
- * That is a deliberate trade-off for v1: a true httpOnly cookie would require
- * a Next.js server route handler that proxies auth, which is more wiring than
- * this slice needs. The risk surface (an XSS exfiltrating the token) is
- * mitigated by:
- *   - same-site=strict so it isn't sent on cross-site navigations
- *   - reasonable token TTL on the backend (TODO: confirm with backend)
- *   - clearing the cookie on logout / 401
- * If/when we need stricter isolation we should swap to a server route that
- * reads the httpOnly cookie and sets it during register/login.
+ * Distinct error type thrown by the api-client on 401. The QueryCache
+ * / MutationCache global handlers `instanceof`-check this so a future
+ * refactor of the error message can't silently break session-end
+ * handling (the previous implementation matched on the message
+ * string — fragile).
  */
-export const AUTH_TOKEN_COOKIE = "clipflow_token";
-
-function readTokenFromCookie(): string | null {
-  if (typeof document === "undefined") return null;
-  const prefix = `${AUTH_TOKEN_COOKIE}=`;
-  for (const part of document.cookie.split(";")) {
-    const trimmed = part.trim();
-    if (trimmed.startsWith(prefix)) {
-      return decodeURIComponent(trimmed.slice(prefix.length));
-    }
+export class SessionExpiredError extends Error {
+  constructor(message = "Your session expired. Sign in again to continue.") {
+    super(message);
+    this.name = "SessionExpiredError";
   }
-  return null;
 }
 
 /**
- * Cheap cookie-presence check for "is there a token at all?". Used as
- * the `enabled` flag for queries that need auth — without this, calling
- * the bundle from /signin would 401, fire the global error handler,
- * and bounce back to /signin in an infinite loop.
+ * Server-side fetch (RSC).
+ *
+ * `request()` below reads the JWT from `document.cookie` (browser-only).
+ * Server components pass the token explicitly via `cookies()` from
+ * `next/headers`. This helper mirrors `request()`'s shape so a server
+ * component and a client component can hit the same endpoint with
+ * matching error semantics, but skips the 401-redirect path (the
+ * dashboard's own auth middleware handles missing-token via
+ * `redirect("/signin")`).
  */
-export function hasAuthTokenCookie(): boolean {
-  return readTokenFromCookie() !== null;
-}
-
-export function setAuthTokenCookie(token: string): void {
-  if (typeof document === "undefined") return;
-  // 30 days; same-site strict so it isn't leaked on cross-site requests.
-  // Secure is only set in production — over HTTP localhost the browser
-  // would refuse to set the cookie and the dev sign-in flow would silently
-  // fail.
-  const maxAge = 60 * 60 * 24 * 30;
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  document.cookie = `${AUTH_TOKEN_COOKIE}=${encodeURIComponent(
-    token,
-  )}; Path=/; Max-Age=${maxAge}; SameSite=Strict${secure}`;
-}
-
-export function clearAuthTokenCookie(): void {
-  if (typeof document === "undefined") return;
-  document.cookie = `${AUTH_TOKEN_COOKIE}=; Path=/; Max-Age=0; SameSite=Strict`;
+export class ServerApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ServerApiError";
+  }
 }
 
 /**
- * Low-level fetch wrapper. Reads the JWT from the cookie, attaches the
- * Authorization header, throws an Error with a user-friendly message on
- * failure, and on 401 clears the cookie + redirects to /signin.
+ * Read the failure envelope from a non-2xx response.
+ *
+ * Falls back to a generic message + `UNKNOWN` code when the body
+ * isn't JSON, doesn't match the envelope, or is missing fields —
+ * so a buggy proxy / HTML error page never throws inside this
+ * function.
  */
-async function request<T>(
-  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
+const readFailureBody = async (res: Response): Promise<ApiFailure | null> => {
+  try {
+    const body = (await res.json()) as Partial<ApiResponse<unknown>>;
+    if (body && body.success === false && typeof body.message === "string") {
+      return {
+        success: false,
+        message: body.message,
+        data: null,
+        ...(body.error ? { error: body.error } : {}),
+        ...(body.details ? { details: body.details } : {}),
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+export async function serverFetch<T>(
+  token: string,
   path: string,
-  body?: unknown,
+  init?: { method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; body?: unknown },
 ): Promise<T> {
   const url = `${env.apiBaseUrl}${path}`;
-
   const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
     Accept: "application/json",
   };
-  const token = readTokenFromCookie();
-  if (token) headers.Authorization = `Bearer ${token}`;
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (init?.body !== undefined) headers["Content-Type"] = "application/json";
 
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
-      cache: "no-store",
-    });
-  } catch (err) {
-    // Network failure (server down, CORS, etc).
-    throw new Error(
-      "Couldn't reach ClipFlow. Check your connection and try again.",
+  const res = await fetch(url, {
+    method: init?.method ?? "GET",
+    headers,
+    body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const failure = await readFailureBody(res);
+    const code = failure?.error ?? "UNKNOWN";
+    const message = failure?.message ?? `Request failed: ${res.status}`;
+    throw new ServerApiError(res.status, code, message);
+  }
+
+  if (res.status === 204) return undefined as T;
+
+  const body = (await res.json()) as ApiResponse<T>;
+  if (!body.success) {
+    throw new ServerApiError(
+      res.status,
+      body.error ?? "UNKNOWN",
+      body.message || "Unexpected response from server.",
     );
   }
-
-  if (response.status === 401) {
-    clearAuthTokenCookie();
-    if (typeof window !== "undefined" && window.location.pathname !== "/signin") {
-      window.location.href = "/signin";
-    }
-    throw new Error("Your session expired. Sign in again to continue.");
-  }
-
-  if (!response.ok) {
-    let message = "Something went wrong. Try again.";
-    try {
-      const data = (await response.json()) as Partial<ApiErrorBody>;
-      if (data && typeof data.message === "string" && data.message.length > 0) {
-        message = data.message;
-      }
-    } catch {
-      // Body wasn't JSON; keep the generic message.
-    }
-    throw new Error(message);
-  }
-
-  // 204 / empty body — return undefined cast to T; callers that hit this
-  // path don't read the result.
-  if (response.status === 204) return undefined as T;
-  return (await response.json()) as T;
+  return body.data;
 }
 
-// ---------- Public typed API surface ----------
+// ---------- Client-side fetch (factory) ----------
 
-export const api = {
-  register(body: RegisterRequest): Promise<AuthResponse> {
-    return request("POST", "/api/auth/register", body);
-  },
+export interface ApiClient {
+  register(body: RegisterRequest): Promise<AuthResponse>;
+  login(body: LoginRequest): Promise<AuthResponse>;
+  logout(body: LogoutRequest): Promise<void>;
+  refresh(body: RefreshRequest): Promise<RefreshResponse>;
+  me(): Promise<MeResponse>;
 
-  login(body: LoginRequest): Promise<AuthResponse> {
-    return request("POST", "/api/auth/login", body);
-  },
+  getOnboardingStatus(): Promise<OnboardingStatusResponse>;
+  submitOnboardingProfile(body: UpdateProfileRequest): Promise<UserProfile>;
+  patchOnboardingProfile(body: PatchProfileRequest): Promise<UserProfile>;
 
-  logout(): Promise<void> {
-    return request<void>("POST", "/api/auth/logout");
-  },
+  getUserBundle(): Promise<UserBundleResponse>;
+  getYouTubeConnection(): Promise<YouTubeConnection>;
+  getYouTubeOAuthUrl(): Promise<{ url: string }>;
+  connectYouTube(code: string): Promise<YouTubeConnection>;
+  disconnectYouTube(): Promise<void>;
 
-  me(): Promise<MeResponse> {
-    return request("GET", "/api/auth/me");
-  },
+  getPreferences(): Promise<UserPreferences>;
+  updatePreferences(body: UpdatePreferencesRequest): Promise<UserPreferences>;
+  changePassword(body: ChangePasswordRequest): Promise<void>;
 
-  getOnboardingStatus(): Promise<OnboardingStatusResponse> {
-    return request("GET", "/api/onboarding/status");
-  },
+  createVideo(body: CreateVideoRequest): Promise<CreateVideoResponse>;
+  getUploadUrl(pendingUploadId: string): Promise<UploadUrlResponse>;
+  finalizeUpload(pendingUploadId: string): Promise<Video>;
+  cancelPendingUpload(pendingUploadId: string): Promise<void>;
+  listVideos(params?: { status?: VideoStatus }): Promise<{ videos: Video[] }>;
+  listPublishedVideos(): Promise<{ videos: Video[] }>;
+  getVideo(id: string): Promise<Video>;
+  deleteVideo(id: string): Promise<void>;
+  unpublishVideo(id: string): Promise<Video>;
+}
 
-  submitOnboardingProfile(body: UpdateProfileRequest): Promise<UserProfile> {
-    return request("POST", "/api/onboarding/profile", body);
-  },
+/**
+ * Build a typed `api` surface bound to a specific access token.
+ *
+ * The factory pattern lets us reconstruct the client whenever the
+ * token changes (NextAuth refresh) without exposing a mutable global.
+ * `useApi()` wraps this in a `useMemo` keyed on the token so React
+ * re-renders don't churn the request handlers.
+ */
+export function createApiClient(accessToken: string | null): ApiClient {
+  async function request<T>(
+    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
+    path: string,
+    body?: unknown,
+  ): Promise<T> {
+    const url = `${env.apiBaseUrl}${path}`;
+    const headers: Record<string, string> = { Accept: "application/json" };
+    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+    if (body !== undefined) headers["Content-Type"] = "application/json";
 
-  /**
-   * Partial update of the onboarding profile. Use for settings-page
-   * edits where the user is just changing one or two fields; the
-   * onboarding-completion timestamp is not touched.
-   */
-  patchOnboardingProfile(body: PatchProfileRequest): Promise<UserProfile> {
-    return request("PATCH", "/api/onboarding/profile", body);
-  },
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method,
+        headers,
+        body: body === undefined ? undefined : JSON.stringify(body),
+        cache: "no-store",
+      });
+    } catch {
+      throw new Error(
+        "Couldn't reach ClipFlow. Check your connection and try again.",
+      );
+    }
 
-  // ---------- User bundle (profile + preferences + YouTube) ----------
+    if (response.status === 401) {
+      // The session is dead — NextAuth's `jwt` callback already tried
+      // to refresh and failed, so sign-out is the only path forward.
+      // We throw a typed error; the global QueryCache handler is
+      // responsible for the actual sign-out (it has access to the
+      // router and the auth context).
+      let message = "Your session expired. Sign in again to continue.";
+      const failure = await readFailureBody(response);
+      if (failure?.message) message = failure.message;
+      throw new SessionExpiredError(message);
+    }
 
-  /**
-   * Single round-trip read of user + profile + preferences + YouTube
-   * connection. Returns everything the dashboard chrome needs in one
-   * call, used by the auth context on hydration.
-   */
-  getUserBundle(): Promise<UserBundleResponse> {
-    return request("GET", "/api/user/profile");
-  },
+    if (!response.ok) {
+      let message = "Something went wrong. Try again.";
+      const failure = await readFailureBody(response);
+      if (failure?.message) message = failure.message;
+      throw new Error(message);
+    }
 
-  /**
-   * Narrow YouTube-connection read. Used by /settings/connected so the
-   * page can refresh just the connection status without paying for
-   * the full bundle.
-   */
-  getYouTubeConnection(): Promise<YouTubeConnection> {
-    return request("GET", "/api/user/youtube-connection");
-  },
+    // All success paths return the standard envelope; unwrap `data`.
+    const envelope = (await response.json()) as ApiResponse<T>;
+    if (!envelope.success) {
+      // Server sent a 2xx with a failure body — defensive guard so the
+      // frontend never hands a `{ success: false }` payload up to a hook.
+      throw new Error(envelope.message || "Unexpected response from server.");
+    }
+    return envelope.data;
+  }
 
-  /**
-   * Get the Google OAuth authorization URL for connecting YouTube.
-   */
-  getYouTubeOAuthUrl(): Promise<{ url: string }> {
-    return request("GET", "/api/youtube/oauth/url");
-  },
+  return {
+    register(body) {
+      return request("POST", "/api/auth/register", body);
+    },
+    login(body) {
+      return request("POST", "/api/auth/login", body);
+    },
+    logout(body) {
+      return request<void>("POST", "/api/auth/logout", body);
+    },
+    refresh(body) {
+      return request("POST", "/api/auth/refresh", body);
+    },
+    me() {
+      return request("GET", "/api/auth/me");
+    },
 
-  /**
-   * Connect a YouTube channel by exchanging an OAuth authorization code.
-   */
-  connectYouTube(code: string): Promise<YouTubeConnection> {
-    return request("POST", "/api/youtube/connect", { code });
-  },
+    getOnboardingStatus() {
+      return request("GET", "/api/onboarding/status");
+    },
+    submitOnboardingProfile(body) {
+      return request("POST", "/api/onboarding/profile", body);
+    },
+    patchOnboardingProfile(body) {
+      return request("PATCH", "/api/onboarding/profile", body);
+    },
 
-  /**
-   * Disconnect the authenticated user's YouTube channel.
-   */
-  disconnectYouTube(): Promise<void> {
-    return request<void>("DELETE", "/api/youtube/disconnect");
-  },
+    getUserBundle() {
+      return request("GET", "/api/user/profile");
+    },
+    getYouTubeConnection() {
+      return request("GET", "/api/user/youtube-connection");
+    },
+    getYouTubeOAuthUrl() {
+      return request("GET", "/api/youtube/oauth/url");
+    },
+    connectYouTube(code) {
+      return request("POST", "/api/youtube/connect", { code });
+    },
+    disconnectYouTube() {
+      return request<void>("DELETE", "/api/youtube/disconnect");
+    },
 
-  // ---------- Preferences ----------
+    getPreferences() {
+      return request("GET", "/api/user/preferences");
+    },
+    updatePreferences(body) {
+      return request("PATCH", "/api/user/preferences", body);
+    },
+    changePassword(body) {
+      return request<void>("POST", "/api/user/change-password", body);
+    },
 
-  getPreferences(): Promise<UserPreferences> {
-    return request("GET", "/api/user/preferences");
-  },
-
-  updatePreferences(body: UpdatePreferencesRequest): Promise<UserPreferences> {
-    return request("PATCH", "/api/user/preferences", body);
-  },
-
-  /**
-   * Change the authenticated user's password. Returns void on
-   * success; the server responds with 204.
-   */
-  changePassword(body: ChangePasswordRequest): Promise<void> {
-    return request<void>("POST", "/api/user/change-password", body);
-  },
-} as const;
+    createVideo(body) {
+      return request("POST", "/api/videos", body);
+    },
+    getUploadUrl(pendingUploadId) {
+      return request(
+        "POST",
+        `/api/videos/pending/${pendingUploadId}/upload-url`,
+      );
+    },
+    finalizeUpload(pendingUploadId) {
+      return request("POST", `/api/videos/pending/${pendingUploadId}/finalize`);
+    },
+    cancelPendingUpload(pendingUploadId) {
+      return request<void>("DELETE", `/api/videos/pending/${pendingUploadId}`);
+    },
+    listVideos(params) {
+      const qs = params?.status ? `?status=${encodeURIComponent(params.status)}` : "";
+      return request("GET", `/api/videos${qs}`);
+    },
+    listPublishedVideos() {
+      return request("GET", "/api/videos/published");
+    },
+    getVideo(id) {
+      return request("GET", `/api/videos/${id}`);
+    },
+    deleteVideo(id) {
+      return request<void>("DELETE", `/api/videos/${id}`);
+    },
+    unpublishVideo(id) {
+      return request("POST", `/api/videos/${id}/unpublish`);
+    },
+  };
+}

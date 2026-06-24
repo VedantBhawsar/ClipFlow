@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { api } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-api";
 import { queryKeys } from "@/lib/query-keys";
 import type { UserBundleResponse } from "@clipflow/types";
 
@@ -16,14 +16,17 @@ import type { UserBundleResponse } from "@clipflow/types";
  * `invalidateQueries({ queryKey: queryKeys.user.bundle() })` and
  * active consumers re-fetch in the background).
  *
- * No `enabled` gate: the api-client's 401 handler already short-circuits
- * the redirect on /signin (where the user has no token), and gating the
- * query on cookie presence would race with the post-signin invalidation
- * — the query would still be disabled at the moment of invalidate.
+ * `enabled` is gated on the access token existing in the session —
+ * without this, calling the bundle from /signin would 401, fire the
+ * global SessionExpiredError handler, and bounce back to /signin in
+ * an infinite loop. With the gate, the query is just disabled until
+ * NextAuth has a session, and the AuthGuard handles the redirect.
  */
 export function useUserBundle() {
+  const api = useApi();
   return useQuery<UserBundleResponse>({
     queryKey: queryKeys.user.bundle(),
     queryFn: () => api.getUserBundle(),
+    enabled: !!api,
   });
 }

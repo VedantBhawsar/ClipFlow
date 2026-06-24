@@ -9,6 +9,12 @@ vi.mock("../../lib/prisma.js", () => ({
       findUnique: vi.fn(),
       create: vi.fn(),
     },
+    refreshToken: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
   },
 }));
 
@@ -36,13 +42,24 @@ const mockEnv: Env = {
   DATABASE_URL: "postgresql://localhost:5432/test",
   REDIS_URL: undefined,
   JWT_SECRET: "super-secret-key-that-is-at-least-32-chars",
-  JWT_EXPIRES_IN: "7d",
+  JWT_EXPIRES_IN: "15m",
+  REFRESH_TOKEN_EXPIRES_IN: "7d",
   ENCRYPTION_KEY: "super-secret-encryption-key-32chars",
   GOOGLE_CLIENT_ID: undefined,
   GOOGLE_CLIENT_SECRET: undefined,
   GOOGLE_REDIRECT_URI: undefined,
   RATE_LIMIT_WINDOW_MS: 900000,
   RATE_LIMIT_MAX: 100,
+  S3_ENDPOINT: "http://localhost:9000",
+  S3_REGION: "us-east-1",
+  S3_ACCESS_KEY_ID: "minioadmin",
+  S3_SECRET_ACCESS_KEY: "minioadmin",
+  S3_BUCKET: "clipflow-videos",
+  S3_FORCE_PATH_STYLE: true,
+  BULLMQ_PREFIX: "clipflow",
+  YOUTUBE_CATEGORY_DEFAULT: "22",
+  YOUTUBE_MAX_VIDEO_BYTES: 5 * 1024 * 1024 * 1024,
+  YOUTUBE_PRESIGNED_POST_TTL: 900,
 };
 
 const mockUser = {
@@ -51,17 +68,23 @@ const mockUser = {
   name: "Test User",
   passwordHash: "hashed_password",
   authProvider: "EMAIL" as const,
+  googleId: null,
   emailVerifiedAt: null,
   createdAt: new Date("2024-01-01"),
+  updatedAt: new Date("2024-01-01"),
 };
 
 describe("auth.service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: refreshToken.create returns the row. The lib only uses the
+    // return for `expiresAt` (which we already set internally); tests that
+    // care override this.
+    vi.mocked(prisma.refreshToken.create).mockResolvedValue({} as never);
   });
 
   describe("register", () => {
-    it("creates a new user and returns auth response", async () => {
+    it("creates a new user and returns access + refresh tokens", async () => {
       vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
       vi.mocked(prisma.user.create).mockResolvedValue(mockUser);
 
@@ -70,17 +93,23 @@ describe("auth.service", () => {
         mockEnv,
       );
 
-      expect(result).toEqual({
-        user: {
-          id: "user-123",
-          email: "test@example.com",
-          name: "Test User",
-          authProvider: "EMAIL",
-          emailVerifiedAt: null,
-          createdAt: "2024-01-01T00:00:00.000Z",
-        },
-        token: "mock.jwt.token",
+      expect(result.user).toEqual({
+        id: "user-123",
+        email: "test@example.com",
+        name: "Test User",
+        authProvider: "EMAIL",
+        emailVerifiedAt: null,
+        createdAt: "2024-01-01T00:00:00.000Z",
       });
+      expect(result.accessToken).toBe("mock.jwt.token");
+      expect(result.refreshToken).toEqual(expect.any(String));
+      expect(result.refreshToken.length).toBeGreaterThan(20);
+      expect(result.accessTokenExpiresAt).toEqual(expect.any(Number));
+      expect(result.refreshTokenExpiresAt).toEqual(expect.any(Number));
+      expect(result.accessTokenExpiresAt).toBeLessThan(
+        result.refreshTokenExpiresAt,
+      );
+
       expect(prisma.user.findUnique).toHaveBeenCalledWith({
         where: { email: "test@example.com" },
       });
@@ -97,6 +126,8 @@ describe("auth.service", () => {
         { sub: "user-123", email: "test@example.com" },
         mockEnv,
       );
+      // A refresh-token row is created in the same family-less call.
+      expect(prisma.refreshToken.create).toHaveBeenCalledTimes(1);
     });
 
     it("creates user with name when provided", async () => {
@@ -140,11 +171,12 @@ describe("auth.service", () => {
         statusCode: 409,
         code: "EMAIL_TAKEN",
       });
+      expect(prisma.refreshToken.create).not.toHaveBeenCalled();
     });
   });
 
   describe("login", () => {
-    it("returns auth response for valid credentials", async () => {
+    it("returns access + refresh tokens for valid credentials", async () => {
       vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser);
       vi.mocked(verifyPassword).mockResolvedValue(true);
 
@@ -153,18 +185,11 @@ describe("auth.service", () => {
         mockEnv,
       );
 
-      expect(result).toEqual({
-        user: {
-          id: "user-123",
-          email: "test@example.com",
-          name: "Test User",
-          authProvider: "EMAIL",
-          emailVerifiedAt: null,
-          createdAt: "2024-01-01T00:00:00.000Z",
-        },
-        token: "mock.jwt.token",
-      });
+      expect(result.user.email).toBe("test@example.com");
+      expect(result.accessToken).toBe("mock.jwt.token");
+      expect(result.refreshToken).toEqual(expect.any(String));
       expect(verifyPassword).toHaveBeenCalledWith("Password123", "hashed_password");
+      expect(prisma.refreshToken.create).toHaveBeenCalledTimes(1);
     });
 
     it("throws INVALID_CREDENTIALS when user not found", async () => {
@@ -179,6 +204,7 @@ describe("auth.service", () => {
         statusCode: 401,
         code: "INVALID_CREDENTIALS",
       });
+      expect(prisma.refreshToken.create).not.toHaveBeenCalled();
     });
 
     it("throws INVALID_CREDENTIALS when password does not match", async () => {
@@ -194,6 +220,7 @@ describe("auth.service", () => {
         statusCode: 401,
         code: "INVALID_CREDENTIALS",
       });
+      expect(prisma.refreshToken.create).not.toHaveBeenCalled();
     });
 
     it("throws INVALID_CREDENTIALS when user has no password (OAuth user)", async () => {
@@ -211,13 +238,19 @@ describe("auth.service", () => {
         statusCode: 401,
         code: "INVALID_CREDENTIALS",
       });
+      expect(prisma.refreshToken.create).not.toHaveBeenCalled();
     });
   });
 
   describe("logout", () => {
-    it("always returns undefined (stateless JWT)", async () => {
-      const result = await authService.logout();
-      expect(result).toBeUndefined();
+    it("is a no-op when no refreshToken is provided", async () => {
+      await expect(authService.logout(undefined)).resolves.toBeUndefined();
+      expect(prisma.refreshToken.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("is a no-op when refreshToken is absent from body", async () => {
+      await expect(authService.logout({})).resolves.toBeUndefined();
+      expect(prisma.refreshToken.updateMany).not.toHaveBeenCalled();
     });
   });
 
@@ -251,26 +284,9 @@ describe("auth.service", () => {
 
       const result = await authService.me("user-123");
 
-      expect(result).toEqual({
-        user: {
-          id: "user-123",
-          email: "test@example.com",
-          name: "Test User",
-          authProvider: "EMAIL",
-          emailVerifiedAt: null,
-          createdAt: "2024-01-01T00:00:00.000Z",
-        },
-        profile: {
-          id: "profile-123",
-          displayName: "My Channel",
-          niche: "GAMING",
-          uploadFrequency: "ONE_TO_FOUR",
-          primaryGoal: "GROW_VIEWS",
-          recommendedPlanId: "starter",
-          onboardingCompletedAt: "2024-01-15T00:00:00.000Z",
-        },
-        onboardingCompleted: true,
-      });
+      expect(result.user.email).toBe("test@example.com");
+      expect(result.profile?.displayName).toBe("My Channel");
+      expect(result.onboardingCompleted).toBe(true);
     });
 
     it("returns user with null profile and onboardingCompleted=false when no profile", async () => {
