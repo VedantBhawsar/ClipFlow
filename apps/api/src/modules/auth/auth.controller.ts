@@ -2,20 +2,30 @@
  * Auth controller.
  *
  * Adapts HTTP requests to the auth service. Keeps the request/response
- * shaping here so the service stays free of Express types.
+ * shaping here so the service stays free of Express types. Every
+ * response is emitted through the centralized `sendOk` / `sendCreated`
+ * / `sendEmpty` helpers — there is no inline `res.status().json()`
+ * in this file, by design.
  */
 import type { Request, Response } from "express";
 import type { Env } from "@clipflow/config";
 import { cache } from "../../lib/cache.js";
+import { sendCreated, sendEmpty, sendOk } from "../../lib/response.js";
+import { AppError } from "../../errors/AppError.js";
 import * as authService from "./auth.service.js";
-import type { GoogleAuthInput, LoginInput, RegisterInput } from "./auth.schemas.js";
+import type {
+  LogoutInput,
+  RefreshInput,
+  GoogleAuthInput,
+  LoginInput,
+  RegisterInput,
+} from "./auth.schemas.js";
+import type { MeResponse } from "@clipflow/types";
 import "./auth.types.js";
 
 /**
  * Invalidate the 30s `me` cache entry for a user. Called after login/register
  * so the next `GET /api/auth/me` reflects the latest user state.
- *
- * @param userId User id whose cache entry should be cleared.
  */
 const invalidateMeCache = async (userId: string): Promise<void> => {
   await cache.del(`me:${userId}`);
@@ -27,7 +37,7 @@ export const registerController =
     const input = req.body as RegisterInput;
     const result = await authService.register(input, env);
     await invalidateMeCache(result.user.id);
-    res.status(201).json(result);
+    sendCreated(res, result, "Account created.");
   };
 
 export const loginController =
@@ -36,12 +46,29 @@ export const loginController =
     const input = req.body as LoginInput;
     const result = await authService.login(input, env);
     await invalidateMeCache(result.user.id);
-    res.status(200).json(result);
+    sendOk(res, result, "Signed in.");
   };
 
-export const logoutController = async (_req: Request, res: Response): Promise<void> => {
-  await authService.logout();
-  res.status(204).send();
+/**
+ * POST /api/auth/refresh
+ *
+ * Body: `{ refreshToken: string }`. The refresh token IS the credential —
+ * no `Authorization` header. On success, returns a fresh
+ * `{ accessToken, refreshToken, ... }` pair. On any failure (unknown,
+ * expired, or reuse-detected), returns 401.
+ */
+export const refreshController =
+  (env: Env) =>
+  async (req: Request, res: Response): Promise<void> => {
+    const input = req.body as RefreshInput;
+    const result = await authService.refresh(input.refreshToken, env);
+    sendOk(res, result, "Token refreshed.");
+  };
+
+export const logoutController = async (req: Request, res: Response): Promise<void> => {
+  const input = (req.body ?? {}) as LogoutInput;
+  await authService.logout(input);
+  sendEmpty(res, "Signed out.");
 };
 
 /**
@@ -51,36 +78,31 @@ export const logoutController = async (_req: Request, res: Response): Promise<vo
  */
 export const meController = async (req: Request, res: Response): Promise<void> => {
   if (!req.user) {
-    // `requireAuth` should have populated this. Defensive 401.
-    res.status(401).json({
-      error: "UNAUTHENTICATED",
-      message: "Authentication required.",
-    });
-    return;
+    throw new AppError(401, "UNAUTHENTICATED", "Authentication required.");
   }
   const userId = req.user.id;
   const cacheKey = `me:${userId}`;
   const cached = await cache.get(cacheKey);
   if (cached) {
     res.setHeader("X-Cache", "HIT");
-    res.status(200).type("application/json").send(cached);
+    sendOk(res, JSON.parse(cached) as MeResponse, "User bundle retrieved.");
     return;
   }
   const result = await authService.me(userId);
-  const payload = JSON.stringify(result);
-  await cache.set(cacheKey, payload, 30);
+  await cache.set(cacheKey, JSON.stringify(result), 30);
   res.setHeader("X-Cache", "MISS");
-  res.status(200).type("application/json").send(payload);
+  sendOk(res, result, "User bundle retrieved.");
 };
 
 export const googleController = async (req: Request, res: Response): Promise<void> => {
   const input = req.body as GoogleAuthInput;
   await authService.googleSignIn(input.idToken);
-  // The service throws 501 before reaching here. The explicit 501
-  // response below is defensive — if the service is later updated to
-  // return a value, this keeps the type contract honest.
-  res.status(501).json({
-    error: "NOT_IMPLEMENTED",
-    message: "Google sign-in ships in the next slice.",
-  });
+  // 501 Not Implemented — wraps the original AppError thrown inside the
+  // service so it travels through the central error handler in the
+  // envelope shape. (No need to throw here; service already throws.)
+  throw new AppError(
+    501,
+    "NOT_IMPLEMENTED",
+    "Google sign-in ships in the next slice.",
+  );
 };

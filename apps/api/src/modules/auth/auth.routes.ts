@@ -2,8 +2,13 @@
  * Auth route definitions.
  *
  * Mounts under `/api/auth`. Each route is wired with the right
- * middlewares in order: stricter rate limit (login/register only) →
- * validation → controller.
+ * middlewares in order: stricter rate limit (login/register/refresh only)
+ * → validation → controller.
+ *
+ * Note: `/refresh` and `/logout` are NOT behind `requireAuth` — the
+ * refresh token IS the credential, and logout should work even when the
+ * access token is gone (otherwise a user whose access token just expired
+ * couldn't log out).
  */
 import { Router } from "express";
 import type { Env } from "@clipflow/config";
@@ -15,17 +20,18 @@ import {
   loginController,
   logoutController,
   meController,
+  refreshController,
   registerController,
 } from "./auth.controller.js";
-import { googleAuthSchema, loginSchema, registerSchema } from "./auth.schemas.js";
+import {
+  googleAuthSchema,
+  loginSchema,
+  logoutSchema,
+  refreshSchema,
+  registerSchema,
+} from "./auth.schemas.js";
 import "./auth.types.js";
 
-/**
- * Build the auth router bound to the validated env.
- *
- * @param env Validated env.
- * @returns Configured Express router.
- */
 export const buildAuthRouter = (env: Env): Router => {
   const router = Router();
   const authLimiter = buildAuthRateLimiter(env);
@@ -42,7 +48,17 @@ export const buildAuthRouter = (env: Env): Router => {
     validate({ body: loginSchema }),
     loginController(env),
   );
-  router.post("/logout", requireAuth(env), logoutController);
+  // Refresh is rate-limited like login/register — prevents brute-force
+  // attacks against the refresh-token hash space.
+  router.post(
+    "/refresh",
+    authLimiter,
+    validate({ body: refreshSchema }),
+    refreshController(env),
+  );
+  // Logout is intentionally NOT rate-limited (it's idempotent and
+  // authenticated via the refresh token in the body).
+  router.post("/logout", validate({ body: logoutSchema }), logoutController);
   router.get("/me", requireAuth(env), meController);
   router.post("/google", validate({ body: googleAuthSchema }), googleController);
 

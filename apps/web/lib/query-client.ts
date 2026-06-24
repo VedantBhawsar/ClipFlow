@@ -1,8 +1,9 @@
 "use client";
 
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
+import { signOut } from "next-auth/react";
 
-import { clearAuthTokenCookie } from "@/lib/api-client";
+import { SessionExpiredError } from "@/lib/api-client";
 
 /**
  * Create a fresh QueryClient with the app's defaults.
@@ -25,26 +26,22 @@ import { clearAuthTokenCookie } from "@/lib/api-client";
  *  - refetchOnReconnect true: a flaky network drop should re-pull
  *    user data when connectivity returns.
  *
- * Global error handlers centralize the 401 → sign-out behavior so any
- * query or mutation that gets a 401 ends the session the same way the
- * manual `api-client.request()` flow does today.
+ * Global error handlers centralize the `SessionExpiredError` → sign-out
+ * behavior so any query or mutation that gets a 401 ends the session
+ * the same way. We `instanceof`-check the typed error (instead of
+ * string-matching the message like the previous implementation) so a
+ * refactor of the error message can't silently break session-end
+ * handling.
  */
 export function makeQueryClient(): QueryClient {
-  const handle401 = () => {
-    clearAuthTokenCookie();
-    if (
-      typeof window !== "undefined" &&
-      window.location.pathname !== "/signin"
-    ) {
-      window.location.href = "/signin";
-    }
+  const handleSessionExpired = async (): Promise<void> => {
+    // `redirect: false` lets NextAuth clear the cookie + invoke the
+    // events.signOut callback (which revokes the refresh token server-
+    // side) without doing its own hard redirect — the affected query
+    // surfaces its own error to the user and a subsequent nav will
+    // hit the AuthGuard / middleware redirect.
+    await signOut({ redirect: false });
   };
-
-  // The api-client throws a plain Error("Your session expired...") on 401;
-  // we detect that by message rather than re-reading the response. This
-  // keeps the QueryClient free of HTTP details it shouldn't know about.
-  const isSessionExpired = (err: unknown): boolean =>
-    err instanceof Error && err.message.startsWith("Your session expired");
 
   return new QueryClient({
     defaultOptions: {
@@ -61,12 +58,16 @@ export function makeQueryClient(): QueryClient {
     },
     queryCache: new QueryCache({
       onError: (err) => {
-        if (isSessionExpired(err)) handle401();
+        if (err instanceof SessionExpiredError) {
+          void handleSessionExpired();
+        }
       },
     }),
     mutationCache: new MutationCache({
       onError: (err) => {
-        if (isSessionExpired(err)) handle401();
+        if (err instanceof SessionExpiredError) {
+          void handleSessionExpired();
+        }
       },
     }),
   });

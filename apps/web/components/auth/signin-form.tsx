@@ -6,13 +6,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { signIn } from "next-auth/react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/auth/password-input";
 import { GoogleButton } from "@/components/auth/google-button";
-import { useAuth } from "@/hooks/use-auth";
+import { useSignIn } from "@/hooks/use-sign-in";
 
 const signInSchema = z.object({
   email: z.string().min(1, "Enter your email.").email("Enter a valid email address."),
@@ -22,17 +23,25 @@ const signInSchema = z.object({
 type SignInValues = z.infer<typeof signInSchema>;
 
 /**
- * Email + password sign-in form. On success the auth context is updated
- * and we route to the right place: /onboarding/profile if the user hasn't
- * completed onboarding, /dashboard otherwise.
+ * Email + password sign-in form. Delegates to NextAuth's Credentials
+ * provider via `useSignIn()` — the actual token storage is in
+ * NextAuth's httpOnly session cookie. The form itself only handles
+ * validation, navigation, and error display.
  *
- * Server errors bubble up as a single inline alert above the submit
- * button — inline, not a toast, so they're visible long enough to read.
+ * Post-sign-in routing:
+ *  1. Honor NextAuth's `?callbackUrl=` convention (the value the
+ *     AuthGuard and middleware pass when bouncing unauthed users).
+ *  2. Fall back to `?next=` for legacy callers.
+ *  3. Otherwise `/dashboard`. OnboardingGuard will reroute from there
+ *     if the user hasn't finished onboarding.
+ *
+ * Only same-origin paths are accepted (`/...` but not `//evil.com`)
+ * so a malicious link can't redirect us off-site after sign-in.
  */
 export function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signIn } = useAuth();
+  const signInMutation = useSignIn();
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const {
     register,
@@ -46,16 +55,12 @@ export function SignInForm() {
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError(null);
     try {
-      await signIn(values);
-      // Honor ?next= set by the middleware when bouncing an
-      // unauthenticated user here. We only accept same-origin paths
-      // (start with "/") so we can't be tricked into following
-      // //evil.com or absolute URLs.
+      await signInMutation.mutateAsync(values);
+      const callbackUrl = searchParams.get("callbackUrl");
       const next = searchParams.get("next");
+      const raw = callbackUrl ?? next ?? "/dashboard";
       const target =
-        next && next.startsWith("/") && !next.startsWith("//")
-          ? next
-          : "/dashboard";
+        raw.startsWith("/") && !raw.startsWith("//") ? raw : "/dashboard";
       router.push(target);
       router.refresh();
     } catch (err) {

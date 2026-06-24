@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import type { Video } from "@clipflow/types";
 
 import { VideoList } from "@/components/dashboard/video-list";
 import { Button } from "@/components/ui/button";
-import { AUTH_TOKEN_COOKIE, serverFetch } from "@/lib/api-client";
+import { auth } from "@/auth";
+import { serverFetch } from "@/lib/api-client";
 
 export const metadata: Metadata = {
   title: "Published — ClipFlow",
@@ -27,10 +27,17 @@ export const metadata: Metadata = {
  * The `VideoList` component handles its own empty state — distinct
  * copy here ("no published videos yet") but the same shell so the
  * create-video CTA is always one click away.
+ *
+ * Server-side auth: NextAuth's `auth()` reads its own httpOnly session
+ * cookie, runs the `jwt` callback (which may refresh the access token
+ * silently), and returns the session object. We pull
+ * `session.accessToken` and pass it as the bearer token to
+ * `serverFetch`. There's no cookie-name coupling between this file
+ * and NextAuth internals.
  */
 export default async function PublishedPage() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(AUTH_TOKEN_COOKIE)?.value;
+  const session = await auth();
+  const token = session?.accessToken ?? null;
   if (!token) {
     redirect("/signin?next=/dashboard/published");
   }

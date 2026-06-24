@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { api } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-api";
 import { queryKeys } from "@/lib/query-keys";
 import type { YouTubeConnection } from "@clipflow/types";
 
@@ -12,8 +12,10 @@ import type { YouTubeConnection } from "@clipflow/types";
  * the bundle (already warm) instead.
  */
 export function useYouTubeConnection() {
+  const api = useApi();
   return useQuery<YouTubeConnection>({
     queryKey: queryKeys.user.youtubeConnection(),
     queryFn: () => api.getYouTubeConnection(),
+    enabled: !!api,
   });
 }

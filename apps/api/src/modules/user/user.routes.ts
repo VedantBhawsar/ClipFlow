@@ -16,8 +16,10 @@
 import { Router } from "express";
 import type { Env } from "@clipflow/config";
 import { requireAuth } from "../../middleware/auth.js";
-import { getUserBundleController } from "./user.controller.js";
-import { getYouTubeConnectionByUserId } from "../youtube/youtube.service.js";
+import {
+  getUserBundleController,
+  getYouTubeConnectionController,
+} from "./user.controller.js";
 import "../auth/auth.types.js";
 
 /**
@@ -36,15 +38,11 @@ export const buildUserRouter = (env: Env): Router => {
    * Narrow YouTube-connection read. Returns the same YouTube connection
    * data as the bundle so pages that only want the connection state can
    * fetch it without paying for the rest of the bundle.
+   *
+   * IMPORTANT: must use `sendOk` envelope — the YouTubeConnectCard
+   * reads from this endpoint and expects `{success, message, data}`.
    */
-  router.get("/youtube-connection", auth, async (req, res) => {
-    if (!req.user) {
-      res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication required." });
-      return;
-    }
-    const connection = await getYouTubeConnectionByUserId(req.user.id);
-    res.status(200).json(connection);
-  });
+  router.get("/youtube-connection", auth, getYouTubeConnectionController);
 
   return router;
 };

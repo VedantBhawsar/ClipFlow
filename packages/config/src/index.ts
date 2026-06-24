@@ -25,7 +25,12 @@ const envSchema = z.object({
   JWT_SECRET: z
     .string()
     .min(32, "JWT_SECRET must be at least 32 characters"),
-  JWT_EXPIRES_IN: z.string().default("7d"),
+  /// Access-token lifetime. Short by design — the refresh-token rotation
+  /// flow picks up when this expires.
+  JWT_EXPIRES_IN: z.string().default("15m"),
+  /// Refresh-token lifetime. Long enough to be forgiving of short
+  /// absences, short enough that a stolen refresh token is bounded.
+  REFRESH_TOKEN_EXPIRES_IN: z.string().default("7d"),
 
   // 32-byte base64 key for AES-256-GCM at-rest encryption (used for
   // refresh tokens later). Declared now so the column exists from day one

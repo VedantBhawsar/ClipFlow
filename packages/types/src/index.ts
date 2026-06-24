@@ -115,7 +115,41 @@ export interface AuthUser {
 
 export interface AuthResponse {
   user: AuthUser;
-  token: string;
+  /**
+   * Short-lived (15-minute) JWT. Sent in `Authorization: Bearer <accessToken>`
+   * on every authenticated request. Frontend stores inside NextAuth's
+   * session cookie via the Credentials provider.
+   */
+  accessToken: string;
+  /**
+   * Long-lived (7-day) opaque token used to mint fresh access tokens via
+   * `POST /api/auth/refresh`. Stored as a SHA-256 hash server-side.
+   * Rotation: each successful refresh invalidates the presented token and
+   * returns a new pair. Reuse detection: presenting a revoked refresh
+   * token revokes the entire family.
+   */
+  refreshToken: string;
+  /** Unix-ms timestamp at which `accessToken` expires. */
+  accessTokenExpiresAt: number;
+  /** Unix-ms timestamp at which `refreshToken` expires. */
+  refreshTokenExpiresAt: number;
+}
+
+export interface RefreshRequest {
+  refreshToken: string;
+}
+
+export interface RefreshResponse {
+  accessToken: string;
+  refreshToken: string;
+  accessTokenExpiresAt: number;
+  refreshTokenExpiresAt: number;
+}
+
+export interface LogoutRequest {
+  /** Refresh token to revoke. Optional — omitting it revokes nothing
+   * server-side and only clears the client session. */
+  refreshToken?: string;
 }
 
 export interface MeResponse {
@@ -243,13 +277,52 @@ export interface UserBundleResponse {
   youtubeConnection: YouTubeConnection;
 }
 
-// ---------- Errors ----------
+// ---------- API response envelope ----------
 
-export interface ApiErrorBody {
-  error: string;
+/**
+ * Successful API response shape. Every endpoint returns this wrapper on
+ * 2xx so the frontend has a single, predictable contract:
+ *
+ *   { success: true, message: string, data: <payload> }
+ *
+ * For endpoints that don't carry a payload (logout, change-password,
+ * disconnect, cancel upload, delete video), `data` is `null`.
+ */
+export interface ApiSuccess<T> {
+  success: true;
   message: string;
+  data: T;
+}
+
+/**
+ * Failed API response shape. Every endpoint — and the central error
+ * middleware — returns this wrapper on non-2xx so the frontend has a
+ * single, predictable contract:
+ *
+ *   { success: false, message: string, data: null, error?, details? }
+ *
+ * `error` is a stable machine-readable code (e.g. `EMAIL_TAKEN`,
+ * `INVALID_CREDENTIALS`) for programmatic UI handling; `message` is
+ * the human-friendly text safe to show to the user. `details` is an
+ * optional structured payload (validation issues, request id, etc.).
+ */
+export interface ApiFailure {
+  success: false;
+  message: string;
+  data: null;
+  error?: string;
   details?: Record<string, unknown>;
 }
+
+/** Discriminated union of the two envelope shapes. */
+export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
+
+/**
+ * @deprecated Use {@link ApiFailure} (and {@link ApiResponse}) instead.
+ * Kept as an alias so older consumers that imported `ApiErrorBody`
+ * keep compiling during the migration.
+ */
+export type ApiErrorBody = ApiFailure;
 
 // ---------- Video upload → publish ----------
 

@@ -112,12 +112,62 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile       UserProfile?
-  preferences   UserPreferences?
+  profile        UserProfile?
+  preferences    UserPreferences?
   youtubeChannel YouTubeChannel?
-  videos        Video[]
+  videos         Video[]
+  refreshTokens  RefreshToken[]
 
   @@map("users")
+}
+
+// ---------- Refresh tokens (rotation chain) ----------
+
+/// One row per issued refresh token. Login mints the first row of a new
+/// "family"; every successful /api/auth/refresh marks the presented token
+/// as revoked and mints a new row in the SAME family. Presenting a token
+/// that has already been revoked (i.e. was rotated past) revokes the
+/// entire family — that's the standard OAuth 2.0 reuse-detection guard.
+///
+/// We store only the SHA-256 hash of the raw token; the raw value is sent
+/// to the client and never persisted, so a DB compromise cannot replay
+/// active sessions.
+model RefreshToken {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// SHA-256 hash of the raw token (hex-encoded). The raw token is sent
+  /// to the client in the response and never persisted.
+  tokenHash String @unique
+
+  /// Family groups the rotation chain. Login creates the first row of a
+  /// new family; each rotation adds a new row with the SAME familyId.
+  /// Reuse detection revokes every non-revoked row in the family.
+  familyId String
+
+  expiresAt DateTime
+
+  /// Set when this token is rotated OR explicitly logged out. Used by
+  /// the reuse-detection check on /api/auth/refresh.
+  revokedAt DateTime?
+
+  /// Best-effort audit fields. Populated when the issuer has access to
+  /// the request — not enforced.
+  userAgent String?
+  ip        String?
+
+  createdAt DateTime @default(now())
+
+  // For "list this user's active sessions" admin views / future
+  // "log out everywhere" UI.
+  @@index([userId])
+  // For bulk revocation when reuse is detected.
+  @@index([familyId])
+  // For background cleanup of expired rows.
+  @@index([expiresAt])
+
+  @@map("refresh_tokens")
 }
 
 // ---------- UserProfile ----------

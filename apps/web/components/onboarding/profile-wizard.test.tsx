@@ -7,12 +7,6 @@ vi.mock("@/hooks/use-auth", () => ({
   useAuth: vi.fn(),
 }));
 
-vi.mock("@/lib/api-client", () => ({
-  api: {
-    submitOnboardingProfile: vi.fn().mockResolvedValue({}),
-  },
-}));
-
 vi.mock("@/hooks/use-update-profile", () => ({
   useUpdateProfile: vi.fn(),
 }));
@@ -28,30 +22,17 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { useAuth } from "@/hooks/use-auth";
-import { api } from "@/lib/api-client";
 import { useUpdateProfile } from "@/hooks/use-update-profile";
 
 const mockUseAuth = vi.mocked(useAuth);
 const mockUseUpdateProfile = vi.mocked(useUpdateProfile);
-const mockApiSubmit = vi.mocked(api.submitOnboardingProfile);
 
 describe("ProfileWizard", () => {
   let mockMutateAsync: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockApiSubmit.mockResolvedValue({} as unknown as Awaited<
-      ReturnType<typeof api.submitOnboardingProfile>
-    >);
-    mockMutateAsync = vi.fn().mockImplementation(async (body: unknown) => {
-      // Simulate the mutation calling the api-client and returning
-      // its result. Matches what useUpdateProfile.submit does for real.
-      // The wizard ignores the return value, so any shape is fine.
-      await api.submitOnboardingProfile(
-        body as Parameters<typeof api.submitOnboardingProfile>[0],
-      );
-      return {};
-    });
+    mockMutateAsync = vi.fn().mockResolvedValue({});
     mockUseUpdateProfile.mockReturnValue({
       submit: {
         mutateAsync: mockMutateAsync,
@@ -71,19 +52,16 @@ describe("ProfileWizard", () => {
       },
     } as unknown as ReturnType<typeof useUpdateProfile>);
     mockUseAuth.mockReturnValue({
-      signIn: vi.fn(),
-      signUp: vi.fn(),
-      signOut: vi.fn(),
       refresh: vi.fn(),
+      setOnboardingCompleted: vi.fn(),
+      setPreferences: vi.fn(),
+      patchPreferences: vi.fn(),
       status: "authenticated",
       user: { id: "1", email: "a@b.com", name: "A", authProvider: "EMAIL", emailVerifiedAt: null, createdAt: "" },
       profile: null,
       preferences: null,
       youtubeConnection: null,
       onboardingCompleted: false,
-      setOnboardingCompleted: vi.fn(),
-      setPreferences: vi.fn(),
-      patchPreferences: vi.fn(),
     } as unknown as ReturnType<typeof useAuth>);
   });
 
@@ -196,7 +174,7 @@ describe("ProfileWizard", () => {
     await user.click(screen.getByRole("radio", { name: /save time editing/i }));
     await user.click(screen.getByRole("button", { name: /finish setup/i }));
 
-    expect(mockApiSubmit).toHaveBeenCalledWith({
+    expect(mockMutateAsync).toHaveBeenCalledWith({
       niche: "GAMING",
       uploadFrequency: "ONE_TO_FOUR",
       primaryGoal: "SAVE_TIME_EDITING",
@@ -216,7 +194,7 @@ describe("ProfileWizard", () => {
     await user.click(screen.getByRole("radio", { name: /save time editing/i }));
     await user.click(screen.getByRole("button", { name: /finish setup/i }));
 
-    expect(mockApiSubmit).toHaveBeenCalledWith(
+    expect(mockMutateAsync).toHaveBeenCalledWith(
       expect.not.objectContaining({ displayName: expect.any(String) }),
     );
   });
@@ -234,14 +212,14 @@ describe("ProfileWizard", () => {
     await user.click(screen.getByRole("radio", { name: /save time editing/i }));
     await user.click(screen.getByRole("button", { name: /finish setup/i }));
 
-    expect(mockApiSubmit).toHaveBeenCalledWith(
+    expect(mockMutateAsync).toHaveBeenCalledWith(
       expect.objectContaining({ displayName: "My Awesome Channel" }),
     );
   });
 
   it("displays error message when submission fails", async () => {
     const user = userEvent.setup();
-    mockApiSubmit.mockRejectedValue(new Error("Network error"));
+    mockMutateAsync.mockRejectedValue(new Error("Network error"));
     render(<ProfileWizard />);
 
     await user.click(screen.getByRole("button", { name: "Next" }));

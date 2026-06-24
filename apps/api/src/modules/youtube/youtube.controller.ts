@@ -11,18 +11,41 @@
  * The OAuth "callback" is actually handled by the frontend because we're not
  * using server-side sessions — the frontend receives the code and passes it
  * to POST /connect. This keeps the flow stateless (no session cookies needed).
+ *
+ * Every response is routed through the centralized envelope helpers.
+ * Auth failures and configuration errors throw `AppError` so the central
+ * error middleware emits the failure body in the same shape as every
+ * other error.
  */
 import type { Request, Response } from "express";
 import type { Env } from "@clipflow/config";
 import { cache } from "../../lib/cache.js";
+import { sendEmpty, sendOk } from "../../lib/response.js";
+import { AppError } from "../../errors/AppError.js";
 import {
   buildOAuthUrl,
   connectYouTubeChannel,
   disconnectYouTubeChannel,
   getYouTubeConnectionByUserId,
 } from "./youtube.service.js";
+import type { YouTubeConnection } from "@clipflow/types";
 
 const CONNECTION_CACHE_TTL_SECONDS = 60;
+
+const requireEnv = (req: Request): Env => {
+  const env = req.app.get("env") as Env | undefined;
+  if (!env) {
+    throw new AppError(500, "ENV_UNAVAILABLE", "Server is not configured.");
+  }
+  return env;
+};
+
+const requireUser = (req: Request): string => {
+  if (!req.user) {
+    throw new AppError(401, "UNAUTHENTICATED", "Authentication required.");
+  }
+  return req.user.id;
+};
 
 /**
  * GET /api/youtube/oauth/url
@@ -34,14 +57,14 @@ export const getOAuthUrlController = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  const env = req.app.get("env") as Env;
+  const env = requireEnv(req);
 
   if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_REDIRECT_URI) {
-    res.status(503).json({
-      error: "GOOGLE_OAUTH_UNAVAILABLE",
-      message: "Google OAuth is not configured on this server.",
-    });
-    return;
+    throw new AppError(
+      503,
+      "GOOGLE_OAUTH_UNAVAILABLE",
+      "Google OAuth is not configured on this server.",
+    );
   }
 
   // Generate a state parameter for CSRF protection
@@ -51,7 +74,7 @@ export const getOAuthUrlController = async (
 
   const url = buildOAuthUrl(env, env.GOOGLE_REDIRECT_URI, state);
 
-  res.status(200).json({ url });
+  sendOk(res, { url }, "OAuth URL minted.");
 };
 
 /**
@@ -64,24 +87,12 @@ export const connectController = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  if (!req.user) {
-    res
-      .status(401)
-      .json({ error: "UNAUTHENTICATED", message: "Authentication required." });
-    return;
-  }
-
-  const env = req.app.get("env") as Env;
+  const userId = requireUser(req);
+  const env = requireEnv(req);
 
   const { code } = req.body as { code?: string };
   if (!code || typeof code !== "string") {
-    res
-      .status(400)
-      .json({
-        error: "INVALID_REQUEST",
-        message: "Authorization code is required.",
-      });
-    return;
+    throw new AppError(400, "INVALID_REQUEST", "Authorization code is required.");
   }
 
   if (
@@ -89,35 +100,22 @@ export const connectController = async (
     !env.GOOGLE_CLIENT_SECRET ||
     !env.GOOGLE_REDIRECT_URI
   ) {
-    res.status(503).json({
-      error: "GOOGLE_OAUTH_UNAVAILABLE",
-      message: "Google OAuth is not configured on this server.",
-    });
-    return;
+    throw new AppError(
+      503,
+      "GOOGLE_OAUTH_UNAVAILABLE",
+      "Google OAuth is not configured on this server.",
+    );
   }
 
-  try {
-    const result = await connectYouTubeChannel(req.user.id, code, env);
-
-    if (!result) {
-      throw new Error("Account Not found");
-    }
-
-    // Invalidate the user bundle cache since YouTube connection changed
-    await cache.del(`user:${req.user.id}`);
-
-    res.status(200).json(result.connection);
-  } catch (err) {
-    if (err instanceof Error && "statusCode" in err) {
-      throw err;
-    }
-    res
-      .status(500)
-      .json({
-        error: "INTERNAL_ERROR",
-        message: "Failed to connect YouTube channel.",
-      });
+  const result = await connectYouTubeChannel(userId, code, env);
+  if (!result) {
+    throw new Error("Account Not found");
   }
+
+  // Invalidate the user bundle cache since YouTube connection changed
+  await cache.del(`user:${userId}`);
+
+  sendOk(res, result.connection, "YouTube channel connected.");
 };
 
 /**
@@ -129,19 +127,14 @@ export const disconnectController = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  if (!req.user) {
-    res
-      .status(401)
-      .json({ error: "UNAUTHENTICATED", message: "Authentication required." });
-    return;
-  }
+  const userId = requireUser(req);
 
-  await disconnectYouTubeChannel(req.user.id);
+  await disconnectYouTubeChannel(userId);
 
   // Invalidate the user bundle cache since YouTube connection changed
-  await cache.del(`user:${req.user.id}`);
+  await cache.del(`user:${userId}`);
 
-  res.status(204).send();
+  sendEmpty(res, "YouTube channel disconnected.");
 };
 
 /**
@@ -154,27 +147,25 @@ export const getConnectionController = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  if (!req.user) {
-    res
-      .status(401)
-      .json({ error: "UNAUTHENTICATED", message: "Authentication required." });
-    return;
-  }
+  const userId = requireUser(req);
 
-  const cacheKey = `youtube:connection:${req.user.id}`;
+  const cacheKey = `youtube:connection:${userId}`;
   const cached = await cache.get(cacheKey);
 
   if (cached) {
     res.setHeader("X-Cache", "HIT");
-    res.status(200).type("application/json").send(cached);
+    sendOk(
+      res,
+      JSON.parse(cached) as YouTubeConnection,
+      "YouTube connection retrieved.",
+    );
     return;
   }
 
-  const connection = await getYouTubeConnectionByUserId(req.user.id);
-  const payload = JSON.stringify(connection);
+  const connection = await getYouTubeConnectionByUserId(userId);
 
-  await cache.set(cacheKey, payload, CONNECTION_CACHE_TTL_SECONDS);
+  await cache.set(cacheKey, JSON.stringify(connection), CONNECTION_CACHE_TTL_SECONDS);
 
   res.setHeader("X-Cache", "MISS");
-  res.status(200).type("application/json").send(payload);
+  sendOk(res, connection, "YouTube connection retrieved.");
 };

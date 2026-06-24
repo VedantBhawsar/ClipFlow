@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ExternalLink, Loader2, AlertCircle } from "lucide-react";
 import type { Video, VideoStatus } from "@clipflow/types";
@@ -10,7 +9,8 @@ import { UnpublishButton } from "@/app/dashboard/videos/[id]/unpublish-button";
 import { CancelButton } from "@/app/dashboard/videos/[id]/cancel-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AUTH_TOKEN_COOKIE, serverFetch, ServerApiError } from "@/lib/api-client";
+import { auth } from "@/auth";
+import { serverFetch, ServerApiError } from "@/lib/api-client";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -53,16 +53,19 @@ const mapStatus = (status: Video["status"]): TimelineStatus => {
  * `/dashboard/videos/:id` — full detail view for a single video.
  *
  * Server-rendered so the page is meaningful on first paint (no client
- * round-trip for the initial read). Reads mirror the dashboard's
- * SSR pattern (cookie → bearer → serverFetch → typed JSON).
+ * round-trip for the initial read).
+ *
+ * Auth: NextAuth's `auth()` reads its httpOnly session cookie, runs
+ * the `jwt` callback (silent refresh if needed), and hands us the
+ * access token. We forward it to Express via `serverFetch`.
  *
  * 404 from the API → `notFound()` so unknown / foreign ids render the
  * dashboard's standard not-found state instead of a 500.
  */
 export default async function VideoDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const cookieStore = await cookies();
-  const token = cookieStore.get(AUTH_TOKEN_COOKIE)?.value;
+  const session = await auth();
+  const token = session?.accessToken ?? null;
   if (!token) {
     redirect(`/signin?next=/dashboard/videos/${id}`);
   }
@@ -325,6 +328,5 @@ function ActionPanel({ video }: { video: Video }) {
 function formatBytes(n: number): string {
   if (n >= 1024 ** 3) return `${(n / 1024 ** 3).toFixed(1)} GB`;
   if (n >= 1024 ** 2) return `${(n / 1024 ** 2).toFixed(1)} MB`;
-  if (n >= 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${n} B`;
 }

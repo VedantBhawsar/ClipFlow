@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { api } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-api";
 import { cn } from "@/lib/utils";
 import {
   useCancelPendingUpload,
@@ -258,6 +258,7 @@ export function CreateVideoDialog({
   channelConnected,
 }: CreateVideoDialogProps) {
   const router = useRouter();
+  const api = useApi();
   const createMutation = useCreateVideo();
   const finalizeMutation = useFinalizeUpload();
   const cancelMutation = useCancelPendingUpload();
@@ -578,7 +579,7 @@ export function CreateVideoDialog({
         // Widened from max-w-xl to fit Audience / Distribution /
         // Comments. lg breakpoint gets extra room for the side-by-side
         // switches under Distribution.
-        className="max-w-2xl lg:max-w-3xl"
+        className="max-w-2xl lg:max-w-3xl max-h-[90vh] overflow-y-scroll"
       >
         {phase === "connect-youtube" ? (
           <div className="flex flex-col gap-5">

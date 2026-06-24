@@ -1,10 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { AuthGuard } from "./auth-guard.js";
-import type { AuthContextValue } from "./auth-context.js";
 
-vi.mock("./auth-context.js", () => ({
-  useAuthContext: vi.fn(),
+vi.mock("next-auth/react", () => ({
+  useSession: vi.fn(),
 }));
 
 const mockReplace = vi.fn();
@@ -20,24 +18,20 @@ vi.mock("next/navigation", () => ({
   usePathname: vi.fn(() => "/dashboard"),
 }));
 
-import { useAuthContext } from "./auth-context.js";
+import { AuthGuard } from "./auth-guard.js";
+import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 
-const mockUseAuthContext = vi.mocked(useAuthContext);
+const mockUseSession = vi.mocked(useSession);
 
-const renderGuard = (authValue: Partial<AuthContextValue>) => {
-  mockUseAuthContext.mockReturnValue({
-    status: "loading",
-    user: null,
-    profile: null,
-    onboardingCompleted: false,
-    signIn: vi.fn(),
-    signUp: vi.fn(),
-    signOut: vi.fn(),
-    refresh: vi.fn(),
-    setOnboardingCompleted: vi.fn(),
-    ...authValue,
-  } as AuthContextValue);
+type SessionStatus = "loading" | "authenticated" | "unauthenticated";
+
+const renderGuard = (status: SessionStatus) => {
+  mockUseSession.mockReturnValue({
+    status,
+    data: null,
+    update: vi.fn(),
+  } as unknown as ReturnType<typeof useSession>);
 
   return render(<AuthGuard>Protected Content</AuthGuard>);
 };
@@ -51,31 +45,37 @@ describe("AuthGuard", () => {
   });
 
   it("shows loading state while auth is hydrating", () => {
-    renderGuard({ status: "loading" });
+    renderGuard("loading");
     expect(screen.getByText("Loading…")).toBeInTheDocument();
   });
 
   it("renders children when authenticated", () => {
-    renderGuard({
-      status: "authenticated",
-    });
+    renderGuard("authenticated");
     expect(screen.getByText("Protected Content")).toBeInTheDocument();
   });
 
   it("returns null when unauthenticated (redirect handled by useEffect)", () => {
-    const { container } = renderGuard({ status: "unauthenticated" });
+    const { container } = renderGuard("unauthenticated");
     expect(container).toBeEmptyDOMElement();
   });
 
   it("does not redirect when already on /signin", () => {
     vi.mocked(usePathname).mockReturnValue("/signin");
-    const { container } = renderGuard({ status: "unauthenticated" });
+    const { container } = renderGuard("unauthenticated");
     expect(container).toBeEmptyDOMElement();
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 
   it("does not redirect when already on /signup", () => {
     vi.mocked(usePathname).mockReturnValue("/signup");
-    const { container } = renderGuard({ status: "unauthenticated" });
+    const { container } = renderGuard("unauthenticated");
     expect(container).toBeEmptyDOMElement();
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  it("redirects unauthenticated user to /signin with callbackUrl", () => {
+    vi.mocked(usePathname).mockReturnValue("/dashboard");
+    renderGuard("unauthenticated");
+    expect(mockReplace).toHaveBeenCalledWith("/signin?callbackUrl=%2Fdashboard");
   });
 });

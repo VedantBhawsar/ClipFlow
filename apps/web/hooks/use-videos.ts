@@ -21,7 +21,7 @@ import type {
   Video,
 } from "@clipflow/types";
 
-import { api } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-api";
 import { queryKeys } from "@/lib/query-keys";
 
 /**
@@ -34,11 +34,17 @@ import { queryKeys } from "@/lib/query-keys";
  * Note: pending uploads (in-flight, no row yet) are NOT included.
  * They live in the upload dialog's local state and only appear on the
  * dashboard after the row is committed by `finalizeUpload`.
+ *
+ * `enabled: !!api` gates the query on a session existing — without
+ * this it would fire without an Authorization header, get 401'd,
+ * trip the SessionExpiredError global handler, and redirect-loop.
  */
 export function useVideos() {
+  const api = useApi();
   return useQuery<{ videos: Video[] }>({
     queryKey: queryKeys.videos.list(),
     queryFn: () => api.listVideos(),
+    enabled: !!api,
   });
 }
 
@@ -48,6 +54,7 @@ export function useVideos() {
  * returned `pendingUploadId` is the handle for the in-flight upload.
  */
 export function useCreateVideo() {
+  const api = useApi();
   return useMutation<CreateVideoResponse, Error, CreateVideoRequest>({
     mutationFn: (body) => api.createVideo(body),
   });
@@ -60,6 +67,7 @@ export function useCreateVideo() {
  * list so the dashboard re-fetches and the new row appears.
  */
 export function useFinalizeUpload() {
+  const api = useApi();
   const qc = useQueryClient();
   return useMutation<Video, Error, string>({
     mutationFn: (pendingUploadId) => api.finalizeUpload(pendingUploadId),
@@ -76,6 +84,7 @@ export function useFinalizeUpload() {
  * server-side pending-upload metadata don't leak.
  */
 export function useCancelPendingUpload() {
+  const api = useApi();
   const qc = useQueryClient();
   return useMutation<void, Error, string>({
     mutationFn: (pendingUploadId) => api.cancelPendingUpload(pendingUploadId),
@@ -93,6 +102,7 @@ export function useCancelPendingUpload() {
  * at this point, so the list query needs invalidation.
  */
 export function useDeleteVideo() {
+  const api = useApi();
   const qc = useQueryClient();
   return useMutation<void, Error, string>({
     mutationFn: (id) => api.deleteVideo(id),
@@ -109,9 +119,11 @@ export function useDeleteVideo() {
  * refresh, e.g. after a successful unpublish from the detail page).
  */
 export function useListPublishedVideos() {
+  const api = useApi();
   return useQuery<{ videos: Video[] }>({
     queryKey: queryKeys.videos.published(),
     queryFn: () => api.listPublishedVideos(),
+    enabled: !!api,
   });
 }
 
@@ -122,6 +134,7 @@ export function useListPublishedVideos() {
  * now we just invalidate so any open views refetch).
  */
 export function useUnpublishVideo() {
+  const api = useApi();
   const qc = useQueryClient();
   return useMutation<Video, Error, string>({
     mutationFn: (id) => api.unpublishVideo(id),

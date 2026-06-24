@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/auth/password-input";
 import { GoogleButton } from "@/components/auth/google-button";
-import { useAuth } from "@/hooks/use-auth";
+import { useSignUp } from "@/hooks/use-sign-up";
 
 /**
  * Password rule checkers. Split out so the live hints under the password
@@ -54,10 +54,18 @@ type SignUpValues = z.infer<typeof signUpSchema>;
  * the user types; final validation runs on submit. On success the auth
  * context is populated and we send the new user to /onboarding/profile
  * to answer the four setup questions.
+ *
+ * Registration flows:
+ *  1. `useSignUp()` POSTs to Express `/api/auth/register` to create
+ *     the account, which returns the initial access + refresh tokens.
+ *  2. It then calls NextAuth's `signIn("credentials", ...)` so the
+ *     tokens get persisted in NextAuth's httpOnly session cookie.
+ *  3. We route to /onboarding/profile. The freshly-created user has
+ *     no profile yet so OnboardingGuard accepts the navigation.
  */
 export function SignUpForm() {
   const router = useRouter();
-  const { signUp } = useAuth();
+  const signUpMutation = useSignUp();
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [passwordValue, setPasswordValue] = React.useState("");
   const {
@@ -73,7 +81,7 @@ export function SignUpForm() {
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError(null);
     try {
-      await signUp({
+      await signUpMutation.mutateAsync({
         email: values.email,
         password: values.password,
         ...(values.name && values.name.trim().length > 0

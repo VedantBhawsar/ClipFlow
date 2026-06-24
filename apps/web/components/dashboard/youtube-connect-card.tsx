@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { api } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-api";
 import { useConnectYouTube } from "@/hooks/use-connect-youtube";
 import { useDisconnectYouTube } from "@/hooks/use-disconnect-youtube";
 import { useYouTubeConnection } from "@/hooks/use-youtube-connection";
@@ -39,6 +39,7 @@ import { useYouTubeConnection } from "@/hooks/use-youtube-connection";
  *  and the listener cleanup is automatic (close on unmount).
  */
 export function YouTubeConnectCard({ className }: { className?: string }) {
+  const api = useApi();
   const connectionQuery = useYouTubeConnection();
   const connectMutation = useConnectYouTube();
   const disconnectMutation = useDisconnectYouTube();

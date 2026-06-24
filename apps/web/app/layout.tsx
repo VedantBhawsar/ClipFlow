@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { Inter_Tight, JetBrains_Mono } from "next/font/google";
+import { SessionProvider } from "next-auth/react";
 
 import { QueryProvider } from "@/components/shared/query-provider";
 import { ThemeProvider } from "@/components/shared/theme-provider";
 import { Toaster } from "@/components/shared/toaster";
-import { AuthProvider } from "@/lib/auth-context";
 
 import "./globals.css";
 
@@ -42,14 +42,14 @@ export default function RootLayout({
       className={`${interTight.variable} ${jetbrainsMono.variable}`}
     >
       <body className="font-sans antialiased">
-        <QueryProvider>
-          <ThemeProvider>
-            <AuthProvider>
+        <SessionProvider>
+          <QueryProvider>
+            <ThemeProvider>
               {children}
               <Toaster />
-            </AuthProvider>
-          </ThemeProvider>
-        </QueryProvider>
+            </ThemeProvider>
+          </QueryProvider>
+        </SessionProvider>
       </body>
     </html>
   );

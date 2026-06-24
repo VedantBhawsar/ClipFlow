@@ -4,10 +4,14 @@
  * Adapts HTTP requests to the onboarding service. Also invalidates the
  * `me` cache (legacy) and the `user` bundle cache so subsequent
  * `GET /api/auth/me` and `GET /api/user/profile` reflect the fresh
- * profile state.
+ * profile state. All responses go through the centralized envelope
+ * helpers — auth failures throw `AppError` so they're shaped by the
+ * central error middleware.
  */
 import type { Request, Response } from "express";
 import { cache } from "../../lib/cache.js";
+import { sendOk } from "../../lib/response.js";
+import { AppError } from "../../errors/AppError.js";
 import { invalidateUserBundleCache } from "../user/user.controller.js";
 import * as onboardingService from "./onboarding.service.js";
 import type { PatchProfileInput, UpdateProfileInput } from "./onboarding.schemas.js";
@@ -27,31 +31,28 @@ const invalidateProfileCaches = async (userId: string): Promise<void> => {
 
 export const statusController = async (req: Request, res: Response): Promise<void> => {
   if (!req.user) {
-    res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication required." });
-    return;
+    throw new AppError(401, "UNAUTHENTICATED", "Authentication required.");
   }
   const result = await onboardingService.getStatus(req.user.id);
-  res.status(200).json(result);
+  sendOk(res, result, "Onboarding status retrieved.");
 };
 
 export const updateProfileController = async (req: Request, res: Response): Promise<void> => {
   if (!req.user) {
-    res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication required." });
-    return;
+    throw new AppError(401, "UNAUTHENTICATED", "Authentication required.");
   }
   const input = req.body as UpdateProfileInput;
   const result = await onboardingService.updateProfile(req.user.id, input);
   await invalidateProfileCaches(req.user.id);
-  res.status(200).json(result);
+  sendOk(res, result, "Profile saved.");
 };
 
 export const patchProfileController = async (req: Request, res: Response): Promise<void> => {
   if (!req.user) {
-    res.status(401).json({ error: "UNAUTHENTICATED", message: "Authentication required." });
-    return;
+    throw new AppError(401, "UNAUTHENTICATED", "Authentication required.");
   }
   const input = req.body as PatchProfileInput;
   const result = await onboardingService.patchProfile(req.user.id, input);
   await invalidateProfileCaches(req.user.id);
-  res.status(200).json(result);
+  sendOk(res, result, "Profile updated.");
 };
