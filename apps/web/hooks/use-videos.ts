@@ -25,11 +25,15 @@ import { api } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 
 /**
- * List the current user's videos.
+ * List the current user's committed videos.
  *
  * Returns the wrapped `{ videos: [...] }` payload shape — not a bare
  * array — so the API surface stays consistent across `list` / `get`
  * / etc. and consumers don't have to special-case "is this paginated".
+ *
+ * Note: pending uploads (in-flight, no row yet) are NOT included.
+ * They live in the upload dialog's local state and only appear on the
+ * dashboard after the row is committed by `finalizeUpload`.
  */
 export function useVideos() {
   return useQuery<{ videos: Video[] }>({
@@ -39,7 +43,9 @@ export function useVideos() {
 }
 
 /**
- * Create a Video row + presigned upload URL.
+ * Step 1 of the upload flow: mint a `pendingUploadId` and a presigned
+ * S3 POST URL. **No row is created server-side** at this point; the
+ * returned `pendingUploadId` is the handle for the in-flight upload.
  */
 export function useCreateVideo() {
   return useMutation<CreateVideoResponse, Error, CreateVideoRequest>({
@@ -48,12 +54,15 @@ export function useCreateVideo() {
 }
 
 /**
- * Finalize an uploaded video (HEADs S3, transitions status, enqueues publish).
+ * Step 3 of the upload flow: notify the API that the browser has
+ * finished uploading to S3. The API HEADs the object, validates the
+ * size, and only then creates the `Video` row. Invalidates the videos
+ * list so the dashboard re-fetches and the new row appears.
  */
 export function useFinalizeUpload() {
   const qc = useQueryClient();
   return useMutation<Video, Error, string>({
-    mutationFn: (id) => api.finalizeUpload(id),
+    mutationFn: (pendingUploadId) => api.finalizeUpload(pendingUploadId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: queryKeys.videos.list() });
     },
@@ -61,7 +70,27 @@ export function useFinalizeUpload() {
 }
 
 /**
- * Delete (cancel) a not-yet-published video.
+ * Cancel an in-flight upload: best-effort S3 delete + cache eviction
+ * server-side. Idempotent. The dialog calls this when the user clicks
+ * "Cancel" during a failed upload so the partial S3 object and the
+ * server-side pending-upload metadata don't leak.
+ */
+export function useCancelPendingUpload() {
+  const qc = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: (pendingUploadId) => api.cancelPendingUpload(pendingUploadId),
+    onSuccess: () => {
+      // A row never existed for a cancelled pending upload, so
+      // invalidating the list is just defensive. The dialog closes
+      // immediately on success.
+      void qc.invalidateQueries({ queryKey: queryKeys.videos.list() });
+    },
+  });
+}
+
+/**
+ * Delete (cancel) a committed, not-yet-published video. The row exists
+ * at this point, so the list query needs invalidation.
  */
 export function useDeleteVideo() {
   const qc = useQueryClient();
@@ -86,10 +115,16 @@ export interface UploadHandle {
 }
 
 /**
- * Upload a file to a presigned POST URL with progress reporting.
+ * Step 2 of the upload flow: PUT the file to the presigned S3 URL
+ * with progress reporting. NOT a hook — returns a function that builds
+ * an `UploadHandle`. The component drives the lifecycle so it can
+ * cancel on unmount and re-issue on Re-upload without re-picking the
+ * file.
  *
- * NOT a hook — returns a function that builds an `UploadHandle`. The
- * component drives the lifecycle so it can cancel on unmount.
+ * The same function works for the initial upload and for Re-upload —
+ * Re-upload just calls it again with the same `presigned` payload
+ * (which may have been refreshed via `api.getUploadUrl` if the original
+ * URL expired in the meantime).
  */
 export function useUploadVideo() {
   return function uploadVideo(

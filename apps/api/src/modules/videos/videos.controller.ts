@@ -37,6 +37,10 @@ const requireEnv = (req: Request, res: Response): Env | null => {
 
 /**
  * POST /api/videos
+ *
+ * Mints a `pendingUploadId` + presigned S3 POST URL. No DB row is
+ * created here — that happens in `finalizeUpload` after the API has
+ * confirmed the bytes landed in S3.
  */
 export const createVideoController = async (
   req: Request,
@@ -52,7 +56,10 @@ export const createVideoController = async (
 };
 
 /**
- * POST /api/videos/:id/upload-url
+ * POST /api/videos/pending/:id/upload-url
+ *
+ * Returns a fresh presigned POST URL for an in-flight upload whose
+ * original URL may have expired.
  */
 export const getUploadUrlController = async (
   req: Request,
@@ -72,7 +79,9 @@ export const getUploadUrlController = async (
 };
 
 /**
- * POST /api/videos/:id/finalize
+ * POST /api/videos/pending/:id/finalize
+ *
+ * Confirms the S3 upload and creates the `Video` row.
  */
 export const finalizeVideoController = async (
   req: Request,
@@ -89,6 +98,29 @@ export const finalizeVideoController = async (
   }
   const result = await videosService.finalizeUpload(userId, id, env);
   res.status(200).json(result);
+};
+
+/**
+ * DELETE /api/videos/pending/:id
+ *
+ * Cancels an in-flight upload: best-effort S3 delete + cache eviction.
+ * Idempotent.
+ */
+export const cancelPendingUploadController = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  const env = requireEnv(req, res);
+  if (!env) return;
+  const id = (req.params as { id?: string }).id;
+  if (!id) {
+    res.status(400).json({ error: "INVALID_REQUEST", message: "id required." });
+    return;
+  }
+  await videosService.cancelPendingUpload(userId, id, env);
+  res.status(204).send();
 };
 
 /**

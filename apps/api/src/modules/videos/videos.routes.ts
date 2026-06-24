@@ -1,8 +1,23 @@
 /**
  * Videos route definitions.
  *
- * Mounts under `/api/videos`. All routes require auth. The create +
- * finalize routes are per-user rate limited to bound upload-spam.
+ * The route table is split by upload state so a malformed id can't
+ * reach the wrong handler:
+ *
+ *   POST   /api/videos                         → in-flight: create pending
+ *   POST   /api/videos/pending/:id/upload-url  → in-flight: refresh URL
+ *   POST   /api/videos/pending/:id/finalize    → in-flight: commit
+ *   DELETE /api/videos/pending/:id             → in-flight: cancel
+ *   GET    /api/videos                         → committed: list
+ *   GET    /api/videos/:id                     → committed: read
+ *   DELETE /api/videos/:id                     → committed: cancel
+ *
+ * The pending/committed split is enforced by separate zod schemas
+ * (see `./videos.schemas.ts`) so a request to `/api/videos/vid_xxx/finalize`
+ * fails at the edge with 400 instead of reaching the service.
+ *
+ * All routes require auth. The create + finalize routes are per-user
+ * rate limited to bound upload-spam.
  */
 import { Router } from "express";
 import type { Env } from "@clipflow/config";
@@ -10,6 +25,7 @@ import { requireAuth } from "../../middleware/auth.js";
 import { validate } from "../../middleware/validate.js";
 import { buildPerUserRateLimiter } from "../../middleware/rate-limit.js";
 import {
+  cancelPendingUploadController,
   createVideoController,
   deleteVideoController,
   finalizeVideoController,
@@ -19,6 +35,7 @@ import {
 } from "./videos.controller.js";
 import {
   createVideoSchema,
+  pendingUploadIdParamsSchema,
   videoIdParamsSchema,
 } from "./videos.schemas.js";
 import "../auth/auth.types.js";
@@ -41,23 +58,38 @@ export const buildVideosRouter = (env: Env): Router => {
     windowMs: env.RATE_LIMIT_WINDOW_MS,
     resource: "upload finalizations",
   });
+  // cancel is cheap; we still rate-limit it to bound the worst case of a
+  // runaway client retry loop.
+  const cancelLimiter = buildPerUserRateLimiter(env, {
+    max: 60,
+    windowMs: env.RATE_LIMIT_WINDOW_MS,
+    resource: "upload cancellations",
+  });
 
   router.post("/", auth, createLimiter, validate({ body: createVideoSchema }), createVideoController);
 
   router.post(
-    "/:id/upload-url",
+    "/pending/:id/upload-url",
     auth,
     finalizeLimiter,
-    validate({ params: videoIdParamsSchema }),
+    validate({ params: pendingUploadIdParamsSchema }),
     getUploadUrlController,
   );
 
   router.post(
-    "/:id/finalize",
+    "/pending/:id/finalize",
     auth,
     finalizeLimiter,
-    validate({ params: videoIdParamsSchema }),
+    validate({ params: pendingUploadIdParamsSchema }),
     finalizeVideoController,
+  );
+
+  router.delete(
+    "/pending/:id",
+    auth,
+    cancelLimiter,
+    validate({ params: pendingUploadIdParamsSchema }),
+    cancelPendingUploadController,
   );
 
   router.get("/", auth, listVideosController);

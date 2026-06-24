@@ -5,7 +5,14 @@ import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Check, Loader2, Upload, X } from "lucide-react";
+import {
+  Check,
+  Link2,
+  Loader2,
+  RotateCw,
+  Upload,
+  X,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,14 +36,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { api } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import {
+  useCancelPendingUpload,
   useCreateVideo,
   useFinalizeUpload,
   useUploadVideo,
   type UploadProgress,
 } from "@/hooks/use-videos";
-import type { VideoPrivacyStatus } from "@clipflow/types";
+import type {
+  CreateVideoResponse,
+  VideoPrivacyStatus,
+} from "@clipflow/types";
 
 const FIVE_GB = 5 * 1024 * 1024 * 1024;
 
@@ -100,6 +112,19 @@ const createVideoFormSchema = z.object({
 
 type CreateVideoFormValues = z.infer<typeof createVideoFormSchema>;
 
+/**
+ * State machine for the dialog body. `form` is the default;
+ * `uploading` / `finalizing` are in-progress; `failed` is a terminal
+ * "we couldn't commit your upload" state with a Re-upload affordance;
+ * `connect-youtube` is the friendly panel shown when the user has no
+ * connected YouTube channel.
+ *
+ * `form | connect-youtube` are the only states the user can dismiss
+ * freely; the others lock dismissal so we don't orphan an in-flight
+ * XHR / network request.
+ */
+type Phase = "form" | "uploading" | "finalizing" | "failed" | "connect-youtube";
+
 interface CreateVideoDialogProps {
   /**
    * Whether to render the full-width "Upload your first video" CTA
@@ -109,7 +134,9 @@ interface CreateVideoDialogProps {
   variant?: "empty-state" | "compact";
   /**
    * Disable the trigger. The empty state uses this to gate uploads on
-   * YouTube-channel connection.
+   * YouTube-channel connection — when disabled, opening the dialog
+   * shows the "Connect YouTube" panel instead of the form so the user
+   * never hits a 412 from the server.
    */
   disabled?: boolean;
   /**
@@ -117,6 +144,15 @@ interface CreateVideoDialogProps {
    * your YouTube channel first".
    */
   disabledReason?: string;
+  /**
+   * Whether the user has connected a YouTube channel. When false, the
+   * dialog body shows the "Connect YouTube" panel instead of the
+   * form. The dashboard page already has this information from the
+   * `UserBundleResponse` it fetched server-side; passing it down here
+   * avoids an extra round-trip just to know if the upload form should
+   * render.
+   */
+  channelConnected: boolean;
 }
 
 /**
@@ -124,30 +160,55 @@ interface CreateVideoDialogProps {
  *
  * Self-contained: it owns its open state via shadcn's `DialogTrigger`
  * (Radix-backed), so consumers don't have to wire up `open` /
- * `onOpenChange` props. Two internal phases: `"form"` (metadata entry)
- * and `"uploading"` (progress bar + cancel). On submit:
- *   1. createVideo mutation → returns presigned POST URL + fields.
- *   2. uploadVideo(file, presigned, onProgress) → XHR with progress.
- *   3. finalizeUpload(videoId) → server HEADs S3 + enqueues publish.
+ * `onOpenChange` props. Body phases:
+ *
+ *   - `form` (default): the user fills in metadata + picks a file.
+ *   - `uploading` / `finalizing`: progress bar + Cancel; locked
+ *     against backdrop dismiss.
+ *   - `failed`: a server confirmation or upload error happened. Shows
+ *     a red error banner with a Re-upload button (re-issues the
+ *     S3 PUT with the same `pendingUploadId`, refreshing the
+ *     presigned URL if it expired) and a Cancel button (best-effort
+ *     S3 + cache cleanup server-side, then close).
+ *   - `connect-youtube`: the user has no connected channel. Shows a
+ *     "Connect YouTube" panel with a button that takes them to
+ *     /dashboard/settings/connected.
+ *
+ * On submit:
+ *   1. `createVideo` mutation → returns presigned POST URL + `pendingUploadId`.
+ *   2. `uploadVideo(file, presigned, onProgress)` → XHR with progress.
+ *   3. `finalizeUpload(pendingUploadId)` → server HEADs S3, commits
+ *      the row, enqueues the publish job.
  *   4. Close modal, refresh video list.
+ *
+ * No `Video` row is ever created on the server until step 3 succeeds,
+ * so an abandoned upload (closed tab, network error, partial PUT)
+ * leaves no residue in the DB.
  */
 export function CreateVideoDialog({
   variant = "compact",
   disabled = false,
   disabledReason,
+  channelConnected,
 }: CreateVideoDialogProps) {
   const router = useRouter();
   const createMutation = useCreateVideo();
   const finalizeMutation = useFinalizeUpload();
+  const cancelMutation = useCancelPendingUpload();
   const uploadFn = useUploadVideo();
   const uploadRef = React.useRef<ReturnType<typeof uploadFn> | null>(null);
 
   const [open, setOpen] = React.useState(false);
-  const [phase, setPhase] = React.useState<"form" | "uploading">("form");
+  // `effectivePhase` keeps the dialog body in `connect-youtube` when
+  // the user opens it without a channel, regardless of where the
+  // trigger came from (empty state vs list header).
+  const [phase, setPhase] = React.useState<Phase>("form");
   const [progress, setProgress] = React.useState<UploadProgress>({ loaded: 0, total: 0 });
-  const [stage, setStage] = React.useState<"uploading" | "finalizing">("uploading");
+  const [pendingUploadId, setPendingUploadId] = React.useState<string | null>(null);
+  const [fileRef, setFileRef] = React.useState<File | null>(null);
+  const [lastFormValues, setLastFormValues] =
+    React.useState<CreateVideoFormValues | null>(null);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
-  const [createdVideoId, setCreatedVideoId] = React.useState<string | null>(null);
 
   const {
     control,
@@ -182,50 +243,79 @@ export function CreateVideoDialog({
       reset();
       setPhase("form");
       setProgress({ loaded: 0, total: 0 });
-      setStage("uploading");
+      setPendingUploadId(null);
+      setFileRef(null);
+      setLastFormValues(null);
       setErrorMessage(null);
-      setCreatedVideoId(null);
       setTagInput("");
     }, 150);
     return () => clearTimeout(id);
   }, [open, reset]);
 
-  // While uploading, intercept Radix's dismiss so a stray Escape or
-  // backdrop click can't orphan the in-flight XHR. We expose a single
-  // "Cancel" button that's the only way out.
-  const dismissDisabled = phase === "uploading";
+  // When the dialog opens, snap the body to the right initial phase.
+  // `connect-youtube` if no channel (so the user never sees the form
+  // when they can't actually upload); `form` otherwise.
+  React.useEffect(() => {
+    if (!open) return;
+    if (!channelConnected) {
+      setPhase("connect-youtube");
+    } else if (phase !== "uploading" && phase !== "finalizing") {
+      setPhase("form");
+    }
+    // We deliberately don't depend on `phase` here — we only want this
+    // to run on `open`/`channelConnected` transitions.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, channelConnected]);
+
+  // While uploading or finalizing, intercept Radix's dismiss so a
+  // stray Escape or backdrop click can't orphan the in-flight XHR.
+  const dismissLockedPhase = phase === "uploading" || phase === "finalizing";
   const handleOpenChange = React.useCallback(
     (next: boolean) => {
-      if (dismissDisabled && !next) return;
+      if (dismissLockedPhase && !next) return;
       setOpen(next);
     },
-    [dismissDisabled],
+    [dismissLockedPhase],
   );
 
-  const onSubmit = handleSubmit(async (values) => {
-    setErrorMessage(null);
-    try {
-      const scheduledPublishAt = values.scheduledPublishAt
-        ? new Date(values.scheduledPublishAt).toISOString()
-        : undefined;
-
-      const created = await createMutation.mutateAsync({
-        title: values.title,
-        description: values.description || undefined,
-        tags: values.tags,
-        categoryId: values.categoryId,
-        privacyStatus: values.privacyStatus,
-        ...(scheduledPublishAt ? { scheduledPublishAt } : {}),
-        originalFilename: values.file.name,
-        contentType: values.file.type || "video/mp4",
-        fileSizeBytes: values.file.size,
-      });
-
-      setCreatedVideoId(created.id);
-      setPhase("uploading");
+  /**
+   * The full submit pipeline, used for both the initial submit and
+   * Re-upload. `preCreated` is set on Re-upload when the server
+   * already minted a `pendingUploadId` (via `getUploadUrl`); for the
+   * initial submit it's null and the pipeline mints one via
+   * `createVideo`.
+   */
+  const runUpload = React.useCallback(
+    async (
+      values: CreateVideoFormValues,
+      preCreated: CreateVideoResponse | null,
+    ): Promise<void> => {
+      setErrorMessage(null);
       setProgress({ loaded: 0, total: values.file.size });
 
-      uploadRef.current = uploadFn(values.file, created, setProgress);
+      let presigned = preCreated;
+      if (!presigned) {
+        const scheduledPublishAt = values.scheduledPublishAt
+          ? new Date(values.scheduledPublishAt).toISOString()
+          : undefined;
+        presigned = await createMutation.mutateAsync({
+          title: values.title,
+          description: values.description || undefined,
+          tags: values.tags,
+          categoryId: values.categoryId,
+          privacyStatus: values.privacyStatus,
+          ...(scheduledPublishAt ? { scheduledPublishAt } : {}),
+          originalFilename: values.file.name,
+          contentType: values.file.type || "video/mp4",
+          fileSizeBytes: values.file.size,
+        });
+        setPendingUploadId(presigned.pendingUploadId);
+      } else {
+        setPendingUploadId(presigned.pendingUploadId);
+      }
+
+      setPhase("uploading");
+      uploadRef.current = uploadFn(values.file, presigned, setProgress);
       try {
         await uploadRef.current.promise;
       } catch (err) {
@@ -233,21 +323,112 @@ export function CreateVideoDialog({
         throw err;
       }
 
-      setStage("finalizing");
-      await finalizeMutation.mutateAsync(created.id);
+      setPhase("finalizing");
+      await finalizeMutation.mutateAsync(presigned.pendingUploadId);
 
       setOpen(false);
       router.refresh();
+    },
+    [createMutation, finalizeMutation, router, uploadFn],
+  );
+
+  const onSubmit = handleSubmit(async (values) => {
+    setLastFormValues(values);
+    setFileRef(values.file);
+    try {
+      await runUpload(values, null);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Upload failed.");
-      setPhase("form");
+      setPhase("failed");
     }
   });
 
-  const handleCancel = () => {
-    uploadRef.current?.abort();
+  /**
+   * Re-upload handler. Three paths:
+   *  1. Cache hit on the existing `pendingUploadId` → re-issue the
+   *     S3 PUT with a fresh presigned URL, then re-finalize. The
+   *     `pendingUploadId` is the same so the server's existing
+   *     cache entry is used.
+   *  2. Cache miss (15-min TTL elapsed) → re-prepare from scratch by
+   *     calling `createVideo` again with the original form values.
+   *     This mints a new `pendingUploadId` and a fresh S3 key, so
+   *     any orphaned partial object from the previous attempt is
+   *     harmless (it'll be GC'd by the S3 lifecycle rule).
+   *  3. We still have `lastFormValues` but no fileRef (defensive —
+   *     shouldn't happen in practice) → fall back to the form.
+   */
+  const onReupload = React.useCallback(async () => {
+    if (!lastFormValues || !fileRef) {
+      setPhase("form");
+      return;
+    }
+    // `runUpload` reads `lastFormValues.file` so we hydrate it back
+    // into a form-shaped value. `setValue` re-validates the form
+    // because we just left a transient state.
+    const values: CreateVideoFormValues = {
+      ...lastFormValues,
+      file: fileRef,
+    };
+    setValue("file", fileRef, { shouldValidate: false });
+    try {
+      let preCreated: CreateVideoResponse | null = null;
+      if (pendingUploadId) {
+        try {
+          const fresh = await api.getUploadUrl(pendingUploadId);
+          // `fresh` only carries the presigned-URL fields; merge the
+          // existing `pendingUploadId` (and the unchanged s3Key from
+          // the original create) into the payload the XHR expects.
+          // `s3KeyOriginal` is no longer consumed by the client — the
+          // server uses it internally — but we keep it on the type
+          // for shape compatibility.
+          preCreated = {
+            pendingUploadId,
+            s3KeyOriginal: "",
+            postUrl: fresh.postUrl,
+            fields: fresh.fields,
+            contentLengthMaxBytes: fresh.contentLengthMaxBytes,
+          };
+        } catch {
+          // 404 — pending upload expired in cache. Fall through to
+          // createVideo below; the original `pendingUploadId` is
+          // already invalidated server-side, so a fresh create is
+          // the only path forward.
+          preCreated = null;
+        }
+      }
+      await runUpload(values, preCreated);
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Upload failed.");
+      setPhase("failed");
+    }
+  }, [api, fileRef, lastFormValues, pendingUploadId, runUpload, setValue]);
+
+  /**
+   * Cancel handler for the in-flight upload phase. Aborts the XHR
+   * and the dialog stays open (the user can retry by Re-uploading).
+   * For the failed phase, Cancel means "give up" — server-side
+   * cleanup + close.
+   */
+  const handleCancel = React.useCallback(async () => {
+    if (phase === "uploading" || phase === "finalizing") {
+      uploadRef.current?.abort();
+      setPhase("form");
+      return;
+    }
+    if (pendingUploadId) {
+      try {
+        await cancelMutation.mutateAsync(pendingUploadId);
+      } catch {
+        // Best-effort — the cache will TTL out anyway.
+      }
+    }
     setOpen(false);
-  };
+  }, [cancelMutation, pendingUploadId, phase]);
+
+  const handleConnectYouTube = React.useCallback(() => {
+    setOpen(false);
+    router.push("/dashboard/settings/connected");
+  }, [router]);
 
   const addTag = (raw: string) => {
     const tag = raw.trim();
@@ -294,12 +475,83 @@ export function CreateVideoDialog({
       </DialogTrigger>
 
       <DialogContent
-        // While uploading, hide Radix's built-in X close so the user
-        // can't accidentally dismiss the modal mid-XHR.
-        showCloseButton={!dismissDisabled}
+        // While uploading / finalizing, hide Radix's built-in X close
+        // so the user can't accidentally dismiss the modal mid-XHR.
+        showCloseButton={!dismissLockedPhase}
         className="max-w-xl"
       >
-        {phase === "form" ? (
+        {phase === "connect-youtube" ? (
+          <div className="flex flex-col gap-5">
+            <DialogHeader>
+              <DialogTitle>Connect your YouTube channel</DialogTitle>
+              <DialogDescription>
+                We need access to your YouTube channel to publish your
+                videos. Connect once and you&apos;re set.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setOpen(false)}
+              >
+                Not now
+              </Button>
+              <Button type="button" onClick={handleConnectYouTube}>
+                <Link2 className="h-4 w-4" />
+                Connect YouTube
+              </Button>
+            </DialogFooter>
+          </div>
+        ) : phase === "failed" ? (
+          <div className="flex flex-col gap-5">
+            <DialogHeader>
+              <DialogTitle>Upload didn&apos;t go through</DialogTitle>
+              <DialogDescription>
+                {errorMessage ??
+                  "Something went wrong while sending your video to storage. Try again — the file you picked is still selected."}
+              </DialogDescription>
+            </DialogHeader>
+
+            {errorMessage ? (
+              <div
+                role="alert"
+                className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+              >
+                {errorMessage}
+              </div>
+            ) : null}
+
+            {fileRef ? (
+              <p className="text-xs text-muted-foreground">
+                Ready to re-upload:{" "}
+                <span className="font-medium text-foreground">
+                  {fileRef.name}
+                </span>{" "}
+                ({formatBytes(fileRef.size)})
+              </p>
+            ) : null}
+
+            <DialogFooter className="gap-2 pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleCancel}
+                disabled={cancelMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={onReupload}
+                disabled={!fileRef || !lastFormValues}
+              >
+                <RotateCw className="h-4 w-4" />
+                Re-upload
+              </Button>
+            </DialogFooter>
+          </div>
+        ) : phase === "form" ? (
           <form onSubmit={onSubmit} className="flex flex-col gap-5" noValidate>
             <DialogHeader>
               <DialogTitle>Upload a video</DialogTitle>
@@ -534,10 +786,10 @@ export function CreateVideoDialog({
           <div className="flex flex-col gap-5">
             <DialogHeader>
               <DialogTitle>
-                {stage === "uploading" ? "Uploading…" : "Finalizing…"}
+                {phase === "uploading" ? "Uploading…" : "Finalizing…"}
               </DialogTitle>
               <DialogDescription>
-                {stage === "uploading"
+                {phase === "uploading"
                   ? "Streaming your video to storage. You can cancel until the upload completes."
                   : "Confirming the upload and queuing the publish job."}
               </DialogDescription>
@@ -560,9 +812,9 @@ export function CreateVideoDialog({
                 {formatBytes(progress.loaded)} of {formatBytes(progress.total)}{" "}
                 ({percent}%)
               </span>
-              {createdVideoId ? (
+              {pendingUploadId ? (
                 <span className="font-mono">
-                  id {createdVideoId.slice(0, 12)}…
+                  id {pendingUploadId.slice(0, 12)}…
                 </span>
               ) : null}
             </div>
@@ -581,7 +833,7 @@ export function CreateVideoDialog({
                 type="button"
                 variant="ghost"
                 onClick={handleCancel}
-                disabled={stage === "finalizing"}
+                disabled={phase === "finalizing"}
               >
                 Cancel
               </Button>
