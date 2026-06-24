@@ -3,6 +3,10 @@
  *
  * Handles the Google OAuth flow for connecting a user's YouTube channel
  * to ClipFlow. Uses AES-256-GCM encryption for refresh tokens at rest.
+ *
+ * `refreshAccessToken` lives in `@clipflow/youtube-upload` so the
+ * worker can call it without depending on the API package. Re-exported
+ * here for the few API-side callers that still want it from this path.
  */
 import { randomUUID } from "node:crypto";
 import type { Env } from "@clipflow/config";
@@ -10,8 +14,9 @@ import type { YouTubeConnection } from "@clipflow/types";
 import type { YouTubeChannel, ChannelConnectionStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { requireDatabase } from "../../lib/db-guard.js";
-import { encryptToken, decryptToken } from "../../lib/crypto.js";
+import { encryptToken } from "../../lib/crypto.js";
 import { AppError } from "../../errors/AppError.js";
+import { refreshAccessToken as refreshAccessTokenInPackage } from "@clipflow/youtube-upload";
 import {
   GOOGLE_AUTH_URL,
   GOOGLE_TOKEN_URL,
@@ -256,6 +261,12 @@ export const getYouTubeConnectionByUserId = async (
 /**
  * Refresh an expired access token using the stored refresh token.
  *
+ * Thin wrapper over the package implementation that translates the
+ * typed {@link PermanentPublishError} (raised by the package on
+ * CHANNEL_NEEDS_REAUTH) into the legacy `AppError(401,
+ * YOUTUBE_TOKEN_REFRESH_FAILED)` shape so existing API callers don't
+ * need to update their catch blocks.
+ *
  * @param channel The YouTubeChannel row with encrypted refresh token.
  * @param env Validated env.
  * @returns New access token and its expiry time.
@@ -267,44 +278,26 @@ export const refreshAccessToken = async (
     "GOOGLE_CLIENT_ID" | "GOOGLE_CLIENT_SECRET" | "ENCRYPTION_KEY"
   >,
 ): Promise<{ accessToken: string; expiresAt: Date }> => {
-  const refreshToken = decryptToken(
-    channel.refreshTokenEncrypted,
-    env.ENCRYPTION_KEY,
-  );
-
-  const res = await fetch(GOOGLE_TOKEN_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      refresh_token: refreshToken,
-      client_id: env.GOOGLE_CLIENT_ID!,
-      client_secret: env.GOOGLE_CLIENT_SECRET!,
-      grant_type: "refresh_token",
-    }),
-  });
-
-  if (!res.ok) {
-    // Refresh token is invalid or expired — mark channel as needing reauth
-    await prisma.youTubeChannel.update({
-      where: { id: channel.id },
-      data: { status: "NEEDS_REAUTH" },
-    });
-    throw new AppError(
-      401,
-      "YOUTUBE_TOKEN_REFRESH_FAILED",
-      "YouTube channel access has expired. Please reconnect your channel.",
-    );
+  try {
+    return await refreshAccessTokenInPackage(prisma, channel, env);
+  } catch (err) {
+    // Translate package's typed error into the legacy API error shape.
+    if (
+      err &&
+      typeof err === "object" &&
+      "code" in err &&
+      (err as { code?: string }).code === "PERMANENT_PUBLISH_ERROR" &&
+      "reasonCode" in err &&
+      (err as { reasonCode?: string }).reasonCode === "CHANNEL_NEEDS_REAUTH"
+    ) {
+      throw new AppError(
+        401,
+        "YOUTUBE_TOKEN_REFRESH_FAILED",
+        "YouTube channel access has expired. Please reconnect your channel.",
+      );
+    }
+    throw err;
   }
-
-  const data = (await res.json()) as {
-    access_token: string;
-    expires_in: number;
-  };
-
-  return {
-    accessToken: data.access_token,
-    expiresAt: new Date(Date.now() + data.expires_in * 1000),
-  };
 };
 
 /**

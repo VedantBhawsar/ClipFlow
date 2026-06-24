@@ -21,4 +21,10 @@ export const queryKeys = {
   onboarding: {
     status: () => ["onboarding", "status"] as const,
   },
+  videos: {
+    /** All videos for the current user. */
+    list: () => ["videos", "list"] as const,
+    /** Single video by id. */
+    detail: (id: string) => ["videos", "detail", id] as const,
+  },
 } as const;

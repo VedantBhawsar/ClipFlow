@@ -1,6 +1,8 @@
 import type {
   AuthResponse,
   ChangePasswordRequest,
+  CreateVideoRequest,
+  CreateVideoResponse,
   LoginRequest,
   MeResponse,
   OnboardingStatusResponse,
@@ -8,9 +10,11 @@ import type {
   RegisterRequest,
   UpdatePreferencesRequest,
   UpdateProfileRequest,
+  UploadUrlResponse,
   UserBundleResponse,
   UserPreferences,
   UserProfile,
+  Video,
   YouTubeConnection,
   ApiErrorBody,
 } from "@clipflow/types";
@@ -227,5 +231,53 @@ export const api = {
    */
   changePassword(body: ChangePasswordRequest): Promise<void> {
     return request<void>("POST", "/api/user/change-password", body);
+  },
+
+  // ---------- Videos (upload → publish) ----------
+
+  /**
+   * Create a Video row in UPLOADED status and return a presigned POST
+   * URL the browser uses to upload the file directly to S3/MinIO.
+   * The API never sees the bytes.
+   */
+  createVideo(body: CreateVideoRequest): Promise<CreateVideoResponse> {
+    return request("POST", "/api/videos", body);
+  },
+
+  /**
+   * Mint a fresh presigned POST URL if the first one expired (15 min).
+   */
+  getUploadUrl(id: string): Promise<UploadUrlResponse> {
+    return request("POST", `/api/videos/${id}/upload-url`);
+  },
+
+  /**
+   * Notify the API that the browser has finished uploading to S3.
+   * The API HEADs the object, transitions the row, and (for immediate
+   * publishes) enqueues the BullMQ publish job.
+   */
+  finalizeUpload(id: string): Promise<Video> {
+    return request("POST", `/api/videos/${id}/finalize`);
+  },
+
+  /**
+   * List the current user's videos, newest first.
+   */
+  listVideos(): Promise<{videos: Video[]}> {
+    return request("GET", "/api/videos");
+  },
+
+  /**
+   * Read a single video.
+   */
+  getVideo(id: string): Promise<Video> {
+    return request("GET", `/api/videos/${id}`);
+  },
+
+  /**
+   * Cancel + delete a video that hasn't been published yet.
+   */
+  deleteVideo(id: string): Promise<void> {
+    return request<void>("DELETE", `/api/videos/${id}`);
   },
 } as const;

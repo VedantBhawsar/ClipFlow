@@ -11,6 +11,7 @@ import { buildLogger } from "./lib/logger.js";
 import { createApp } from "./app.js";
 import { startServer } from "./server.js";
 import { disposeCache } from "./lib/cache.js";
+import { closePublishQueue } from "./lib/queue.js";
 import { prisma, setDatabaseAvailable } from "./lib/prisma.js";
 
 /**
@@ -37,6 +38,7 @@ const main = async (): Promise<void> => {
     try {
       await running.close();
       disposeCache();
+      await closePublishQueue();
       if (databaseAvailable) {
         await prisma.$disconnect();
       }

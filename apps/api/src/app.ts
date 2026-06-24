@@ -20,6 +20,7 @@ import { buildOnboardingRouter } from "./modules/onboarding/onboarding.routes.js
 import { buildHealthRouter } from "./modules/health/health.routes.js";
 import { buildPreferencesRouter } from "./modules/preferences/preferences.routes.js";
 import { buildUserRouter } from "./modules/user/user.routes.js";
+import { buildVideosRouter } from "./modules/videos/videos.routes.js";
 import { buildYouTubeRouter } from "./modules/youtube/youtube.routes.js";
 
 /**
@@ -113,6 +114,7 @@ export const createApp = ({ env, logger }: CreateAppOptions): Application => {
   app.use("/api/user", buildUserRouter(env));
   app.use("/api/user", buildPreferencesRouter(env));
   app.use("/api/youtube", buildYouTubeRouter(env));
+  app.use("/api/videos", buildVideosRouter(env));
 
   // 404 + error handler must be last.
   app.use(notFoundHandler);

@@ -250,3 +250,92 @@ export interface ApiErrorBody {
   message: string;
   details?: Record<string, unknown>;
 }
+
+// ---------- Video upload → publish ----------
+
+/**
+ * Lifecycle states for an uploaded video. Six values for the
+ * upload-publish slice; the transcript / thumbnail / chapter slice
+ * extends this enum via a follow-up migration. Mirrors the Prisma
+ * `VideoStatus` enum in packages/db.
+ */
+export const VIDEO_STATUSES = [
+  "UPLOADED",
+  "READY",
+  "SCHEDULED",
+  "PUBLISHING",
+  "PUBLISHED",
+  "PUBLISH_FAILED",
+] as const;
+export type VideoStatus = (typeof VIDEO_STATUSES)[number];
+
+export const VIDEO_PRIVACY_STATUSES = [
+  "private",
+  "unlisted",
+  "public",
+] as const;
+export type VideoPrivacyStatus = (typeof VIDEO_PRIVACY_STATUSES)[number];
+
+/**
+ * Body for `POST /api/videos`. The metadata the user submits when
+ * creating a new video. The actual file bytes are uploaded directly
+ * to S3/MinIO via the presigned URL returned by that endpoint — the
+ * API never sees the bytes.
+ */
+export interface CreateVideoRequest {
+  title: string;
+  description?: string;
+  tags?: string[];
+  categoryId?: string;
+  privacyStatus?: VideoPrivacyStatus;
+  /** ISO8601 string. Omit for immediate publish. */
+  scheduledPublishAt?: string;
+  originalFilename: string;
+  contentType?: string;
+  /** Client-declared byte size. Server re-checks on finalize. */
+  fileSizeBytes: number;
+}
+
+/**
+ * Response from `POST /api/videos`. The browser uses `postUrl` + `fields`
+ * to submit the file via multipart/form-data.
+ */
+export interface CreateVideoResponse {
+  id: string;
+  s3KeyOriginal: string;
+  postUrl: string;
+  fields: Record<string, string>;
+  /** Hard cap the presigned POST will accept (== env.YOUTUBE_MAX_VIDEO_BYTES). */
+  contentLengthMaxBytes: number;
+}
+
+export interface UploadUrlResponse {
+  postUrl: string;
+  fields: Record<string, string>;
+  contentLengthMaxBytes: number;
+}
+
+/**
+ * Wire DTO for a Video row. Dates are ISO strings; the BigInt
+ * `fileSizeBytes` is serialized to a number (still safe — 5GB ≈ 5.4e9,
+ * well under 2^53).
+ */
+export interface Video {
+  id: string;
+  status: VideoStatus;
+  title: string;
+  description: string | null;
+  tags: string[];
+  categoryId: string;
+  privacyStatus: string;
+  originalFilename: string;
+  fileSizeBytes: number;
+  contentType: string;
+  s3KeyOriginal: string;
+  failureReason: string | null;
+  scheduledPublishAt: string | null;
+  youtubeVideoId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt: string | null;
+}
