@@ -4,13 +4,17 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ExternalLink, Loader2, AlertCircle } from "lucide-react";
 import type { Video, VideoStatus } from "@clipflow/types";
 
-import { StatusTimeline, type TimelineStatus } from "@/components/dashboard/status-timeline";
+import {
+  StatusTimeline,
+  type TimelineStatus,
+} from "@/components/dashboard/status-timeline";
 import { UnpublishButton } from "@/app/dashboard/published/[id]/unpublish-button";
 import { CancelButton } from "@/app/dashboard/published/[id]/cancel-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/auth";
 import { serverFetch, ServerApiError } from "@/lib/api-client";
+import BackButton from "@/components/shared/BackButton";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -67,7 +71,7 @@ export default async function VideoDetailPage({ params }: PageProps) {
   const session = await auth();
   const token = session?.accessToken ?? null;
   if (!token) {
-    redirect(`/signin?next=/dashboard/published/${id}`);
+    redirect(`/signin?next=/dashboard/videos/${id}`);
   }
 
   let video: Video | null = null;
@@ -97,12 +101,13 @@ export default async function VideoDetailPage({ params }: PageProps) {
     <div className="space-y-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
-          <Button asChild variant="ghost" size="sm" className="-ml-2">
-            <Link href={"/dashboard/published"}>
+          <BackButton className={"mb-2"}>
+            <Button variant="ghost" size="sm" className="-ml-2">
               <ArrowLeft aria-hidden="true" />
-              Back to published
-            </Link>
-          </Button>
+              Back
+            </Button>
+          </BackButton>
+
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold tracking-tight">
               {video.title}
@@ -127,7 +132,10 @@ export default async function VideoDetailPage({ params }: PageProps) {
         <StatusTimeline status={timelineStatus} className="max-w-2xl" />
         {video.failureReason ? (
           <p className="mt-3 text-xs text-destructive">
-            <AlertCircle className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" />
+            <AlertCircle
+              className="mr-1 inline h-3.5 w-3.5"
+              aria-hidden="true"
+            />
             {video.failureReason}
           </p>
         ) : null}
@@ -142,7 +150,10 @@ export default async function VideoDetailPage({ params }: PageProps) {
         aria-labelledby="thumbnail-heading"
         className="rounded-xl border border-border bg-card p-4"
       >
-        <h2 id="thumbnail-heading" className="mb-3 text-sm font-semibold text-foreground">
+        <h2
+          id="thumbnail-heading"
+          className="mb-3 text-sm font-semibold text-foreground"
+        >
           Thumbnail
         </h2>
         {thumbnailUrl ? (
@@ -167,7 +178,10 @@ export default async function VideoDetailPage({ params }: PageProps) {
         aria-labelledby="metadata-heading"
         className="rounded-xl border border-border bg-card p-4"
       >
-        <h2 id="metadata-heading" className="mb-4 text-sm font-semibold text-foreground">
+        <h2
+          id="metadata-heading"
+          className="mb-4 text-sm font-semibold text-foreground"
+        >
           Details
         </h2>
         <dl className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
@@ -209,9 +223,7 @@ export default async function VideoDetailPage({ params }: PageProps) {
           </DetailRow>
           <DetailRow label="Distribution">
             <ul className="space-y-0.5">
-              <li>
-                {video.embeddable ? "Embeddable" : "Not embeddable"}
-              </li>
+              <li>{video.embeddable ? "Embeddable" : "Not embeddable"}</li>
               <li>
                 License:{" "}
                 <span className="font-mono text-xs">{video.license}</span>
@@ -296,9 +308,12 @@ function EmptyValue() {
 }
 
 function ActionPanel({ video }: { video: Video }) {
-  const canCancel = ["UPLOADED", "READY", "SCHEDULED", "PUBLISH_FAILED"].includes(
-    video.status,
-  );
+  const canCancel = [
+    "UPLOADED",
+    "READY",
+    "SCHEDULED",
+    "PUBLISH_FAILED",
+  ].includes(video.status);
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-2">
       {video.youtubeVideoId ? (
