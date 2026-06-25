@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { COMMON_TIMEZONES } from "@clipflow/types";
-import { useAuth } from "@/hooks/use-auth";
+import { useSettings } from "@/hooks/use-settings";
 import { useUpdatePreferences } from "@/hooks/use-update-preferences";
 
 /**
@@ -34,7 +34,8 @@ const detectBrowserTimezone = (): string | null => {
 };
 
 export function SchedulingForm() {
-  const { preferences: prefs } = useAuth();
+  const { data: settings } = useSettings();
+  const prefs = settings?.preferences ?? null;
   const updatePrefs = useUpdatePreferences();
 
   const [timezone, setTimezone] = React.useState<string>(

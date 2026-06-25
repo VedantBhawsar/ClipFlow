@@ -31,16 +31,15 @@ import type {
   CreateVideoResponse,
   LoginRequest,
   LogoutRequest,
-  MeResponse,
   OnboardingStatusResponse,
   PatchProfileRequest,
   RefreshRequest,
   RefreshResponse,
   RegisterRequest,
+  SettingsResponse,
   UpdatePreferencesRequest,
   UpdateProfileRequest,
   UploadUrlResponse,
-  UserBundleResponse,
   UserPreferences,
   UserProfile,
   Video,
@@ -156,13 +155,12 @@ export interface ApiClient {
   login(body: LoginRequest): Promise<AuthResponse>;
   logout(body: LogoutRequest): Promise<void>;
   refresh(body: RefreshRequest): Promise<RefreshResponse>;
-  me(): Promise<MeResponse>;
 
   getOnboardingStatus(): Promise<OnboardingStatusResponse>;
   submitOnboardingProfile(body: UpdateProfileRequest): Promise<UserProfile>;
   patchOnboardingProfile(body: PatchProfileRequest): Promise<UserProfile>;
 
-  getUserBundle(): Promise<UserBundleResponse>;
+  getSettings(): Promise<SettingsResponse>;
   getYouTubeConnection(): Promise<YouTubeConnection>;
   getYouTubeOAuthUrl(): Promise<{ url: string }>;
   connectYouTube(code: string): Promise<YouTubeConnection>;
@@ -258,9 +256,6 @@ export function createApiClient(accessToken: string | null): ApiClient {
     refresh(body) {
       return request("POST", "/api/auth/refresh", body);
     },
-    me() {
-      return request("GET", "/api/auth/me");
-    },
 
     getOnboardingStatus() {
       return request("GET", "/api/onboarding/status");
@@ -272,11 +267,11 @@ export function createApiClient(accessToken: string | null): ApiClient {
       return request("PATCH", "/api/onboarding/profile", body);
     },
 
-    getUserBundle() {
-      return request("GET", "/api/user/profile");
+    getSettings() {
+      return request("GET", "/api/settings");
     },
     getYouTubeConnection() {
-      return request("GET", "/api/user/youtube-connection");
+      return request("GET", "/api/youtube/connection");
     },
     getYouTubeOAuthUrl() {
       return request("GET", "/api/youtube/oauth/url");
@@ -289,13 +284,13 @@ export function createApiClient(accessToken: string | null): ApiClient {
     },
 
     getPreferences() {
-      return request("GET", "/api/user/preferences");
+      return request("GET", "/api/settings/preferences");
     },
     updatePreferences(body) {
-      return request("PATCH", "/api/user/preferences", body);
+      return request("PATCH", "/api/settings/preferences", body);
     },
     changePassword(body) {
-      return request<void>("POST", "/api/user/change-password", body);
+      return request<void>("POST", "/api/settings/change-password", body);
     },
 
     createVideo(body) {

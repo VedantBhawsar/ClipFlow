@@ -35,8 +35,8 @@ export function useSignOut() {
     onSettled: () => {
       // Drop everything. The cache is keyed by our queryKeys factory;
       // no third-party queries live here.
-      qc.removeQueries({ queryKey: queryKeys.user.bundle() });
-      qc.removeQueries({ queryKey: queryKeys.user.youtubeConnection() });
+      qc.removeQueries({ queryKey: queryKeys.settings.bundle() });
+      qc.removeQueries({ queryKey: queryKeys.settings.youtubeConnection() });
       qc.removeQueries({ queryKey: queryKeys.onboarding.status() });
       qc.clear();
     },

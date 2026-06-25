@@ -18,7 +18,7 @@ import {
   PRIMARY_GOAL_OPTIONS,
   UPLOAD_FREQUENCY_OPTIONS,
 } from "@/lib/profile-options";
-import { useAuth } from "@/hooks/use-auth";
+import { useSettings } from "@/hooks/use-settings";
 import { useUpdateProfile } from "@/hooks/use-update-profile";
 import type {
   ContentNiche,
@@ -35,7 +35,8 @@ import type {
  * keep re-stamping the onboarding-completion timestamp on every save.
  */
 export function ProfileForm() {
-  const { profile } = useAuth();
+  const { data: settings } = useSettings();
+  const profile = settings?.profile ?? null;
   const { patch } = useUpdateProfile();
 
   const [displayName, setDisplayName] = React.useState(profile?.displayName ?? "");
@@ -50,9 +51,9 @@ export function ProfileForm() {
   );
   const [localError, setLocalError] = React.useState<string | null>(null);
 
-  // If the bundle hydrates after mount, keep the form in sync. Without
-  // this, opening /settings/profile before auth context finishes
-  // hydrating would show an empty form.
+  // If the settings query hydrates after mount, keep the form in sync.
+  // Without this, opening /settings/profile before the query finishes
+  // would show an empty form.
   React.useEffect(() => {
     if (!profile) return;
     setDisplayName(profile.displayName ?? "");

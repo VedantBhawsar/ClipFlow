@@ -9,6 +9,9 @@ vi.mock("../../lib/prisma.js", () => ({
       findUnique: vi.fn(),
       create: vi.fn(),
     },
+    userProfile: {
+      findUnique: vi.fn(),
+    },
     refreshToken: {
       create: vi.fn(),
       findUnique: vi.fn(),
@@ -178,6 +181,10 @@ describe("auth.service", () => {
   describe("login", () => {
     it("returns access + refresh tokens for valid credentials", async () => {
       vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser);
+      vi.mocked(prisma.userProfile.findUnique).mockResolvedValue({
+        displayName: null,
+        onboardingCompletedAt: null,
+      } as never);
       vi.mocked(verifyPassword).mockResolvedValue(true);
 
       const result = await authService.login(
@@ -188,6 +195,8 @@ describe("auth.service", () => {
       expect(result.user.email).toBe("test@example.com");
       expect(result.accessToken).toBe("mock.jwt.token");
       expect(result.refreshToken).toEqual(expect.any(String));
+      expect(result.onboardingCompleted).toBe(false);
+      expect(result.displayName).toBeNull();
       expect(verifyPassword).toHaveBeenCalledWith("Password123", "hashed_password");
       expect(prisma.refreshToken.create).toHaveBeenCalledTimes(1);
     });
@@ -261,52 +270,6 @@ describe("auth.service", () => {
       ).rejects.toMatchObject({
         statusCode: 501,
         code: "NOT_IMPLEMENTED",
-      });
-    });
-  });
-
-  describe("me", () => {
-    const mockUserWithProfile = {
-      ...mockUser,
-      profile: {
-        id: "profile-123",
-        displayName: "My Channel",
-        niche: "GAMING",
-        uploadFrequency: "ONE_TO_FOUR",
-        primaryGoal: "GROW_VIEWS",
-        recommendedPlanId: "starter",
-        onboardingCompletedAt: new Date("2024-01-15"),
-      },
-    };
-
-    it("returns user with profile and onboardingCompleted=true when profile exists", async () => {
-      vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUserWithProfile);
-
-      const result = await authService.me("user-123");
-
-      expect(result.user.email).toBe("test@example.com");
-      expect(result.profile?.displayName).toBe("My Channel");
-      expect(result.onboardingCompleted).toBe(true);
-    });
-
-    it("returns user with null profile and onboardingCompleted=false when no profile", async () => {
-      vi.mocked(prisma.user.findUnique).mockResolvedValue({
-        ...mockUser,
-        profile: null,
-      });
-
-      const result = await authService.me("user-123");
-
-      expect(result.profile).toBeNull();
-      expect(result.onboardingCompleted).toBe(false);
-    });
-
-    it("throws UNAUTHENTICATED when user not found", async () => {
-      vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
-
-      await expect(authService.me("deleted-user")).rejects.toMatchObject({
-        statusCode: 401,
-        code: "UNAUTHENTICATED",
       });
     });
   });

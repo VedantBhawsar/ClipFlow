@@ -133,6 +133,19 @@ export interface AuthResponse {
   accessTokenExpiresAt: number;
   /** Unix-ms timestamp at which `refreshToken` expires. */
   refreshTokenExpiresAt: number;
+  /**
+   * Whether the user has finished the onboarding wizard. Baked into the
+   * NextAuth session cookie on first sign-in so `<OnboardingGuard>` can
+   * route the user without an API round-trip.
+   */
+  onboardingCompleted: boolean;
+  /**
+   * The user's chosen display name from `UserProfile.displayName`, or
+   * null if they haven't completed onboarding yet. Mirrored into the
+   * session cookie so the dashboard chrome can greet them by name
+   * without re-fetching the profile.
+   */
+  displayName: string | null;
 }
 
 export interface RefreshRequest {
@@ -144,18 +157,22 @@ export interface RefreshResponse {
   refreshToken: string;
   accessTokenExpiresAt: number;
   refreshTokenExpiresAt: number;
+  /**
+   * Latest `onboardingCompleted` from the DB, refreshed on every token
+   * rotation. Lets a long-lived session pick up onboarding completion
+   * without forcing a re-login.
+   */
+  onboardingCompleted: boolean;
+  /**
+   * Latest `displayName` from the DB, refreshed on every token rotation.
+   */
+  displayName: string | null;
 }
 
 export interface LogoutRequest {
   /** Refresh token to revoke. Optional — omitting it revokes nothing
    * server-side and only clears the client session. */
   refreshToken?: string;
-}
-
-export interface MeResponse {
-  user: AuthUser;
-  profile: UserProfile | null;
-  onboardingCompleted: boolean;
 }
 
 // ---------- Onboarding ----------
@@ -178,9 +195,9 @@ export interface UpdateProfileRequest {
 }
 
 /**
- * Partial update shape used by PATCH /api/onboarding/profile and
- * PATCH /api/user/profile. Any of the four fields may be omitted; the
- * service layer merges on top of the existing row.
+ * Partial update shape used by `PATCH /api/onboarding/profile`.
+ * Any of the four fields may be omitted; the service layer merges on
+ * top of the existing row.
  */
 export interface PatchProfileRequest {
   displayName?: string | null;
@@ -217,9 +234,9 @@ export interface UserPreferences {
 }
 
 /**
- * Partial-update payload for PATCH /api/user/preferences. Any subset
- * of the fields may be provided; the server merges on top of the
- * existing row and rejects empty bodies.
+ * Partial-update payload for PATCH /api/settings/preferences. Any
+ * subset of the fields may be provided; the server merges on top of
+ * the existing row and rejects empty bodies.
  */
 export interface UpdatePreferencesRequest {
   notifyProcessingComplete?: boolean;
@@ -234,8 +251,8 @@ export interface UpdatePreferencesRequest {
 }
 
 /**
- * Body for POST /api/user/change-password. The server verifies the
- * current password before accepting the new one.
+ * Body for POST /api/settings/change-password. The server verifies
+ * the current password before accepting the new one.
  */
 export interface ChangePasswordRequest {
   currentPassword: string;
@@ -262,18 +279,18 @@ export interface YouTubeConnection {
   lastVerifiedAt: string | null;
 }
 
-// ---------- Combined /user/profile read ----------
+// ---------- /api/settings read (lazy, dashboard chrome no longer needs it) ----------
 
 /**
- * Single round-trip read used by the web client on hydration. Returns
- * everything the dashboard chrome needs in one call, behind a 30s
- * server-side cache (see `apps/api/src/lib/cache.ts`).
+ * Lazy read of the user's settings-shaped data — profile fields, runtime
+ * preferences, and the YouTube connection. Fetched only by the settings
+ * pages and the YouTube connection card; the dashboard chrome no longer
+ * hydrates from this on every render (it reads identity + onboarding
+ * status directly from the NextAuth session JWT).
  */
-export interface UserBundleResponse {
-  user: AuthUser;
+export interface SettingsResponse {
   profile: UserProfile | null;
   preferences: UserPreferences | null;
-  onboardingCompleted: boolean;
   youtubeConnection: YouTubeConnection;
 }
 

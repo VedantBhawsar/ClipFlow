@@ -87,7 +87,7 @@ export interface PerUserRateLimiterOptions {
  * the limiter in our route wiring, so the limiter sees a request with
  * no `req.user` and falls back to IP. The order is intentional: we
  * want to throttle the *attempt* regardless of outcome, so a script
- * firing bad tokens against `/api/user/change-password` still gets
+ * firing bad tokens against `/api/settings/change-password` still gets
  * rate-limited by IP.
  *
  * @param env Validated env (used for the default window).

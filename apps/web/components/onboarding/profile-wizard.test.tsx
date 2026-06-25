@@ -3,12 +3,12 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ProfileWizard } from "./profile-wizard.js";
 
-vi.mock("@/hooks/use-auth", () => ({
-  useAuth: vi.fn(),
-}));
-
 vi.mock("@/hooks/use-update-profile", () => ({
   useUpdateProfile: vi.fn(),
+}));
+
+vi.mock("next-auth/react", () => ({
+  useSession: vi.fn(),
 }));
 
 const mockRouterPush = vi.fn();
@@ -21,14 +21,15 @@ vi.mock("next/navigation", () => ({
   })),
 }));
 
-import { useAuth } from "@/hooks/use-auth";
 import { useUpdateProfile } from "@/hooks/use-update-profile";
+import { useSession } from "next-auth/react";
 
-const mockUseAuth = vi.mocked(useAuth);
 const mockUseUpdateProfile = vi.mocked(useUpdateProfile);
+const mockUseSession = vi.mocked(useSession);
 
 describe("ProfileWizard", () => {
   let mockMutateAsync: ReturnType<typeof vi.fn>;
+  let mockUpdate: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -51,18 +52,16 @@ describe("ProfileWizard", () => {
         reset: vi.fn(),
       },
     } as unknown as ReturnType<typeof useUpdateProfile>);
-    mockUseAuth.mockReturnValue({
-      refresh: vi.fn(),
-      setOnboardingCompleted: vi.fn(),
-      setPreferences: vi.fn(),
-      patchPreferences: vi.fn(),
+
+    mockUpdate = vi.fn().mockResolvedValue(undefined);
+    mockUseSession.mockReturnValue({
       status: "authenticated",
-      user: { id: "1", email: "a@b.com", name: "A", authProvider: "EMAIL", emailVerifiedAt: null, createdAt: "" },
-      profile: null,
-      preferences: null,
-      youtubeConnection: null,
-      onboardingCompleted: false,
-    } as unknown as ReturnType<typeof useAuth>);
+      data: {
+        user: { id: "1", email: "a@b.com", name: "A" } as never,
+        expires: "",
+      } as never,
+      update: mockUpdate,
+    } as unknown as ReturnType<typeof useSession>);
   });
 
   it("renders step 1 with channel name question", () => {
@@ -162,7 +161,7 @@ describe("ProfileWizard", () => {
     expect(screen.getByRole("button", { name: /finish setup/i })).toBeEnabled();
   });
 
-  it("submits profile and navigates to dashboard on finish", async () => {
+  it("submits profile, updates session, and navigates to dashboard on finish", async () => {
     const user = userEvent.setup();
     render(<ProfileWizard />);
 
@@ -178,6 +177,10 @@ describe("ProfileWizard", () => {
       niche: "GAMING",
       uploadFrequency: "ONE_TO_FOUR",
       primaryGoal: "SAVE_TIME_EDITING",
+    });
+    expect(mockUpdate).toHaveBeenCalledWith({
+      onboardingCompleted: true,
+      displayName: null,
     });
     expect(mockRouterPush).toHaveBeenCalledWith("/dashboard");
   });
@@ -215,6 +218,10 @@ describe("ProfileWizard", () => {
     expect(mockMutateAsync).toHaveBeenCalledWith(
       expect.objectContaining({ displayName: "My Awesome Channel" }),
     );
+    expect(mockUpdate).toHaveBeenCalledWith({
+      onboardingCompleted: true,
+      displayName: "My Awesome Channel",
+    });
   });
 
   it("displays error message when submission fails", async () => {
@@ -233,6 +240,7 @@ describe("ProfileWizard", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Network error",
     );
+    expect(mockUpdate).not.toHaveBeenCalled();
   });
 
   it("allows going back from step 2", async () => {

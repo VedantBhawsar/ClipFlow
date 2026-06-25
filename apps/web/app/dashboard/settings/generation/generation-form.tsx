@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAuth } from "@/hooks/use-auth";
+import { useSettings } from "@/hooks/use-settings";
 import { useUpdatePreferences } from "@/hooks/use-update-preferences";
 import {
   type ChapterBehavior,
@@ -66,7 +66,8 @@ const THUMBNAIL_STYLE_OPTIONS: ReadonlyArray<{
 ];
 
 export function GenerationForm() {
-  const { preferences: prefs } = useAuth();
+  const { data: settings } = useSettings();
+  const prefs = settings?.preferences ?? null;
   const updatePrefs = useUpdatePreferences();
 
   const [chapterBehavior, setChapterBehavior] = React.useState<ChapterBehavior>(

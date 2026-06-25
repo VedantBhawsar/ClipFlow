@@ -12,14 +12,12 @@
  */
 import { Router } from "express";
 import type { Env } from "@clipflow/config";
-import { requireAuth } from "../../middleware/auth.js";
 import { validate } from "../../middleware/validate.js";
 import { buildAuthRateLimiter } from "../../middleware/rate-limit.js";
 import {
   googleController,
   loginController,
   logoutController,
-  meController,
   refreshController,
   registerController,
 } from "./auth.controller.js";
@@ -59,7 +57,6 @@ export const buildAuthRouter = (env: Env): Router => {
   // Logout is intentionally NOT rate-limited (it's idempotent and
   // authenticated via the refresh token in the body).
   router.post("/logout", validate({ body: logoutSchema }), logoutController);
-  router.get("/me", requireAuth(env), meController);
   router.post("/google", validate({ body: googleAuthSchema }), googleController);
 
   return router;

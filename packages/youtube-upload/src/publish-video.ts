@@ -28,6 +28,7 @@ import { PermanentPublishError } from "./errors.js";
 import { refreshAccessToken } from "./token-refresh.js";
 import {
   startResumableUploadSession,
+  toYouTubeLicense,
   updateVideoStatus,
   uploadVideoBytes,
 } from "./youtube-api.js";
@@ -247,7 +248,9 @@ export const unpublishVideo = async (
     selfDeclaredMadeForKids: video.madeForKids,
     ageRestriction: video.ageRestriction,
     embeddable: video.embeddable,
-    license: video.license,
+    // Internal `VideoLicense` ("standard") is not a YouTube-API value;
+    // translate at the boundary so we don't get a 400 INVALID_METADATA.
+    license: toYouTubeLicense(video.license),
     publicStatsViewable: video.publicStatsViewable,
     commentPolicy: video.commentPolicy,
   });
@@ -267,6 +270,11 @@ export const unpublishVideo = async (
  * Project a Video row into the shape `startResumableUploadSession`
  * expects on the `status` block. Centralised so publishVideo and
  * unpublishVideo can't drift on which fields they send.
+ *
+ * The `license` field is translated from our internal `VideoLicense`
+ * enum to YouTube's API value here — the DB row stores `"standard"`
+ * but YouTube rejects that with 400 INVALID_METADATA, expecting
+ * `"youtube"`.
  */
 const buildStatusFromVideo = (video: {
   privacyStatus: string;
@@ -285,7 +293,7 @@ const buildStatusFromVideo = (video: {
   selfDeclaredMadeForKids: video.madeForKids,
   ageRestriction: video.ageRestriction,
   embeddable: video.embeddable,
-  license: video.license,
+  license: toYouTubeLicense(video.license),
   publicStatsViewable: video.publicStatsViewable,
   commentPolicy: video.commentPolicy,
 });

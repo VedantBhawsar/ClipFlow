@@ -17,11 +17,13 @@ export {
   startResumableUploadSession,
   uploadVideoBytes,
   updateVideoStatus,
+  toYouTubeLicense,
   type VideoMetadataInput,
   type VideoStatusInput,
   type StartResumableUploadInput,
   type UploadBytesInput,
   type UploadedVideo,
+  type YouTubeLicense,
 } from "./youtube-api.js";
 export {
   PermanentPublishError,

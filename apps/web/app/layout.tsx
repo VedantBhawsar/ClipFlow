@@ -25,7 +25,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: {
     default: "ClipFlow — schedule, thumbnail, and chapter your YouTube videos",
-    template: "%s — ClipFlow",
+    template: "%s",
   },
   description:
     "Upload once, and ClipFlow schedules, generates thumbnails, and writes chapter timestamps — automatically.",

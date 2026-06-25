@@ -6,13 +6,16 @@
  * provider's `authorize`, bcrypt, the events.signOut fetch — lives in
  * `auth.ts`. Edge bundling fails on Node-only imports, so this file
  * is kept to: pages, session strategy, the `secret` (which must be
- * available to BOTH runtimes), and the `authorized` callback used by
- * middleware.
+ * available to BOTH runtimes), the `authorized` callback used by
+ * middleware, and the module-augmentation declarations that teach
+ * NextAuth's types about the extra fields the `session` callback
+ * projects.
  *
  * No `@/` imports here: middleware bundles the Edge runtime and
  * relative paths keep the bundle predictable.
  */
 import type { NextAuthConfig } from "next-auth";
+import type { DefaultSession } from "next-auth";
 
 /**
  * Route prefixes that require an authenticated user.
@@ -96,3 +99,63 @@ export const authConfig = {
     },
   },
 } satisfies NextAuthConfig;
+
+/**
+ * NextAuth type augmentations.
+ *
+ * The auth module persists the access/refresh tokens (and the
+ * `onboardingCompleted` + `displayName` flags) into NextAuth's
+ * session JWT. Those values are projected onto `session.user` in the
+ * `session` callback of `auth.ts` and consumed client-side via
+ * `useSession()` — both in `<OnboardingGuard>` (zero-API-call
+ * routing) and in the dashboard chrome (greeting by display name).
+ *
+ * Without these module augmentations, NextAuth's strict types would
+ * reject `session.user.onboardingCompleted` at the call sites.
+ *
+ * Note: we only augment the `next-auth` surface (User + Session).
+ * NextAuth's JWT interface (`@auth/core/jwt` / `next-auth/jwt`)
+ * extends `Record<string, unknown>` and is therefore already open —
+ * the `jwt` callback's `token` parameter accepts arbitrary keys, and
+ * we narrow at use sites with a small `AuthToken` shape cast.
+ * Augmenting the JWT module also requires `@auth/core` to be a
+ * direct dependency (pnpm strict mode hides transitives), so we
+ * skip the JWT augmentation entirely and cast at the boundary.
+ */
+declare module "next-auth" {
+  interface User {
+    /** Latest `onboardingCompleted` from the backend. */
+    onboardingCompleted?: boolean;
+    /** Latest `displayName` from `UserProfile.displayName`. */
+    displayName?: string | null;
+  }
+
+  interface Session {
+    /** Short-lived bearer token from the backend. */
+    accessToken?: string;
+    /** Internal user id (JWT `sub`). */
+    userId?: string;
+    user: DefaultSession["user"] & {
+      onboardingCompleted?: boolean;
+      displayName?: string | null;
+    };
+  }
+}
+
+/**
+ * Shape of NextAuth's JWT payload as we use it. Kept here next to
+ * the `next-auth` augmentation so future readers find both pieces
+ * of the auth-typing story in one file.
+ *
+ * `token` inside the `jwt` callback is typed as `JWT extends Record<
+ * string, unknown>` from @auth/core, so any property read returns
+ * `unknown` until we narrow with this helper.
+ */
+export interface AuthToken {
+  accessToken?: string;
+  refreshToken?: string;
+  accessTokenExpiresAt?: number;
+  userId?: string;
+  onboardingCompleted?: boolean;
+  displayName?: string | null;
+}

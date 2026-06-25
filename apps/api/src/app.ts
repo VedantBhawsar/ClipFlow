@@ -19,7 +19,7 @@ import { buildAuthRouter } from "./modules/auth/auth.routes.js";
 import { buildOnboardingRouter } from "./modules/onboarding/onboarding.routes.js";
 import { buildHealthRouter } from "./modules/health/health.routes.js";
 import { buildPreferencesRouter } from "./modules/preferences/preferences.routes.js";
-import { buildUserRouter } from "./modules/user/user.routes.js";
+import { buildSettingsRouter } from "./modules/settings/settings.routes.js";
 import { buildVideosRouter } from "./modules/videos/videos.routes.js";
 import { buildYouTubeRouter } from "./modules/youtube/youtube.routes.js";
 
@@ -107,12 +107,14 @@ export const createApp = ({ env, logger }: CreateAppOptions): Application => {
   app.use("/health", buildHealthRouter());
   app.use("/api/auth", buildAuthRouter(env));
   app.use("/api/onboarding", buildOnboardingRouter(env));
-  // /api/user is split across two routers: the combined-read router
-  // (profile, youtube-connection) and the preferences+security router
-  // (preferences GET/PATCH, change-password POST). Both are mounted
-  // under the same prefix so the URL space is one tree.
-  app.use("/api/user", buildUserRouter(env));
-  app.use("/api/user", buildPreferencesRouter(env));
+  // /api/settings owns the lazy settings-bundle read (GET /). The
+  // narrower writes (PATCH /preferences, POST /change-password) are
+  // mounted under the same prefix from the existing preferences
+  // router so the URL space stays a single tree. The combined-read
+  // user/bundle router is gone — the dashboard chrome reads identity
+  // + onboarding status straight from the NextAuth session JWT.
+  app.use("/api/settings", buildSettingsRouter(env));
+  app.use("/api/settings", buildPreferencesRouter(env));
   app.use("/api/youtube", buildYouTubeRouter(env));
   app.use("/api/videos", buildVideosRouter(env));
 

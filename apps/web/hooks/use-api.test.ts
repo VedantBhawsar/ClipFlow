@@ -10,6 +10,13 @@
  *  - We don't import the real `useApi` indirectly through a tree of
  *    hooks; we render it inside a tiny harness component so React's
  *    hook rules apply normally.
+ *
+ * Note: the session shape now carries `onboardingCompleted` and
+ * `displayName` (set by the backend in register/login/refresh
+ * responses and projected onto `session.user` by the `session`
+ * callback). The access-token plumbing under test doesn't depend on
+ * those fields, but we include them so the mocks stay faithful to
+ * what real sessions look like after the bundle-split refactor.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook } from "@testing-library/react";
@@ -23,12 +30,26 @@ import { useSession } from "next-auth/react";
 
 const mockUseSession = vi.mocked(useSession);
 
+const authenticatedSession = (overrides: Record<string, unknown> = {}) =>
+  ({
+    accessToken: "test-access-token",
+    user: {
+      id: "user-1",
+      email: "a@b.com",
+      name: null,
+      onboardingCompleted: false,
+      displayName: null,
+      ...overrides,
+    },
+    expires: "",
+  }) as unknown as ReturnType<typeof useSession>["data"];
+
 describe("useApi", () => {
   const originalFetch = global.fetch;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Every backend response is now wrapped in the centralized
+    // Every backend response is wrapped in the centralized
     // `{ success, message, data }` envelope — mock the same shape so
     // the api-client's envelope-unwrapping path is exercised.
     global.fetch = vi.fn().mockResolvedValue(
@@ -45,20 +66,16 @@ describe("useApi", () => {
 
   it("attaches Authorization header when session has an access token", async () => {
     mockUseSession.mockReturnValue({
-      data: {
-        accessToken: "test-access-token",
-        user: { id: "user-1", email: "a@b.com", name: null },
-        expires: "",
-      },
+      data: authenticatedSession(),
       status: "authenticated",
       update: vi.fn(),
     } as unknown as ReturnType<typeof useSession>);
 
     const { result } = renderHook(() => useApi());
-    await result.current.me();
+    await result.current.getSettings();
 
     expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining("/api/auth/me"),
+      expect.stringContaining("/api/settings"),
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: "Bearer test-access-token",
@@ -75,7 +92,7 @@ describe("useApi", () => {
     } as unknown as ReturnType<typeof useSession>);
 
     const { result } = renderHook(() => useApi());
-    await result.current.me();
+    await result.current.getSettings();
 
     const fetchCall = vi.mocked(global.fetch).mock.calls[0]!;
     const headers = fetchCall[1]?.headers as Record<string, string> | undefined;
@@ -84,11 +101,7 @@ describe("useApi", () => {
 
   it("returns the same client instance across renders (memoized on token)", () => {
     mockUseSession.mockReturnValue({
-      data: {
-        accessToken: "stable-token",
-        user: { id: "user-1", email: "a@b.com", name: null },
-        expires: "",
-      },
+      data: authenticatedSession({ accessToken: "stable-token" } as never),
       status: "authenticated",
       update: vi.fn(),
     } as unknown as ReturnType<typeof useSession>);
@@ -101,11 +114,7 @@ describe("useApi", () => {
 
   it("throws SessionExpiredError on a 401 response", async () => {
     mockUseSession.mockReturnValue({
-      data: {
-        accessToken: "stale-token",
-        user: { id: "user-1", email: "a@b.com", name: null },
-        expires: "",
-      },
+      data: authenticatedSession({ accessToken: "stale-token" } as never),
       status: "authenticated",
       update: vi.fn(),
     } as unknown as ReturnType<typeof useSession>);
@@ -126,6 +135,6 @@ describe("useApi", () => {
     );
 
     const { result } = renderHook(() => useApi());
-    await expect(result.current.me()).rejects.toThrow();
+    await expect(result.current.getSettings()).rejects.toThrow();
   });
 });
