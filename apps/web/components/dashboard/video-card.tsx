@@ -95,7 +95,7 @@ export function VideoCard({ video, onCancel, isCancelling }: VideoCardProps) {
                 treatment under focus. */}
             <h3 className="truncate text-sm font-medium text-foreground">
               <Link
-                href={`/dashboard/videos/${video.id}`}
+                href={`/dashboard/published/${video.id}`}
                 className="rounded-sm outline-none transition-colors hover:text-foreground/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 {video.title}
