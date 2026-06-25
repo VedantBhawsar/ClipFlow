@@ -5,8 +5,8 @@ import { ArrowLeft, ExternalLink, Loader2, AlertCircle } from "lucide-react";
 import type { Video, VideoStatus } from "@clipflow/types";
 
 import { StatusTimeline, type TimelineStatus } from "@/components/dashboard/status-timeline";
-import { UnpublishButton } from "@/app/dashboard/videos/[id]/unpublish-button";
-import { CancelButton } from "@/app/dashboard/videos/[id]/cancel-button";
+import { UnpublishButton } from "@/app/dashboard/published/[id]/unpublish-button";
+import { CancelButton } from "@/app/dashboard/published/[id]/cancel-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/auth";
@@ -67,7 +67,7 @@ export default async function VideoDetailPage({ params }: PageProps) {
   const session = await auth();
   const token = session?.accessToken ?? null;
   if (!token) {
-    redirect(`/signin?next=/dashboard/videos/${id}`);
+    redirect(`/signin?next=/dashboard/published/${id}`);
   }
 
   let video: Video | null = null;
@@ -100,7 +100,7 @@ export default async function VideoDetailPage({ params }: PageProps) {
           <Button asChild variant="ghost" size="sm" className="-ml-2">
             <Link href={"/dashboard/published"}>
               <ArrowLeft aria-hidden="true" />
-              Back to dashboard
+              Back to published
             </Link>
           </Button>
           <div className="flex items-center gap-3">
