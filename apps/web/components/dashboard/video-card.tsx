@@ -105,7 +105,7 @@ export function VideoCard({ video, onCancel, isCancelling }: VideoCardProps) {
           </div>
           <StatusTimeline status={timelineStatus} />
           {video.failureReason ? (
-            <p className="truncate text-xs text-destructive">
+            <p className="truncate text-xs text-destructive text-ellipsis">
               {video.failureReason}
             </p>
           ) : null}
@@ -117,7 +117,7 @@ export function VideoCard({ video, onCancel, isCancelling }: VideoCardProps) {
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2 ml-auto">
         {video.youtubeVideoId ? (
           <Button asChild variant="outline" size="sm">
             <a
