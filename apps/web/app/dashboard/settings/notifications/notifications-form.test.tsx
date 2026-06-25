@@ -7,18 +7,18 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock("@/hooks/use-auth", () => ({
-  useAuth: vi.fn(),
+vi.mock("@/hooks/use-settings", () => ({
+  useSettings: vi.fn(),
 }));
 
 vi.mock("@/hooks/use-update-preferences", () => ({
   useUpdatePreferences: vi.fn(),
 }));
 
-import { useAuth } from "@/hooks/use-auth";
+import { useSettings } from "@/hooks/use-settings";
 import { useUpdatePreferences } from "@/hooks/use-update-preferences";
 
-const mockUseAuth = vi.mocked(useAuth);
+const mockUseSettings = vi.mocked(useSettings);
 const mockUseUpdatePreferences = vi.mocked(useUpdatePreferences);
 
 const basePrefs = {
@@ -53,18 +53,15 @@ describe("NotificationsForm", () => {
       error: null,
       reset: vi.fn(),
     } as unknown as ReturnType<typeof useUpdatePreferences>);
-    mockUseAuth.mockReturnValue({
-      preferences: basePrefs,
-      patchPreferences: vi.fn(),
-      refresh: vi.fn(),
-      status: "authenticated",
-      user: null,
-      profile: null,
-      youtubeConnection: null,
-      onboardingCompleted: true,
-      setOnboardingCompleted: vi.fn(),
-      setPreferences: vi.fn(),
-    } as unknown as ReturnType<typeof useAuth>);
+    mockUseSettings.mockReturnValue({
+      data: {
+        profile: null,
+        preferences: basePrefs,
+        youtubeConnection: { connected: false },
+      },
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useSettings>);
   });
 
   it("renders all five toggles", () => {

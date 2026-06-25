@@ -16,7 +16,8 @@ import { recommendPlan } from "./plan-recommendation.js";
  * Map a Prisma `UserProfile` row to the wire-format DTO.
  *
  * @param p Prisma row.
- * @returns DTO suitable for `MeResponse.profile`, `OnboardingStatusResponse.profile`, etc.
+ * @returns DTO suitable for `OnboardingStatusResponse.profile`,
+ *   `SettingsResponse.profile`, etc.
  */
 const toProfileDto = (p: {
   id: string;

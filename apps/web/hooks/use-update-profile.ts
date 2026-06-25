@@ -17,25 +17,21 @@ import type {
  *  - patchOnboardingProfile (PATCH): used by the settings page; does
  *    NOT stamp onboardingCompletedAt.
  *
- * Both return the updated UserProfile. We write it into the bundle
- * cache; if the POST case has now completed onboarding we also flip
- * onboardingCompleted so the OnboardingGuard reroutes correctly.
+ * Both return the updated UserProfile. We write it into the lazy
+ * `settings.bundle()` cache so the settings profile form stays in
+ * sync without a refetch. Note that we DON'T touch the NextAuth
+ * session from this hook — the wizard flips `session.user
+ * .onboardingCompleted` separately via `useSession().update()` after
+ * a successful submit, so the guard picks it up on the next render.
  */
 export function useUpdateProfile() {
   const api = useApi();
   const qc = useQueryClient();
   const writeProfile = (profile: UserProfile): void => {
-    qc.setQueryData(queryKeys.user.bundle(), (old) => {
-      if (!old) return old;
-      return {
-        ...old,
-        profile,
-        // onboardingCompletedAt is part of UserProfile; derive the
-        // boolean the rest of the app uses.
-        onboardingCompleted: profile.onboardingCompletedAt !== null,
-      };
-    });
-    void qc.invalidateQueries({ queryKey: queryKeys.user.bundle() });
+    qc.setQueryData(queryKeys.settings.bundle(), (old) =>
+      old ? { ...old, profile } : old,
+    );
+    void qc.invalidateQueries({ queryKey: queryKeys.settings.bundle() });
   };
 
   const submit = useMutation<UserProfile, Error, UpdateProfileRequest>({

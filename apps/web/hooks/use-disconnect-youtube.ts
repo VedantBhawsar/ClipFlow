@@ -38,44 +38,44 @@ export function useDisconnectYouTube() {
   >({
     mutationFn: () => api.disconnectYouTube(),
     onMutate: async () => {
-      await qc.cancelQueries({ queryKey: queryKeys.user.bundle() });
-      await qc.cancelQueries({ queryKey: queryKeys.user.youtubeConnection() });
+      await qc.cancelQueries({ queryKey: queryKeys.settings.bundle() });
+      await qc.cancelQueries({ queryKey: queryKeys.settings.youtubeConnection() });
 
       const bundle = qc.getQueryData<{ youtubeConnection: YouTubeConnection }>(
-        queryKeys.user.bundle(),
+        queryKeys.settings.bundle(),
       );
       const connection = qc.getQueryData<YouTubeConnection>(
-        queryKeys.user.youtubeConnection(),
+        queryKeys.settings.youtubeConnection(),
       );
 
       const previousBundle = bundle ? { youtubeConnection: bundle.youtubeConnection } : undefined;
       const previousConnection = connection;
 
       if (bundle) {
-        qc.setQueryData(queryKeys.user.bundle(), {
+        qc.setQueryData(queryKeys.settings.bundle(), {
           ...bundle,
           youtubeConnection: DISCONNECTED_YT,
         });
       }
-      qc.setQueryData(queryKeys.user.youtubeConnection(), DISCONNECTED_YT);
+      qc.setQueryData(queryKeys.settings.youtubeConnection(), DISCONNECTED_YT);
 
       return { previousBundle, previousConnection };
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.previousBundle) {
-        qc.setQueryData(queryKeys.user.bundle(), (old) =>
+        qc.setQueryData(queryKeys.settings.bundle(), (old) =>
           old
             ? { ...old, youtubeConnection: ctx.previousBundle!.youtubeConnection }
             : old,
         );
       }
       if (ctx?.previousConnection !== undefined) {
-        qc.setQueryData(queryKeys.user.youtubeConnection(), ctx.previousConnection);
+        qc.setQueryData(queryKeys.settings.youtubeConnection(), ctx.previousConnection);
       }
     },
     onSettled: () => {
-      void qc.invalidateQueries({ queryKey: queryKeys.user.bundle() });
-      void qc.invalidateQueries({ queryKey: queryKeys.user.youtubeConnection() });
+      void qc.invalidateQueries({ queryKey: queryKeys.settings.bundle() });
+      void qc.invalidateQueries({ queryKey: queryKeys.settings.youtubeConnection() });
     },
   });
 }

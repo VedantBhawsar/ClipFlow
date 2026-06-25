@@ -10,7 +10,7 @@ import type { YouTubeConnection } from "@clipflow/types";
  * Connect the authenticated user's YouTube channel by exchanging an
  * OAuth authorization code. The server returns the full connection
  * record (channelId, channelTitle, thumbnailUrl, …) so we write the
- * authoritative server response into the bundle cache.
+ * authoritative server response into the settings bundle cache.
  *
  * Because the server knows the truth (we don't have the channelId
  * client-side before the round-trip), we rely on onSuccess — not an
@@ -24,12 +24,12 @@ export function useConnectYouTube() {
   return useMutation<YouTubeConnection, Error, string>({
     mutationFn: (code) => api.connectYouTube(code),
     onSuccess: (connection) => {
-      qc.setQueryData(queryKeys.user.bundle(), (old) =>
+      qc.setQueryData(queryKeys.settings.bundle(), (old) =>
         old ? { ...old, youtubeConnection: connection } : old,
       );
-      qc.setQueryData(queryKeys.user.youtubeConnection(), connection);
+      qc.setQueryData(queryKeys.settings.youtubeConnection(), connection);
       // Reconcile in the background in case anything else changed server-side.
-      void qc.invalidateQueries({ queryKey: queryKeys.user.bundle() });
+      void qc.invalidateQueries({ queryKey: queryKeys.settings.bundle() });
     },
   });
 }

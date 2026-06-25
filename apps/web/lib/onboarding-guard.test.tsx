@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { OnboardingGuard } from "./onboarding-guard.js";
 
-vi.mock("@/hooks/use-auth", () => ({
-  useAuth: vi.fn(),
+vi.mock("next-auth/react", () => ({
+  useSession: vi.fn(),
 }));
 
 const mockReplace = vi.fn();
@@ -18,27 +18,20 @@ vi.mock("next/navigation", () => ({
   })),
 }));
 
-import { useAuth, type UseAuthValue } from "@/hooks/use-auth";
+import { useSession, type SessionContextValue } from "next-auth/react";
 
-const mockUseAuth = vi.mocked(useAuth);
+const mockUseSession = vi.mocked(useSession);
 
 const renderGuard = (
-  authValue: Partial<UseAuthValue>,
+  sessionOverride: Partial<SessionContextValue> | null,
   mode: "require-incomplete" | "require-complete",
 ) => {
-  mockUseAuth.mockReturnValue({
+  mockUseSession.mockReturnValue({
     status: "loading",
-    user: null,
-    profile: null,
-    preferences: null,
-    youtubeConnection: null,
-    onboardingCompleted: false,
-    refresh: vi.fn(),
-    setOnboardingCompleted: vi.fn(),
-    setPreferences: vi.fn(),
-    patchPreferences: vi.fn(),
-    ...authValue,
-  } as UseAuthValue);
+    data: null,
+    update: vi.fn(),
+    ...(sessionOverride ?? {}),
+  } as SessionContextValue);
 
   return render(<OnboardingGuard mode={mode}>Protected Content</OnboardingGuard>);
 };
@@ -61,6 +54,34 @@ describe("OnboardingGuard", () => {
       renderGuard({ status: "unauthenticated" }, "require-incomplete");
       expect(screen.getByText("Loading…")).toBeInTheDocument();
     });
+
+    it("redirects completed users to /dashboard", () => {
+      renderGuard(
+        {
+          status: "authenticated",
+          data: {
+            user: { onboardingCompleted: true } as never,
+            expires: "",
+          } as never,
+        },
+        "require-incomplete",
+      );
+      expect(mockReplace).toHaveBeenCalledWith("/dashboard");
+    });
+
+    it("renders children when onboarding is not yet completed", () => {
+      renderGuard(
+        {
+          status: "authenticated",
+          data: {
+            user: { onboardingCompleted: false } as never,
+            expires: "",
+          } as never,
+        },
+        "require-incomplete",
+      );
+      expect(screen.getByText("Protected Content")).toBeInTheDocument();
+    });
   });
 
   describe('mode="require-complete"', () => {
@@ -72,6 +93,34 @@ describe("OnboardingGuard", () => {
     it("renders children when not authenticated (auth check is separate)", () => {
       renderGuard({ status: "unauthenticated" }, "require-complete");
       expect(screen.getByText("Loading…")).toBeInTheDocument();
+    });
+
+    it("redirects incomplete users to /onboarding/profile", () => {
+      renderGuard(
+        {
+          status: "authenticated",
+          data: {
+            user: { onboardingCompleted: false } as never,
+            expires: "",
+          } as never,
+        },
+        "require-complete",
+      );
+      expect(mockReplace).toHaveBeenCalledWith("/onboarding/profile");
+    });
+
+    it("renders children when onboarding is completed", () => {
+      renderGuard(
+        {
+          status: "authenticated",
+          data: {
+            user: { onboardingCompleted: true } as never,
+            expires: "",
+          } as never,
+        },
+        "require-complete",
+      );
+      expect(screen.getByText("Protected Content")).toBeInTheDocument();
     });
   });
 });

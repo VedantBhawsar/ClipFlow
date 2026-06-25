@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useSession } from "next-auth/react";
 
 interface OnboardingGuardProps {
   children: ReactNode;
@@ -23,13 +23,17 @@ interface OnboardingGuardProps {
  * - Visiting /onboarding/* after finishing onboarding → /dashboard
  * - Visiting /dashboard before finishing onboarding → /onboarding/profile
  *
- * Reads status + onboardingCompleted from `useAuth()` — status from
- * AuthContext, onboardingCompleted from the TanStack Query bundle cache.
- * Pair with <AuthGuard> at the page level to also gate on auth.
+ * Reads `onboardingCompleted` from the NextAuth session JWT via
+ * `useSession()` — zero API round-trips. The backend stamps the flag
+ * into the login/register/refresh responses; the profile wizard
+ * additionally calls `update({...})` to flip it the moment the wizard
+ * submits. Pair with `<AuthGuard>` at the page level to also gate on
+ * auth.
  */
 export function OnboardingGuard({ children, mode }: OnboardingGuardProps) {
-  const { status, onboardingCompleted } = useAuth();
   const router = useRouter();
+  const { status, data: session } = useSession();
+  const onboardingCompleted = session?.user?.onboardingCompleted ?? false;
 
   useEffect(() => {
     if (status !== "authenticated") return;

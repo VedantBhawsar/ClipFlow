@@ -22,10 +22,11 @@ import type { LoginRequest } from "@clipflow/types";
  * own post-sign-in navigation; the caller (the form) handles the
  * post-sign-in `router.push` to the saved `?next=` or `/dashboard`.
  *
- * On success we drop the bundle query so the AuthProvider (which is
- * now NextAuth's SessionProvider) and `useUserBundle()` refetch from
- * a clean slate — there's no profile cached from a previous session
- * in this browser tab, and the freshly-authed user might be different.
+ * On success we drop the cached settings bundle so any stale snapshot
+ * from a previous user in this tab doesn't flash before the new
+ * session hydrates. The settings query is keyed only by `["settings",
+ * "bundle"]` (not by userId), so a remove+invalidate is the safest
+ * reset.
  */
 export function useSignIn() {
   const qc = useQueryClient();
@@ -54,8 +55,8 @@ export function useSignIn() {
       }
     },
     onSuccess: () => {
-      qc.removeQueries({ queryKey: queryKeys.user.bundle() });
-      void qc.invalidateQueries({ queryKey: queryKeys.user.bundle() });
+      qc.removeQueries({ queryKey: queryKeys.settings.bundle() });
+      void qc.invalidateQueries({ queryKey: queryKeys.settings.bundle() });
     },
   });
 }

@@ -18,7 +18,6 @@ import type {
   AuthResponse,
   AuthUser,
   LogoutRequest,
-  MeResponse,
   RefreshResponse,
   UserProfile,
 } from "@clipflow/types";
@@ -93,7 +92,9 @@ const toProfileDto = (
 /**
  * Mint a fresh access JWT + refresh-token row and combine into the
  * wire-format `AuthResponse`. Caller passes the user (already loaded)
- * to avoid a second DB hit.
+ * plus the pre-resolved `onboardingCompleted` flag and `displayName`
+ * (both sourced from `UserProfile`). The NextAuth session JWT bakes
+ * these in so `<OnboardingGuard>` can route without an API call.
  */
 const mintAuthResponse = async (
   user: {
@@ -105,6 +106,8 @@ const mintAuthResponse = async (
     createdAt: Date;
   },
   env: Env,
+  onboardingCompleted: boolean,
+  displayName: string | null,
 ): Promise<AuthResponse> => {
   const accessToken = signJwt({ sub: user.id, email: user.email }, env);
   const refresh = await issueRefreshToken(prisma, user.id, {
@@ -116,6 +119,29 @@ const mintAuthResponse = async (
     refreshToken: refresh.rawToken,
     accessTokenExpiresAt: Date.now() + accessTtlMs(env),
     refreshTokenExpiresAt: refresh.expiresAt.getTime(),
+    onboardingCompleted,
+    displayName,
+  };
+};
+
+/**
+ * Fetch the UserProfile fields we mirror into the session cookie. Returns
+ * `null`-safe defaults when the row doesn't exist yet (e.g. immediately
+ * after registration, before the onboarding wizard runs).
+ */
+const resolveSessionProfile = async (
+  userId: string,
+): Promise<{ onboardingCompleted: boolean; displayName: string | null }> => {
+  const profile = await prisma.userProfile.findUnique({
+    where: { userId },
+    select: { displayName: true, onboardingCompletedAt: true },
+  });
+  if (!profile) {
+    return { onboardingCompleted: false, displayName: null };
+  }
+  return {
+    onboardingCompleted: profile.onboardingCompletedAt != null,
+    displayName: profile.displayName,
   };
 };
 
@@ -148,7 +174,12 @@ export const register = async (
     },
   });
 
-  return mintAuthResponse(user, env);
+  // A brand-new user has no profile row yet, so the flag is always
+  // false here. `displayName` falls back to the email-derived name so
+  // the dashboard chrome doesn't say "creator" until they finish
+  // onboarding — actually we keep it null until they set one in the
+  // wizard, matching the v1 behaviour.
+  return mintAuthResponse(user, env, false, null);
 };
 
 /**
@@ -174,13 +205,18 @@ export const login = async (input: LoginInput, env: Env): Promise<AuthResponse> 
       "Email or password is incorrect.",
     );
   }
-  return mintAuthResponse(user, env);
+  const { onboardingCompleted, displayName } = await resolveSessionProfile(user.id);
+  return mintAuthResponse(user, env, onboardingCompleted, displayName);
 };
 
 /**
  * Rotate a refresh token. Throws `INVALID_REFRESH_TOKEN` (401) on any
  * failure: unknown token, expired token, or REUSE DETECTED (the latter
  * also revokes the entire family as a side effect).
+ *
+ * Returns the latest `onboardingCompleted` and `displayName` from the
+ * DB so a long-lived session picks up wizard edits without forcing a
+ * re-login.
  */
 export const refresh = async (
   presentedRefreshToken: string,
@@ -193,11 +229,16 @@ export const refresh = async (
     env,
     { ttlMs: refreshTtlMs(env) },
   );
+  const { onboardingCompleted, displayName } = await resolveSessionProfile(
+    rotated.userId,
+  );
   return {
     accessToken: rotated.accessToken,
     refreshToken: rotated.refreshToken,
     accessTokenExpiresAt: Date.now() + accessTtlMs(env),
     refreshTokenExpiresAt: rotated.expiresAt.getTime(),
+    onboardingCompleted,
+    displayName,
   };
 };
 
@@ -222,25 +263,4 @@ export const googleSignIn = async (_idToken: string): Promise<AuthResponse> => {
     "NOT_IMPLEMENTED",
     "Google sign-in ships in the next slice.",
   );
-};
-
-/**
- * Fetch the authenticated user along with their profile (if any) and
- * onboarding completion flag. Used by `GET /api/auth/me`.
- */
-export const me = async (userId: string): Promise<MeResponse> => {
-  requireDatabase();
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    include: { profile: true },
-  });
-  if (!user) {
-    throw new AppError(401, "UNAUTHENTICATED", "Your session is no longer valid.");
-  }
-  const profile = toProfileDto(user.profile);
-  return {
-    user: toAuthUser(user),
-    profile,
-    onboardingCompleted: profile?.onboardingCompletedAt != null,
-  };
 };

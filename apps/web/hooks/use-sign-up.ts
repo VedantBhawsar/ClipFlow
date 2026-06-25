@@ -62,8 +62,8 @@ export function useSignUp() {
       return res;
     },
     onSuccess: () => {
-      qc.removeQueries({ queryKey: queryKeys.user.bundle() });
-      void qc.invalidateQueries({ queryKey: queryKeys.user.bundle() });
+      qc.removeQueries({ queryKey: queryKeys.settings.bundle() });
+      void qc.invalidateQueries({ queryKey: queryKeys.settings.bundle() });
     },
   });
 }

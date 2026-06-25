@@ -4,12 +4,13 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LayoutDashboard, Film, CreditCard, Settings, LogOut } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 import { Logo } from "@/components/shared/logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
+import { useYouTubeConnection } from "@/hooks/use-youtube-connection";
 
 interface NavItem {
   href: string;
@@ -60,7 +61,9 @@ const PRIMARY_NAV: ReadonlyArray<NavItem> = [
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, youtubeConnection } = useAuth();
+  const { data: session } = useSession();
+  const { data: youtubeConnectionQuery } = useYouTubeConnection();
+  const youtubeConnection = youtubeConnectionQuery ?? null;
   const signOutMutation = useSignOut();
 
   const channelState: "connected" | "unconnected" =
@@ -156,7 +159,7 @@ export function Sidebar() {
             className="flex-1 truncate rounded-md px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             title="Open profile settings"
           >
-            {user?.email ?? "Signed in"}
+            {session?.user?.email ?? "Signed in"}
           </Link>
           <Button
             type="button"

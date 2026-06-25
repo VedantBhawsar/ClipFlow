@@ -112,8 +112,8 @@ export const connectController = async (
     throw new Error("Account Not found");
   }
 
-  // Invalidate the user bundle cache since YouTube connection changed
-  await cache.del(`user:${userId}`);
+  // Invalidate the lazy settings cache since YouTube connection changed.
+  await cache.del(`settings:${userId}`);
 
   sendOk(res, result.connection, "YouTube channel connected.");
 };
@@ -131,8 +131,8 @@ export const disconnectController = async (
 
   await disconnectYouTubeChannel(userId);
 
-  // Invalidate the user bundle cache since YouTube connection changed
-  await cache.del(`user:${userId}`);
+  // Invalidate the lazy settings cache since YouTube connection changed.
+  await cache.del(`settings:${userId}`);
 
   sendEmpty(res, "YouTube channel disconnected.");
 };

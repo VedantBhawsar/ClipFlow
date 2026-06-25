@@ -32,7 +32,7 @@ import Credentials from "next-auth/providers/credentials";
 import type { NextAuthResult } from "next-auth";
 
 import { env } from "@/lib/env";
-import { authConfig } from "./auth.config";
+import { authConfig, type AuthToken } from "./auth.config";
 
 const config: NextAuthConfig = {
   ...authConfig,
@@ -69,13 +69,33 @@ const config: NextAuthConfig = {
 
         if (!res.ok) return null;
 
-        const data = (await res.json()) as {
-          user: { id: string; email: string; name: string | null };
-          accessToken: string;
-          refreshToken: string;
-          accessTokenExpiresAt: number;
-          refreshTokenExpiresAt: number;
+        // The backend wraps every response in the centralized
+        // `{ success, message, data }` envelope — `api-client.ts`
+        // unwraps it on the way out, but here in `authorize` we
+        // parse the raw response ourselves. A failure envelope with
+        // `success: false` returns `null` (NextAuth renders a generic
+        // sign-in error).
+        const envelope = (await res.json()) as {
+          success?: boolean;
+          message?: string;
+          data?: {
+            user: { id: string; email: string; name: string | null };
+            accessToken: string;
+            refreshToken: string;
+            accessTokenExpiresAt: number;
+            refreshTokenExpiresAt: number;
+            /**
+             * Backend-issued session flags. Baked into the NextAuth
+             * session JWT so `<OnboardingGuard>` and the dashboard
+             * chrome can read them without an API call.
+             */
+            onboardingCompleted: boolean;
+            displayName: string | null;
+          };
         };
+
+        if (envelope.success !== true || !envelope.data) return null;
+        const data = envelope.data;
 
         // The object we return here is what populates `user` in the
         // jwt callback below. NextAuth also reads `id`/`email`/`name`
@@ -87,6 +107,8 @@ const config: NextAuthConfig = {
           accessToken: data.accessToken,
           refreshToken: data.refreshToken,
           accessTokenExpiresAt: data.accessTokenExpiresAt,
+          onboardingCompleted: data.onboardingCompleted,
+          displayName: data.displayName,
         };
       },
     }),
@@ -103,7 +125,13 @@ const config: NextAuthConfig = {
      * is sent back to /signin instead of getting stuck with a dead
      * access token.
      */
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      // NextAuth's JWT is typed as `Record<string, unknown> & DefaultJWT`
+      // — see `AuthToken` in auth.config.ts. Narrowing it here makes
+      // every property read properly typed without fighting module
+      // augmentation across `@auth/core/jwt` (which is not a direct
+      // pnpm dependency of this app).
+      const t = token as AuthToken;
       // First sign-in: user object is populated from `authorize`.
       if (user) {
         const u = user as {
@@ -111,6 +139,8 @@ const config: NextAuthConfig = {
           accessToken?: string;
           refreshToken?: string;
           accessTokenExpiresAt?: number;
+          onboardingCompleted?: boolean;
+          displayName?: string | null;
         };
         if (
           typeof u.accessToken === "string" &&
@@ -124,11 +154,40 @@ const config: NextAuthConfig = {
             refreshToken: u.refreshToken,
             accessTokenExpiresAt: u.accessTokenExpiresAt,
             userId: u.id,
+            onboardingCompleted: u.onboardingCompleted ?? false,
+            displayName: u.displayName ?? null,
           };
         }
       }
 
-      const expiresAt = token.accessTokenExpiresAt;
+      // Client-driven update: useSession().update(...) lands here with
+      // `trigger === "update"` and the payload passed to update() in
+      // `session`. The onboarding wizard uses this path to flip
+      // `onboardingCompleted` to true and refresh `displayName` after
+      // the profile POST succeeds — without this branch the JWT would
+      // keep its stale `onboardingCompleted: false` and the
+      // OnboardingGuard would bounce the user back to
+      // /onboarding/profile on the next render.
+      //
+      // We only patch the keys the caller explicitly sent so a future
+      // update({...}) with a partial shape can't accidentally null-out
+      // displayName. The callback's return type is `JWT` (which is
+      // `Record<string, unknown> & DefaultJWT`), so we mutate a
+      // shallow copy and return it — that preserves the open index
+      // signature NextAuth expects.
+      if (trigger === "update" && session && typeof session === "object") {
+        const u = session as Partial<AuthToken>;
+        const next = { ...token };
+        if (typeof u.onboardingCompleted === "boolean") {
+          next.onboardingCompleted = u.onboardingCompleted;
+        }
+        if ("displayName" in u) {
+          next.displayName = u.displayName ?? null;
+        }
+        return next;
+      }
+
+      const expiresAt = t.accessTokenExpiresAt;
       if (typeof expiresAt !== "number") return token;
 
       // 60s buffer so we don't refresh at the exact instant of expiry
@@ -137,27 +196,46 @@ const config: NextAuthConfig = {
       if (Date.now() < expiresAt - 60_000) return token;
 
       // Expired (or about to): rotate.
-      if (typeof token.refreshToken !== "string") return null;
+      if (typeof t.refreshToken !== "string") return null;
 
       try {
         const res = await fetch(`${env.apiBaseUrl}/api/auth/refresh`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken: token.refreshToken }),
+          body: JSON.stringify({ refreshToken: t.refreshToken }),
         });
         if (!res.ok) return null;
 
-        const data = (await res.json()) as {
-          accessToken: string;
-          refreshToken: string;
-          accessTokenExpiresAt: number;
+        // Backend wraps every response in the centralized
+        // `{ success, message, data }` envelope (see api-client.ts).
+        // `success: false` means the refresh token is dead — force
+        // sign-out by returning `null`.
+        const envelope = (await res.json()) as {
+          success?: boolean;
+          data?: {
+            accessToken: string;
+            refreshToken: string;
+            accessTokenExpiresAt: number;
+            /**
+             * Latest session flags from the backend. Refreshed on
+             * every token rotation so a long-lived session picks up
+             * onboarding-completion or display-name edits without
+             * forcing a re-login.
+             */
+            onboardingCompleted: boolean;
+            displayName: string | null;
+          };
         };
+        if (envelope.success !== true || !envelope.data) return null;
+        const data = envelope.data;
 
         return {
           ...token,
           accessToken: data.accessToken,
           refreshToken: data.refreshToken,
           accessTokenExpiresAt: data.accessTokenExpiresAt,
+          onboardingCompleted: data.onboardingCompleted,
+          displayName: data.displayName,
         };
       } catch {
         return null;
@@ -165,19 +243,29 @@ const config: NextAuthConfig = {
     },
     /**
      * Projects the data the client needs into `session`. The frontend
-     * reads `session.accessToken` (via the `useApi()` factory) and
-     * `session.user.id` (via the bundle query, etc.).
+     * reads `session.accessToken` (via the `useApi()` factory),
+     * `session.user.id` / `session.user.onboardingCompleted` (via the
+     * session itself, no API call), and `session.user.displayName`
+     * (so the dashboard chrome can greet by name).
      */
     async session({ session, token }) {
-      if (typeof token.accessToken === "string") {
-        session.accessToken = token.accessToken;
+      // Same narrowing as the jwt callback — see AuthToken in
+      // auth.config.ts for the rationale.
+      const t = token as AuthToken;
+      if (typeof t.accessToken === "string") {
+        session.accessToken = t.accessToken;
       }
-      if (typeof token.userId === "string") {
+      if (typeof t.userId === "string") {
         session.user = {
           ...session.user,
-          id: token.userId,
+          id: t.userId,
         };
       }
+      session.user = {
+        ...session.user,
+        onboardingCompleted: t.onboardingCompleted ?? false,
+        displayName: t.displayName ?? null,
+      };
       return session;
     },
   },

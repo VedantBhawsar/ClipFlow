@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { Settings as SettingsIcon } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 import { YouTubeConnectCard } from "@/components/dashboard/youtube-connect-card";
 import { VideoList } from "@/components/dashboard/video-list";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useUserBundle } from "@/hooks/use-user-bundle";
 import { useVideos } from "@/hooks/use-videos";
+import { useYouTubeConnection } from "@/hooks/use-youtube-connection";
 
 /**
  * Dashboard home (client component).
@@ -17,35 +18,36 @@ import { useVideos } from "@/hooks/use-videos";
  * publishing, or failed. PUBLISHED videos live on `/dashboard/published`.
  *
  * Data flows (all client-side, no SSR fetch):
- *  - User / profile / YouTube connection come from `useUserBundle()` —
- *    the same TanStack Query cache that `AuthProvider` warms on mount
- *    and that the sidebar + YouTubeConnectCard already subscribe to.
- *    No duplicate request; no new endpoint needed.
+ *  - Identity fields (name, email) + displayName + onboardingCompleted
+ *    come straight from the NextAuth session JWT via `useSession()` —
+ *    zero API calls.
+ *  - YouTube connection state comes from `useYouTubeConnection()` —
+ *    the narrow read owned by the YouTubeConnectCard; the sidebar
+ *    subscribes to the same hook so both stay in sync without a
+ *    shared cache.
  *  - Videos come from `useVideos()` — the existing query hook used by
  *    other client surfaces. PUBLISHED is filtered out in JS; volume
  *    per user is small enough that this is fine for v1 (a future slice
  *    can add `?status=NOT_PUBLISHED` server-side and drop the filter).
  *
- * Why client (not SSR like before): the SSR shell was awaiting
- * `Promise.all([fetchUserBundle, fetchInProgressVideos])` server-side.
- * When the bundle endpoint was slow the browser got nothing — no
- * Loading… placeholder, no header, no skeleton — just a blank page
- * until the server eventually responded. Moving the fetches into
- * TanStack Query lets the AuthGuard render its Loading… placeholder
- * immediately while data arrives in the background.
+ * Before the bundle-split refactor this component called
+ * `useUserBundle()` to get profile + user + YouTube connection in a
+ * single round-trip. That hit cost 2 Prisma queries on every
+ * dashboard render. After the refactor identity lives in the session
+ * cookie (free) and the YouTube connection is fetched lazily only by
+ * the components that actually need it — `useYouTubeConnection()`
+ * here and the same hook in the sidebar.
  */
 export function DashboardContent() {
-  const bundle = useUserBundle();
+  const { data: session } = useSession();
   const videosQuery = useVideos();
+  const { data: youtubeConnection } = useYouTubeConnection();
 
-  const user = bundle.data?.user ?? null;
-  const profile = bundle.data?.profile ?? null;
-  const youtubeConnection = bundle.data?.youtubeConnection ?? null;
-
+  const sessionUser = session?.user ?? null;
   const displayName =
-    profile?.displayName?.trim() ||
-    user?.name?.trim() ||
-    user?.email ||
+    sessionUser?.displayName?.trim() ||
+    sessionUser?.name?.trim() ||
+    sessionUser?.email ||
     "creator";
   const firstName = displayName.split(/\s+/)[0] || "creator";
   const channelConnected = youtubeConnection?.status === "connected";

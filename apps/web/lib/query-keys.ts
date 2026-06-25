@@ -3,20 +3,27 @@
  *
  * Why a factory:
  *  - One place to see every cache slot the app reads from.
- *  - `invalidateQueries({ queryKey: queryKeys.user.bundle() })` invalidates
- *    exactly the right key without string typos.
- *  - Trivial to bump a cache version (e.g. `["user", "v2", "bundle"]`) on
- *    a schema change without grepping the codebase for string literals.
+ *  - `invalidateQueries({ queryKey: queryKeys.settings.bundle() })`
+ *    invalidates exactly the right key without string typos.
+ *  - Trivial to bump a cache version (e.g. `["settings", "v2",
+ *    "bundle"]`) on a schema change without grepping the codebase for
+ *    string literals.
  *
- * Convention: keys are nested arrays ordered broad → narrow, all lowercase.
- * Helpers that take arguments include them as the trailing segment.
+ * Convention: keys are nested arrays ordered broad → narrow, all
+ * lowercase. Helpers that take arguments include them as the trailing
+ * segment.
  */
 export const queryKeys = {
-  user: {
-    /** The full bundle used by AuthProvider + the dashboard chrome. */
-    bundle: () => ["user", "bundle"] as const,
-    /** Narrow YouTube-connection read used by /settings/connected. */
-    youtubeConnection: () => ["user", "youtube-connection"] as const,
+  /**
+   * Lazy settings-shaped data fetched by the settings pages and the
+   * YouTube connection card. The dashboard chrome no longer hydrates
+   * from this on every render — it reads identity + onboarding
+   * status directly from the NextAuth session JWT.
+   */
+  settings: {
+    bundle: () => ["settings", "bundle"] as const,
+    /** Narrow YouTube-connection read used by the YouTubeConnectCard. */
+    youtubeConnection: () => ["settings", "youtube-connection"] as const,
   },
   onboarding: {
     status: () => ["onboarding", "status"] as const,

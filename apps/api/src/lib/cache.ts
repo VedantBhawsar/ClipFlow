@@ -5,7 +5,7 @@
  * swapping to Redis is a one-file change (`apps/api/src/lib/cache.ts`)
  * without touching any call site.
  *
- * Currently used to short-circuit `GET /api/auth/me` for 30s per user
+ * Currently used to short-circuit `GET /api/settings` for 30s per user
  * (low-priority optimization, but wired so the abstraction is proven).
  */
 export interface CacheClient {

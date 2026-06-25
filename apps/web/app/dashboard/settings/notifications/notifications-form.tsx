@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/use-auth";
+import { useSettings } from "@/hooks/use-settings";
 import { useUpdatePreferences } from "@/hooks/use-update-preferences";
 import type { UserPreferences } from "@clipflow/types";
 
@@ -64,16 +64,16 @@ interface NotificationsFormProps {
 }
 
 export function NotificationsForm({ initial }: NotificationsFormProps = {}) {
-  const { preferences: contextPrefs } = useAuth();
+  const { data: settings } = useSettings();
   const updatePrefs = useUpdatePreferences();
-  const prefs = initial ?? contextPrefs;
+  const prefs = initial ?? settings?.preferences ?? null;
 
   // Local optimistic state. Saves are debounced to the patch call —
   // a switch flips immediately and the patch fires on the next tick.
   const [local, setLocal] = React.useState<UserPreferences | null>(prefs);
   const [localError, setLocalError] = React.useState<string | null>(null);
 
-  // When the auth context's preferences hydrate, mirror them in local
+  // When the settings query hydrates, mirror the preferences in local
   // state. This handles the "settings page opened before hydration
   // finishes" case.
   React.useEffect(() => {
@@ -168,7 +168,7 @@ export function NotificationsForm({ initial }: NotificationsFormProps = {}) {
           variant="outline"
           disabled={saving || Object.keys(pending).length === 0}
           onClick={() => {
-            // Reset to the auth-context snapshot.
+            // Reset to the settings-query snapshot.
             if (prefs) {
               setLocal(prefs);
               setPending({});

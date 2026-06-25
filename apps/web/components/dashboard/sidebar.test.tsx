@@ -9,8 +9,12 @@ vi.mock("next/navigation", () => ({
   })),
 }));
 
-vi.mock("@/hooks/use-auth", () => ({
-  useAuth: vi.fn(),
+vi.mock("next-auth/react", () => ({
+  useSession: vi.fn(),
+}));
+
+vi.mock("@/hooks/use-youtube-connection", () => ({
+  useYouTubeConnection: vi.fn(),
 }));
 
 vi.mock("@/hooks/use-sign-out", () => ({
@@ -18,32 +22,31 @@ vi.mock("@/hooks/use-sign-out", () => ({
 }));
 
 import { Sidebar } from "./sidebar.js";
-import { useAuth, type UseAuthValue } from "@/hooks/use-auth";
+import { useSession } from "next-auth/react";
+import { useYouTubeConnection } from "@/hooks/use-youtube-connection";
 import { useSignOut } from "@/hooks/use-sign-out";
 import type { YouTubeConnection } from "@clipflow/types";
 
-const mockUseAuth = vi.mocked(useAuth);
+const mockUseSession = vi.mocked(useSession);
+const mockUseYouTubeConnection = vi.mocked(useYouTubeConnection);
 const mockUseSignOut = vi.mocked(useSignOut);
 
-const AUTH_BASE: UseAuthValue = {
-  status: "authenticated",
-  user: {
-    id: "user-1",
-    email: "creator@example.com",
-    name: "Test Creator",
-    authProvider: "EMAIL",
-    emailVerifiedAt: null,
-    createdAt: "2025-01-01T00:00:00.000Z",
+const SESSION = {
+  data: {
+    accessToken: "test-access-token",
+    userId: "user-1",
+    user: {
+      id: "user-1",
+      email: "creator@example.com",
+      name: "Test Creator",
+      onboardingCompleted: true,
+      displayName: null,
+    },
+    expires: "",
   },
-  profile: null,
-  preferences: null,
-  youtubeConnection: null,
-  onboardingCompleted: true,
-  refresh: vi.fn(),
-  setOnboardingCompleted: vi.fn(),
-  setPreferences: vi.fn(),
-  patchPreferences: vi.fn(),
-};
+  status: "authenticated",
+  update: vi.fn(),
+} as unknown as ReturnType<typeof useSession>;
 
 const DISCONNECTED: YouTubeConnection = {
   status: "disconnected",
@@ -66,7 +69,12 @@ const CONNECTED: YouTubeConnection = {
 describe("Sidebar", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseAuth.mockReturnValue(AUTH_BASE);
+    mockUseSession.mockReturnValue(SESSION);
+    mockUseYouTubeConnection.mockReturnValue({
+      data: DISCONNECTED,
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useYouTubeConnection>);
     mockUseSignOut.mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue(undefined),
       mutate: vi.fn(),
@@ -103,41 +111,42 @@ describe("Sidebar", () => {
     expect(billing).toHaveAttribute("aria-disabled", "true");
   });
 
-  it("shows 'Channel not connected' when youtubeConnection is null", () => {
-    mockUseAuth.mockReturnValue({
-      ...AUTH_BASE,
-      youtubeConnection: null,
-    });
+  it("shows 'Channel not connected' when connection data is null", () => {
+    mockUseYouTubeConnection.mockReturnValue({
+      data: null,
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useYouTubeConnection>);
     render(<Sidebar />);
     expect(screen.getByText("Channel not connected")).toBeInTheDocument();
   });
 
   it("shows 'Channel not connected' when status is disconnected", () => {
-    mockUseAuth.mockReturnValue({
-      ...AUTH_BASE,
-      youtubeConnection: DISCONNECTED,
-    });
+    mockUseYouTubeConnection.mockReturnValue({
+      data: DISCONNECTED,
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useYouTubeConnection>);
     render(<Sidebar />);
     expect(screen.getByText("Channel not connected")).toBeInTheDocument();
   });
 
   it("shows the channel title when connected", () => {
-    mockUseAuth.mockReturnValue({
-      ...AUTH_BASE,
-      youtubeConnection: CONNECTED,
-    });
+    mockUseYouTubeConnection.mockReturnValue({
+      data: CONNECTED,
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useYouTubeConnection>);
     render(<Sidebar />);
     expect(screen.getByText("Pixel Loop")).toBeInTheDocument();
   });
 
   it("shows 'Reconnect required' when needs_reauth", () => {
-    mockUseAuth.mockReturnValue({
-      ...AUTH_BASE,
-      youtubeConnection: {
-        ...DISCONNECTED,
-        status: "needs_reauth",
-      },
-    });
+    mockUseYouTubeConnection.mockReturnValue({
+      data: { ...DISCONNECTED, status: "needs_reauth" },
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useYouTubeConnection>);
     render(<Sidebar />);
     expect(screen.getByText("Reconnect required")).toBeInTheDocument();
   });

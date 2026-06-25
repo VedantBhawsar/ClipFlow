@@ -2,10 +2,10 @@
  * Zod schemas for the preferences + security routes.
  *
  * - `updatePreferencesSchema`: partial-update body for PATCH
- *   /api/user/preferences. Rejects empty bodies (matches the
+ *   /api/settings/preferences. Rejects empty bodies (matches the
  *   "if you PATCH one field, the rest stay as-is" contract — an
  *   empty PATCH is always a client bug).
- * - `changePasswordSchema`: body for POST /api/user/change-password.
+ * - `changePasswordSchema`: body for POST /api/settings/change-password.
  *   Reuses the shared `passwordSchema` rule from the auth module so
  *   password requirements stay consistent across signup and update.
  *
@@ -55,7 +55,7 @@ const chapterBehaviorSchema = z.enum(CHAPTER_BEHAVIORS);
 const thumbnailStyleSchema = z.enum(THUMBNAIL_STYLES);
 
 /**
- * Partial-update body for PATCH /api/user/preferences. At least one
+ * Partial-update body for PATCH /api/settings/preferences. At least one
  * field required.
  */
 export const updatePreferencesSchema = z
@@ -85,7 +85,7 @@ export const updatePreferencesSchema = z
   );
 
 /**
- * Body for POST /api/user/change-password. Both fields use the same
+ * Body for POST /api/settings/change-password. Both fields use the same
  * rule as signup so a user can't sneak in a "weak" password through
  * the change flow.
  */

@@ -17,6 +17,7 @@ import { QuestionFrequency } from "@/components/onboarding/question-frequency";
 import { QuestionGoal } from "@/components/onboarding/question-goal";
 import { QuestionDisplayName } from "@/components/onboarding/question-display-name";
 import { useUpdateProfile } from "@/hooks/use-update-profile";
+import { useSession } from "next-auth/react";
 
 interface WizardState {
   displayName: string;
@@ -54,6 +55,7 @@ const STEP_COUNT = 4;
 export function ProfileWizard() {
   const router = useRouter();
   const { submit } = useUpdateProfile();
+  const { update } = useSession();
   const [step, setStep] = React.useState(1);
   const [state, setState] = React.useState<WizardState>(INITIAL_STATE);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
@@ -71,19 +73,25 @@ export function ProfileWizard() {
     }
     setSubmitError(null);
     try {
+      const trimmedDisplayName = state.displayName.trim();
       const payload: UpdateProfileRequest = {
         niche: state.niche,
         uploadFrequency: state.frequency,
         primaryGoal: state.goal,
-        ...(state.displayName.trim().length > 0
-          ? { displayName: state.displayName.trim() }
+        ...(trimmedDisplayName.length > 0
+          ? { displayName: trimmedDisplayName }
           : {}),
       };
       await submit.mutateAsync(payload);
-      // The mutation's onSuccess already wrote the new profile +
-      // onboardingCompleted=true into the bundle cache, so OnboardingGuard
-      // won't bounce us back. router.refresh() re-pulls the dashboard
-      // server component (which reads from a server fetch, not the cache).
+      // Flip the session flags so `<OnboardingGuard>` (which reads
+      // from `useSession()` directly) routes us to /dashboard on the
+      // next render instead of bouncing back to /onboarding/profile.
+      // Passing the new display name means the dashboard chrome can
+      // greet by name without a settings refetch.
+      await update({
+        onboardingCompleted: true,
+        displayName: trimmedDisplayName.length > 0 ? trimmedDisplayName : null,
+      });
       router.push("/dashboard");
       router.refresh();
     } catch (err) {

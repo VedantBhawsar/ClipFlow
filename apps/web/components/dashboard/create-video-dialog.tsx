@@ -213,10 +213,9 @@ interface CreateVideoDialogProps {
   /**
    * Whether the user has connected a YouTube channel. When false, the
    * dialog body shows the "Connect YouTube" panel instead of the
-   * form. The dashboard page already has this information from the
-   * `UserBundleResponse` it fetched server-side; passing it down here
-   * avoids an extra round-trip just to know if the upload form should
-   * render.
+   * form. The dashboard page passes this down from
+   * `useYouTubeConnection()` so the dialog doesn't refetch the
+   * connection state just to decide whether to render the form.
    */
   channelConnected: boolean;
 }

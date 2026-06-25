@@ -42,6 +42,40 @@ export interface VideoMetadataInput {
 }
 
 /**
+ * License values the YouTube Data API v3 accepts on `status.license`.
+ *
+ * NOTE: this is NOT the same as our internal `VideoLicense` enum in
+ * `@clipflow/types`, which uses `"standard"` for the default YouTube
+ * license. YouTube's enum uses `"youtube"` instead — sending
+ * `"standard"` produces a 400 `INVALID_METADATA` rejection. The
+ * translation lives in {@link toYouTubeLicense}.
+ */
+export type YouTubeLicense = "youtube" | "creativeCommon";
+
+/**
+ * Map our internal `VideoLicense` value to the YouTube-API enum value.
+ *
+ * - `"standard"` (internal default) → `"youtube"` (YouTube default).
+ * - `"creativeCommon"` → `"creativeCommon"` (no change).
+ * - unknown → `"youtube"` (fallback matches YouTube's default for an
+ *   unspecified license — keeps the worker from crashing if a future
+ *   schema migration introduces a new value before this mapper is
+ *   updated).
+ *
+ * Callers MUST apply this at the YouTube boundary — never send the
+ * raw internal value over the wire.
+ */
+export const toYouTubeLicense = (internal: string): YouTubeLicense => {
+  switch (internal) {
+    case "creativeCommon":
+      return "creativeCommon";
+    case "standard":
+    default:
+      return "youtube";
+  }
+};
+
+/**
  * Full `status` block for `videos.insert`. Every field maps to a
  * `status.*` property on the row (see `packages/db/schema.prisma`) and
  * has a sensible default that matches YouTube's own defaults, so the
@@ -63,8 +97,9 @@ export interface VideoStatusInput {
   ageRestriction: string;
   /** Allow other sites to embed this video. */
   embeddable: boolean;
-  /** "standard" | "creativeCommon". */
-  license: string;
+  /** YouTube-API enum value. Use {@link toYouTubeLicense} to translate
+   *  from our internal `VideoLicense`. */
+  license: YouTubeLicense;
   /** Show the public view count on the watch page. */
   publicStatsViewable: boolean;
   /** "allowAll" | "holdAll" | "disable". */
