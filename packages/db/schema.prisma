@@ -119,6 +119,7 @@ model User {
   refreshTokens  RefreshToken[]
 
   @@map("users")
+@@index([id, email])
 }
 
 // ---------- Refresh tokens (rotation chain) ----------

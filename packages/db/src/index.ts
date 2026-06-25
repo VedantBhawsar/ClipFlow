@@ -17,11 +17,10 @@ function createPrismaClient(): PrismaClient {
 
   const pool = new pg.Pool({
     connectionString,
-    // Fail fast when Neon serverless compute is cold-starting instead of
-    // hanging for 10–20 s on the first connection.
-    connectionTimeoutMillis: 5_000,
-    // Don't hold connections open indefinitely when idle.
-    idleTimeoutMillis: 30_000,
+    max: 10,
+    min: 1,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
   });
   const adapter = new PrismaPg(pool);
 
@@ -29,7 +28,10 @@ function createPrismaClient(): PrismaClient {
     adapter,
     log:
       process.env.NODE_ENV === "development"
-        ? ["query", "warn", "error"]
+        ? [
+          "query",
+          "warn",
+          "error"]
         : ["warn", "error"],
   });
 }

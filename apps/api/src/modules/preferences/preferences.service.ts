@@ -22,7 +22,7 @@ import type { ChangePasswordInput, UpdatePreferencesInput } from "./preferences.
  * @param p Prisma row.
  * @returns DTO suitable for `UserPreferences` consumers.
  */
-const toPreferencesDto = (p: {
+export const toPreferencesDto = (p: {
   id: string;
   notifyProcessingComplete: boolean;
   notifyPublished: boolean;

@@ -26,7 +26,10 @@ import type { ChannelConnectionStatus } from "@prisma/client";
 import { cache } from "../../lib/cache.js";
 import { prisma } from "../../lib/prisma.js";
 import { requireDatabase } from "../../lib/db-guard.js";
-import { getPreferences } from "../preferences/preferences.service.js";
+import {
+  getPreferences,
+  toPreferencesDto,
+} from "../preferences/preferences.service.js";
 
 const channelStatusToApi = (
   status: ChannelConnectionStatus,
@@ -90,28 +93,23 @@ const toYouTubeConnectionDto = (c: {
  * @param userId Authenticated user id.
  * @returns `SettingsResponse` — `{ profile, preferences, youtubeConnection }`.
  */
-export const getSettings = async (userId: string): Promise<SettingsResponse> => {
+export const getSettings = async (
+  userId: string,
+): Promise<SettingsResponse> => {
   requireDatabase();
+
   const row = await prisma.user.findUnique({
     where: { id: userId },
-    include: { profile: true, youtubeChannel: true },
+    include: { profile: true, youtubeChannel: true, preferences: true },
   });
-  // The user must exist — `requireAuth` guarantees the JWT referenced
-  // a real id at request time. If something raced (user deletion mid
-  // request) treat it as a stale session.
-  if (!row) {
-    return {
-      profile: null,
-      preferences: await getPreferences(userId),
-      youtubeConnection: disconnectedYouTubeStub(),
-    };
-  }
-
-  const profile = row.profile ? toProfileDto(row.profile) : null;
-  const youtubeConnection = row.youtubeChannel
+  const profile = row?.profile ? toProfileDto(row.profile) : null;
+  const youtubeConnection = row?.youtubeChannel
     ? toYouTubeConnectionDto(row.youtubeChannel)
     : disconnectedYouTubeStub();
-  const preferences: UserPreferences = await getPreferences(userId);
+
+  const preferences = row?.preferences
+    ? toPreferencesDto(row?.preferences)
+    : null;
 
   return { profile, preferences, youtubeConnection };
 };
@@ -122,8 +120,11 @@ export const getSettings = async (userId: string): Promise<SettingsResponse> => 
  * can invalidate the bundle without depending on this module's
  * internals.
  */
-export const invalidateSettingsCache = async (userId: string): Promise<void> => {
+export const invalidateSettingsCache = async (
+  userId: string,
+): Promise<void> => {
   await cache.del(settingsCacheKey(userId));
 };
 
-export const settingsCacheKey = (userId: string): string => `settings:${userId}`;
+export const settingsCacheKey = (userId: string): string =>
+  `settings:${userId}`;
