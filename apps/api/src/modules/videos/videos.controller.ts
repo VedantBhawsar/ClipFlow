@@ -17,7 +17,11 @@ import type { Env } from "@clipflow/config";
 import { sendCreated, sendEmpty, sendOk } from "../../lib/response.js";
 import { AppError } from "../../errors/AppError.js";
 import * as videosService from "./videos.service.js";
-import type { CreateVideoInput, ListVideosQuery } from "./videos.schemas.js";
+import type {
+  CreateVideoInput,
+  ListPublishedVideosQuery,
+  ListVideosQuery,
+} from "./videos.schemas.js";
 import "../auth/auth.types.js";
 
 /**
@@ -122,34 +126,55 @@ export const cancelPendingUploadController = async (
 };
 
 /**
- * GET /api/videos
+ * GET /api/videos?status=...&q=...&page=...&pageSize=...
+ *
+ * Powering the SSR dashboard (`status=NOT_PUBLISHED`),
+ * the dashboard's future search box (any combination of `q` / `page`
+ * / `pageSize`), and any future "all videos" admin view
+ * (omit `status`).
+ *
+ * Returns the full paginated envelope (`videos + total + page +
+ * pageSize + totalPages`) so the client doesn't need a second
+ * round-trip to know how many pages exist.
  */
 export const listVideosController = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
   const userId = requireUser(req);
-  const query = (req.query ?? {}) as ListVideosQuery;
+  // The validate middleware has already parsed `req.query` through
+  // `listVideosQuerySchema` (with its transforms that turn string
+  // query params into numbers). `req.query`'s static type is still
+  // `ParsedQs`, so we cast through `unknown` to land on the parsed
+  // shape without an `as any`.
+  const query = (req.query ?? {}) as unknown as ListVideosQuery;
   const result = await videosService.listVideos(userId, query);
-  sendOk(res, { videos: result }, "Videos retrieved.");
+  sendOk(res, result, "Videos retrieved.");
 };
 
 /**
- * GET /api/videos/published
+ * GET /api/videos/published?q=...&page=...&pageSize=...
  *
- * Powers the SSR `/dashboard/published` page. Distinct path rather
- * than `?status=PUBLISHED` so the wire contract and ordering
+ * Powers the `/dashboard/published` page. Distinct path rather than
+ * `?status=PUBLISHED` so the wire contract and ordering
  * (`publishedAt desc`) stay explicit — a future PUBLISHED-only join
  * (e.g. synced stats) can land here without touching the generic
  * list path.
+ *
+ * Accepts the same `q` / `page` / `pageSize` filters as the generic
+ * list endpoint so the published page can host the same search +
+ * pagination UX without duplicating the schema.
  */
 export const listPublishedVideosController = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
   const userId = requireUser(req);
-  const result = await videosService.listPublishedVideos(userId);
-  sendOk(res, { videos: result }, "Published videos retrieved.");
+  // Same `ParsedQs` → parsed shape cast as `listVideosController`
+  // — see the comment there for the rationale.
+  const query = (req.query ?? {}) as unknown as ListPublishedVideosQuery;
+  const result = await videosService.listPublishedVideos(userId, query);
+  sendOk(res, result, "Published videos retrieved.");
 };
 
 /**

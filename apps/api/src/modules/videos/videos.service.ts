@@ -38,6 +38,7 @@ import { randomUUID } from "node:crypto";
 import type { Env } from "@clipflow/config";
 import type {
   CreateVideoResponse,
+  PaginatedVideos,
   UploadUrlResponse,
   Video,
   VideoStatus,
@@ -57,7 +58,11 @@ import { requireDatabase } from "../../lib/db-guard.js";
 import { cache } from "../../lib/cache.js";
 import { enqueuePublishJob } from "../../lib/queue.js";
 import { toVideoDto } from "./videos.types.js";
-import type { CreateVideoInput, ListVideosQuery } from "./videos.schemas.js";
+import type {
+  CreateVideoInput,
+  ListPublishedVideosQuery,
+  ListVideosQuery,
+} from "./videos.schemas.js";
 
 const ALLOWED_DELETE_STATUSES: ReadonlySet<VideoStatus> = new Set([
   "UPLOADED",
@@ -65,6 +70,14 @@ const ALLOWED_DELETE_STATUSES: ReadonlySet<VideoStatus> = new Set([
   "SCHEDULED",
   "PUBLISH_FAILED",
 ]);
+
+/**
+ * YouTube's hard limit on `thumbnails.set` uploads. Mirrored in
+ * `videos.schemas.ts → thumbnailFileSizeBytesSchema`. Kept here so
+ * the runtime cap on the presigned POST can reference the same
+ * source of truth without an import cycle.
+ */
+const YOUTUBE_MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024;
 
 /**
  * Cache-key namespace for in-flight uploads. The TTL matches the
@@ -85,6 +98,18 @@ interface PendingUpload {
   s3KeyOriginal: string;
   contentType: string;
   fileSizeBytes: number;
+  /**
+   * Thumbnail block. `null` when the user didn't pick a custom
+   * thumbnail — in that case the publish path leaves YouTube to
+   * pick a generated frame. When present, `finalizeUpload` HEADs the
+   * object at `s3KeyThumbnail` and the publish path forwards it to
+   * YouTube's `thumbnails.set` endpoint.
+   */
+  thumbnail: {
+    s3KeyThumbnail: string;
+    contentType: string;
+    fileSizeBytes: number;
+  } | null;
   metadata: {
     title: string;
     description: string | null;
@@ -166,12 +191,61 @@ export const createVideo = async (
     expiresInSeconds: env.YOUTUBE_PRESIGNED_POST_TTL,
   });
 
+  // ---- Optional custom thumbnail ----
+  //
+  // We only mint a second presigned URL when the client provided
+  // thumbnail metadata. The byte size cap matches YouTube's own
+  // (2 MB) — `videos.schemas.ts` already rejects oversize at the
+  // edge, this is the runtime guard.
+  let thumbnail: PendingUpload["thumbnail"] = null;
+  let thumbnailPresigned: {
+    s3KeyThumbnail: string;
+    postUrl: string;
+    fields: Record<string, string>;
+    contentLengthMaxBytes: number;
+  } | null = null;
+  if (
+    input.thumbnailContentType &&
+    input.thumbnailFileSizeBytes !== undefined &&
+    input.thumbnailOriginalFilename
+  ) {
+    const thumbExt = inferThumbnailExtension(
+      input.thumbnailOriginalFilename,
+      input.thumbnailContentType,
+    );
+    const s3KeyThumbnail = `videos/${userId}/pending/${pendingUploadId}/thumbnail.${thumbExt}`;
+    const presignedThumb = await createPresignedPostUrl(client, s3, {
+      key: s3KeyThumbnail,
+      contentType: input.thumbnailContentType,
+      // YouTube rejects >2 MB on `thumbnails.set`; we cap the
+      // presigned POST the same way so the browser can't even
+      // start an upload that the publish path will reject.
+      contentLengthMaxBytes: Math.min(
+        input.thumbnailFileSizeBytes,
+        YOUTUBE_MAX_THUMBNAIL_BYTES,
+      ),
+      expiresInSeconds: env.YOUTUBE_PRESIGNED_POST_TTL,
+    });
+    thumbnail = {
+      s3KeyThumbnail,
+      contentType: input.thumbnailContentType,
+      fileSizeBytes: input.thumbnailFileSizeBytes,
+    };
+    thumbnailPresigned = {
+      s3KeyThumbnail,
+      postUrl: presignedThumb.postUrl,
+      fields: presignedThumb.fields,
+      contentLengthMaxBytes: presignedThumb.contentLengthMaxBytes,
+    };
+  }
+
   const pending: PendingUpload = {
     userId,
     channelId: channel.id,
     s3KeyOriginal,
     contentType: input.contentType,
     fileSizeBytes: input.fileSizeBytes,
+    thumbnail,
     metadata: {
       title: input.title,
       description: input.description ?? null,
@@ -202,6 +276,7 @@ export const createVideo = async (
     postUrl: presigned.postUrl,
     fields: presigned.fields,
     contentLengthMaxBytes: presigned.contentLengthMaxBytes,
+    thumbnail: thumbnailPresigned,
   };
 };
 
@@ -276,10 +351,16 @@ export const finalizeUpload = async (
   if (head.contentLength !== pending.fileSizeBytes) {
     // Partial PUT — the presigned POST allows 0..maxBytes, so a network
     // drop can leave a smaller object. Clean it up so re-upload doesn't
-    // surface as a 412 on a stale key.
+    // surface as a 412 on a stale key. Same for the thumbnail if any
+    // bytes landed.
     await deleteObject(s3.client, s3.config, pending.s3KeyOriginal).catch(() => {
       // best-effort cleanup
     });
+    if (pending.thumbnail) {
+      await deleteObject(s3.client, s3.config, pending.thumbnail.s3KeyThumbnail).catch(() => {
+        // best-effort cleanup
+      });
+    }
     await cache.del(`${PENDING_UPLOAD_KEY_PREFIX}${pendingUploadId}`);
     throw new AppError(
       400,
@@ -292,12 +373,52 @@ export const finalizeUpload = async (
     await deleteObject(s3.client, s3.config, pending.s3KeyOriginal).catch(() => {
       // best-effort cleanup
     });
+    if (pending.thumbnail) {
+      await deleteObject(s3.client, s3.config, pending.thumbnail.s3KeyThumbnail).catch(() => {
+        // best-effort cleanup
+      });
+    }
     await cache.del(`${PENDING_UPLOAD_KEY_PREFIX}${pendingUploadId}`);
     throw new AppError(
       413,
       "FILE_TOO_LARGE",
       `File exceeds the ${formatBytes(env.YOUTUBE_MAX_VIDEO_BYTES)} limit.`,
     );
+  }
+
+  // ---- Thumbnail validation (optional) ----
+  //
+  // If the user picked a thumbnail, the upload is now confirmed. We
+  // HEAD the object (same defense-in-depth pattern as the video
+  // bytes) and persist the key on the row. A missing object or size
+  // mismatch here is treated as "thumbnail didn't make it" — we
+  // silently drop it from the row rather than failing the whole
+  // finalize, because the video is fine without a custom thumbnail
+  // (YouTube will use a generated frame).
+  let thumbnailS3Key: string | null = null;
+  let thumbnailContentType: string | null = null;
+  if (pending.thumbnail) {
+    const thumbHead = await headObject(
+      s3.client,
+      s3.config,
+      pending.thumbnail.s3KeyThumbnail,
+    );
+    if (
+      thumbHead &&
+      thumbHead.contentLength === pending.thumbnail.fileSizeBytes &&
+      thumbHead.contentLength <= YOUTUBE_MAX_THUMBNAIL_BYTES
+    ) {
+      thumbnailS3Key = pending.thumbnail.s3KeyThumbnail;
+      thumbnailContentType = pending.thumbnail.contentType;
+    } else if (thumbHead) {
+      // Partial PUT or wrong content type — clean up so a re-upload
+      // doesn't trip on a stale key.
+      await deleteObject(s3.client, s3.config, pending.thumbnail.s3KeyThumbnail).catch(
+        () => {
+          // best-effort cleanup
+        },
+      );
+    }
   }
 
   const videoId = `vid_${randomUUID()}`;
@@ -321,6 +442,8 @@ export const finalizeUpload = async (
       fileSizeBytes: BigInt(head.contentLength),
       contentType: head.contentType ?? pending.contentType,
       s3KeyOriginal: pending.s3KeyOriginal,
+      s3KeyThumbnail: thumbnailS3Key,
+      thumbnailContentType,
       scheduledPublishAt: pending.metadata.scheduledPublishAt
         ? new Date(pending.metadata.scheduledPublishAt)
         : null,
@@ -378,6 +501,13 @@ export const cancelPendingUpload = async (
   await deleteObject(s3.client, s3.config, pending.s3KeyOriginal).catch(() => {
     // best-effort; the cache eviction below is the source of truth.
   });
+  if (pending.thumbnail) {
+    await deleteObject(s3.client, s3.config, pending.thumbnail.s3KeyThumbnail).catch(
+      () => {
+        // best-effort; same source-of-truth as above.
+      },
+    );
+  }
   await cache.del(`${PENDING_UPLOAD_KEY_PREFIX}${pendingUploadId}`);
 };
 
@@ -408,41 +538,165 @@ export const deleteVideo = async (
 };
 
 /**
+ * Translate the parsed query's `status` field into a Prisma `where`
+ * fragment. The schema accepts either a real lifecycle status OR the
+ * virtual `NOT_PUBLISHED` sentinel — the sentinel means "anything but
+ * PUBLISHED", which the dashboard uses so it doesn't have to mirror
+ * the union client-side.
+ *
+ * `undefined` means "all statuses" (the search-only path used by the
+ * generic `/api/videos` endpoint).
+ */
+const buildStatusFilter = (
+  status: ListVideosQuery["status"],
+): { status?: VideoStatus | { not: VideoStatus } } => {
+  if (!status) return {};
+  if (status === "NOT_PUBLISHED") return { status: { not: "PUBLISHED" } };
+  return { status };
+};
+
+/**
+ * Build the Prisma `where` clause for a list query: owner scope +
+ * optional status filter + optional case-insensitive search across
+ * title, description, and tags.
+ *
+ * Tag search uses `has` (case-sensitive on Postgres for arrays) but
+ * the title/description `mode: "insensitive"` makes the common
+ * "find by title fragment" UX feel right. The search runs as an OR
+ * inside the AND — so a user with no rows matching still gets an
+ * empty page (not a 500 from a mis-shaped where).
+ */
+const buildListWhere = (
+  userId: string,
+  query: {
+    status?: ListVideosQuery["status"];
+    q?: string;
+    privacyStatus?: string;
+    publishedSince?: Date;
+  },
+) => {
+  const where: Record<string, unknown> = { userId };
+  const statusFilter = buildStatusFilter(query.status);
+  if (statusFilter.status !== undefined) where.status = statusFilter.status;
+
+  if (query.q) {
+    where.OR = [
+      { title: { contains: query.q, mode: "insensitive" } },
+      { description: { contains: query.q, mode: "insensitive" } },
+      { tags: { has: query.q } },
+    ];
+  }
+
+  // Privacy + date-range filters are additive on top of status/q.
+  // They live in the same AND so combining `privacy=public&q=foo`
+  // narrows the result rather than widening it.
+  if (query.privacyStatus) {
+    where.privacyStatus = query.privacyStatus;
+  }
+  if (query.publishedSince) {
+    where.publishedAt = { gte: query.publishedSince };
+  }
+
+  return where;
+};
+
+/**
  * List the current user's committed videos, newest first. Pending
  * uploads are intentionally not visible — they live in the dialog
  * state and have no DB row.
  *
- * The optional `status` filter powers the SSR dashboard (`status`
- * omitted = everything except PUBLISHED) and the published page
- * (`status = PUBLISHED`). The schema-level union in `videos.schemas.ts`
- * ensures only valid values reach here.
+ * Returns a paginated envelope (`videos + total + page + pageSize +
+ * totalPages`) so the frontend doesn't need a second round-trip to
+ * know how many pages exist. The total count runs as a separate
+ * `count` so the index hit on `(userId, createdAt)` doesn't have to
+ * drag the full row set back through Postgres.
+ *
+ * The optional `status` filter powers the SSR dashboard
+ * (`status: "NOT_PUBLISHED"`) and the published page
+ * (`status: "PUBLISHED"`). The optional `q` does a substring match
+ * across title, description, and tags.
  */
 export const listVideos = async (
   userId: string,
-  query: ListVideosQuery = {},
-): Promise<Video[]> => {
+  query: ListVideosQuery,
+): Promise<PaginatedVideos> => {
   requireDatabase();
-  const rows = await prisma.video.findMany({
-    where: { userId, ...(query.status ? { status: query.status } : {}) },
-    orderBy: { createdAt: "desc" },
-  });
-  return rows.map(toVideoDto);
+  // The zod schema applies `.default(1)` / `.default(12)` via transforms,
+  // so by the time we get here `page` / `pageSize` are guaranteed
+  // defined. The non-null assertion is the right escape hatch for
+  // "the schema guarantees this" — using `?? 1` would silently swallow
+  // a future regression where someone forgets to update the default.
+  const page = query.page;
+  const pageSize = query.pageSize;
+  const where = buildListWhere(userId, query);
+
+  const [rows, total] = await Promise.all([
+    prisma.video.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.video.count({ where }),
+  ]);
+
+  return {
+    videos: rows.map(toVideoDto),
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
 };
 
 /**
- * List the current user's PUBLISHED videos, newest first. Powers the
- * `/dashboard/published` page. Kept as a distinct helper (rather than
- * `listVideos(userId, { status: "PUBLISHED" })`) so future PUBLISHED-only
- * columns (e.g. joined stats) can land here without touching the
- * generic list path.
+ * List the current user's PUBLISHED videos, newest published first.
+ * Powers the `/dashboard/published` page.
+ *
+ * Kept as a distinct helper (rather than
+ * `listVideos(userId, { status: "PUBLISHED" })`) so future
+ * PUBLISHED-only columns (e.g. joined stats) can land here without
+ * touching the generic list path. Same paginated envelope as
+ * `listVideos`; the `publishedAt desc` ordering is a hard contract
+ * for this endpoint (the dashboard's "what's live, newest first"
+ * mental model relies on it).
  */
-export const listPublishedVideos = async (userId: string): Promise<Video[]> => {
+export const listPublishedVideos = async (
+  userId: string,
+  query: ListPublishedVideosQuery,
+): Promise<PaginatedVideos> => {
   requireDatabase();
-  const rows = await prisma.video.findMany({
-    where: { userId, status: "PUBLISHED" },
-    orderBy: { publishedAt: "desc" },
+  // See `listVideos` for why these are non-nullable here — the schema
+  // transform guarantees them.
+  const page = query.page;
+  const pageSize = query.pageSize;
+  // `privacy` was already transformed to undefined by the schema when
+  // it's "all" or omitted; `since` is a raw ISO string at this layer
+  // and needs to be parsed into a Date before Prisma can use it.
+  const where = buildListWhere(userId, {
+    ...query,
+    status: "PUBLISHED",
+    ...(query.privacy ? { privacyStatus: query.privacy } : {}),
+    ...(query.since ? { publishedSince: new Date(query.since) } : {}),
   });
-  return rows.map(toVideoDto);
+
+  const [rows, total] = await Promise.all([
+    prisma.video.findMany({
+      where,
+      orderBy: { publishedAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.video.count({ where }),
+  ]);
+
+  return {
+    videos: rows.map(toVideoDto),
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
 };
 
 /**
@@ -571,6 +825,26 @@ const inferExtension = (filename: string, contentType: string): string => {
   if (contentType === "video/mp4") return "mp4";
   if (contentType === "video/quicktime") return "mov";
   if (contentType === "video/webm") return "webm";
+  return "bin";
+};
+
+/**
+ * Same shape as `inferExtension`, narrower to image types. GIF is
+ * intentionally omitted because the API only accepts JPEG/PNG (see
+ * `videos.schemas.ts → thumbnailContentTypeSchema`); a `.gif` from
+ * the filename still maps to `image/jpeg` if the content type says
+ * so, which is the common case.
+ */
+const inferThumbnailExtension = (
+  filename: string,
+  contentType: string,
+): string => {
+  const fromName = filename.split(".").pop()?.toLowerCase();
+  if (fromName && /^(jpg|jpeg|png)$/.test(fromName)) {
+    return fromName === "jpeg" ? "jpg" : fromName;
+  }
+  if (contentType === "image/jpeg") return "jpg";
+  if (contentType === "image/png") return "png";
   return "bin";
 };
 

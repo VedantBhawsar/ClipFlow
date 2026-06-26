@@ -344,6 +344,15 @@ model Video {
 
   s3KeyOriginal   String        @unique
 
+  /// Optional custom thumbnail. When set, the publish path forwards
+  /// the S3 object to YouTube's `thumbnails.set` endpoint so the
+  /// uploaded image (not a generated frame) becomes the video's
+  /// thumbnail. YouTube rejects uploads >2 MB and non-image content
+  /// types — both bounds are enforced at create time and on
+  /// finalize so a bad object never reaches the YouTube API.
+  s3KeyThumbnail     String?
+  thumbnailContentType String?
+
   status          VideoStatus   @default(UPLOADED)
   failureReason   String?
 

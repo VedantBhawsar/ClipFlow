@@ -27,6 +27,7 @@ import { buildS3Config, getObjectStream, getS3Client } from "@clipflow/s3";
 import { PermanentPublishError } from "./errors.js";
 import { refreshAccessToken } from "./token-refresh.js";
 import {
+  setYouTubeThumbnail,
   startResumableUploadSession,
   toYouTubeLicense,
   updateVideoStatus,
@@ -176,6 +177,60 @@ export const publishVideo = async (
       failureReason: null,
     },
   });
+
+  // ---- Custom thumbnail (optional) ----
+  //
+  // YouTube's `thumbnails.set` needs the bytes AFTER `videos.insert`
+  // returns the youtubeVideoId — the thumbnail can't be uploaded
+  // until YouTube knows about the video. We stream the S3 object
+  // straight through so we don't buffer a 2 MB image in memory.
+  //
+  // Thumbnail failures are logged but DON'T fail the publish — the
+  // video is live with YouTube's default frame, which is still a
+  // valid outcome. Transient errors get retried by BullMQ (we
+  // re-throw); permanent ones are swallowed + logged so a bad
+  // thumbnail can't undo a successful publish.
+  if (video.s3KeyThumbnail && video.thumbnailContentType) {
+    const thumbContentType = video.thumbnailContentType as "image/jpeg" | "image/png";
+    if (thumbContentType === "image/jpeg" || thumbContentType === "image/png") {
+      try {
+        const { body: thumbBody, contentLength: thumbLength } = await getObjectStream(
+          client,
+          s3,
+          video.s3KeyThumbnail,
+        );
+        const webThumb = (
+          thumbBody as unknown as { transformToWebStream(): ReadableStream<Uint8Array> }
+        ).transformToWebStream();
+        await setYouTubeThumbnail({
+          accessToken,
+          youtubeVideoId: uploaded.youtubeVideoId,
+          body: webThumb,
+          contentLength: thumbLength,
+          contentType: thumbContentType,
+        });
+        logger.info(
+          { videoId: video.id, s3KeyThumbnail: video.s3KeyThumbnail },
+          "Custom thumbnail uploaded to YouTube.",
+        );
+      } catch (err) {
+        const reason =
+          err instanceof PermanentPublishError
+            ? `permanent: ${err.message}`
+            : err instanceof Error
+              ? `transient: ${err.message}`
+              : "unknown error";
+        logger.warn(
+          { videoId: video.id, err: reason },
+          "Thumbnail upload failed; video is published but using YouTube's default thumbnail.",
+        );
+        if (!(err instanceof PermanentPublishError)) {
+          // Transient → let BullMQ retry. Permanent → swallow (see above).
+          throw err;
+        }
+      }
+    }
+  }
 
   logger.info(
     {

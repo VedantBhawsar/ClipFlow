@@ -1,0 +1,471 @@
+{
+  "version": 1,
+  "bugs": [
+    {
+      "id": "bug-001",
+      "timestamp": "2026-06-26T04:17:43.681Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/api/src/modules/videos/videos.schemas.ts",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 20→77 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T04:17:43.681Z"
+    },
+    {
+      "id": "bug-002",
+      "timestamp": "2026-06-26T04:18:17.371Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/api/src/modules/videos/videos.service.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T04:18:17.371Z"
+    },
+    {
+      "id": "bug-003",
+      "timestamp": "2026-06-26T04:18:42.022Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/api/src/modules/videos/videos.controller.ts",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 30→44 lines (7 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T04:18:42.022Z"
+    },
+    {
+      "id": "bug-004",
+      "timestamp": "2026-06-26T04:19:10.036Z",
+      "error_message": "Type error",
+      "file": "apps/api/src/modules/videos/videos.routes.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T04:19:10.036Z"
+    },
+    {
+      "id": "bug-005",
+      "timestamp": "2026-06-26T04:19:30.293Z",
+      "error_message": "Type error",
+      "file": "apps/api/src/modules/videos/videos.service.test.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T04:19:30.293Z"
+    },
+    {
+      "id": "bug-006",
+      "timestamp": "2026-06-26T04:20:30.588Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/web/lib/api-client.ts",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 10→30 lines (2 removed) | Also: const qs = params?.status ? `?status=${encodeURICo; return request(\"GET\", `/api/videos${qs}`);",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-26T04:20:42.635Z"
+    },
+    {
+      "id": "bug-007",
+      "timestamp": "2026-06-26T04:20:51.028Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/web/lib/query-keys.ts",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 9→17 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T04:20:51.028Z"
+    },
+    {
+      "id": "bug-008",
+      "timestamp": "2026-06-26T04:21:04.485Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/web/hooks/use-videos.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: * List the current user's PUBLISHED videos, paginated. Power; * `/dashboard/published` page. Accepts the same `q` / `page`",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-26T04:21:12.060Z"
+    },
+    {
+      "id": "bug-009",
+      "timestamp": "2026-06-26T04:23:13.933Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/web/components/dashboard/published-video-card.tsx",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 20→14 lines (5 removed) | Also: /**; * Quiet lock badge — currently unused but exported",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-26T04:23:21.867Z"
+    },
+    {
+      "id": "bug-010",
+      "timestamp": "2026-06-26T04:24:23.054Z",
+      "error_message": "Type error",
+      "file": "apps/web/app/layout.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T04:24:23.054Z"
+    },
+    {
+      "id": "bug-011",
+      "timestamp": "2026-06-26T04:24:39.900Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/web/app/globals.css",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→10 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "css"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T04:24:39.900Z"
+    },
+    {
+      "id": "bug-012",
+      "timestamp": "2026-06-26T04:26:45.079Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/web/hooks/use-videos.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T04:26:45.079Z"
+    },
+    {
+      "id": "bug-013",
+      "timestamp": "2026-06-26T04:28:27.199Z",
+      "error_message": "CSS fix: weight",
+      "file": "apps/web/app/layout.tsx",
+      "root_cause": "weight: [\"400\", \"500\", \"600\", \"700\"], → \"variable\",",
+      "fix": "Changed weight: [\"400\", \"500\", \"600\", \"700\"], → \"variable\",",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T04:28:27.199Z"
+    },
+    {
+      "id": "bug-014",
+      "timestamp": "2026-06-26T04:29:19.750Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/api/src/modules/videos/videos.service.ts",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 8→13 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T04:29:19.750Z"
+    },
+    {
+      "id": "bug-015",
+      "timestamp": "2026-06-26T04:33:37.703Z",
+      "error_message": "Incorrect value in code",
+      "file": "apps/web/components/dashboard/published-video-card.tsx",
+      "root_cause": "Had \"absolute inset-x-0 bottom-0 flex items-end justif",
+      "fix": "Changed to \"absolute inset-x-0 bottom-0 flex items-end justif",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T04:33:37.703Z"
+    },
+    {
+      "id": "bug-016",
+      "timestamp": "2026-06-26T04:38:51.634Z",
+      "error_message": "CSS fix: placeholderData",
+      "file": "apps/web/components/dashboard/published-video-list.tsx",
+      "root_cause": "placeholderData: (prev) => prev → keepPreviousData",
+      "fix": "Changed placeholderData: (prev) => prev → keepPreviousData",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T04:38:51.634Z"
+    },
+    {
+      "id": "bug-017",
+      "timestamp": "2026-06-26T04:43:08.632Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/web/components/dashboard/published-video-card.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T04:43:08.632Z"
+    },
+    {
+      "id": "bug-018",
+      "timestamp": "2026-06-26T04:43:31.476Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/web/components/dashboard/published-video-card.tsx",
+      "root_cause": "13 lines replaced/restructured",
+      "fix": "Rewrote 38→11 lines (13 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T04:43:31.476Z"
+    },
+    {
+      "id": "bug-019",
+      "timestamp": "2026-06-26T04:49:44.590Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/web/components/dashboard/published-video-list.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T04:49:44.590Z"
+    },
+    {
+      "id": "bug-020",
+      "timestamp": "2026-06-26T04:56:44.592Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/api/src/modules/videos/videos.schemas.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T04:56:44.592Z"
+    },
+    {
+      "id": "bug-021",
+      "timestamp": "2026-06-26T04:58:32.084Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/api/src/modules/videos/videos.service.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T04:58:32.084Z"
+    },
+    {
+      "id": "bug-022",
+      "timestamp": "2026-06-26T04:58:50.545Z",
+      "error_message": "Type error",
+      "file": "apps/api/src/modules/videos/videos.service.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation | Also: if (pending.thumbnail) {; await deleteObject(s3.client, s3.config, pending.thumbnail.s | Also: /**; * Same shape as `inferExtension`, narrower to image types. G",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-06-26T04:59:49.513Z"
+    },
+    {
+      "id": "bug-023",
+      "timestamp": "2026-06-26T05:00:28.790Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "packages/youtube-upload/src/youtube-api.ts",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T05:00:28.790Z"
+    },
+    {
+      "id": "bug-024",
+      "timestamp": "2026-06-26T05:00:48.205Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "packages/youtube-upload/src/publish-video.ts",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T05:00:48.205Z"
+    },
+    {
+      "id": "bug-025",
+      "timestamp": "2026-06-26T05:01:12.011Z",
+      "error_message": "Type error",
+      "file": "apps/web/hooks/use-videos.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T05:01:12.011Z"
+    },
+    {
+      "id": "bug-026",
+      "timestamp": "2026-06-26T05:01:55.600Z",
+      "error_message": "CSS fix: loaded",
+      "file": "apps/web/components/dashboard/create-video-dialog.tsx",
+      "root_cause": "loaded: 0, total: 0 → 0,",
+      "fix": "Changed loaded: 0, total: 0 → 0,",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-26T05:03:57.735Z"
+    },
+    {
+      "id": "bug-027",
+      "timestamp": "2026-06-26T05:02:26.368Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/web/components/dashboard/create-video-dialog.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: setThumbnailRef(values.thumbnail ?? null);",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-26T05:02:40.596Z"
+    },
+    {
+      "id": "bug-028",
+      "timestamp": "2026-06-26T10:35:00.000Z",
+      "error_message": "TypeScript: superRefinement tried to index a typed object by string — TS7053 'Element implicitly has an any type'",
+      "file": "apps/api/src/modules/videos/videos.schemas.ts",
+      "root_cause": "The thumbnailRefinement function used `data[k]` with a string `k`, but `data` had no index signature. The compiler couldn't narrow the access.",
+      "fix": "Replaced `data[k]` / `present.includes(k)` style with explicit per-key checks (if data.thumbnailContentType !== undefined → push('thumbnailContentType') …). No string indexing, no `any`.",
+      "tags": [
+        "manual",
+        "type-fix",
+        "zod",
+        "superRefine"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T10:35:00.000Z"
+    },
+    {
+      "id": "bug-029",
+      "timestamp": "2026-06-26T10:35:00.000Z",
+      "error_message": "TypeScript: StubVideo type missing s3KeyThumbnail + thumbnailContentType after Video model gained the columns",
+      "file": "apps/api/src/modules/videos/videos.service.test.ts",
+      "root_cause": "Adding nullable columns to the Video Prisma model widened the toVideoDto input type, which the StubVideo type alias used to declare mock prisma rows. The alias needed matching optional/nullable fields.",
+      "fix": "Added `s3KeyThumbnail: string | null` + `thumbnailContentType: string | null` to StubVideo and stubCreatedVideo (both null — the existing tests don't exercise the thumbnail path).",
+      "tags": [
+        "manual",
+        "type-fix",
+        "prisma",
+        "test-fixture"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-26T10:35:00.000Z"
+    }
+  ]
+}

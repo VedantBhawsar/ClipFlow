@@ -14,10 +14,13 @@
  */
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   CreateVideoRequest,
   CreateVideoResponse,
+  ListPublishedVideosParams,
+  ListVideosParams,
+  PaginatedVideos,
   Video,
 } from "@clipflow/types";
 
@@ -25,11 +28,18 @@ import { useApi } from "@/hooks/use-api";
 import { queryKeys } from "@/lib/query-keys";
 
 /**
- * List the current user's committed videos.
+ * List the current user's committed videos, paginated.
  *
- * Returns the wrapped `{ videos: [...] }` payload shape — not a bare
- * array — so the API surface stays consistent across `list` / `get`
- * / etc. and consumers don't have to special-case "is this paginated".
+ * The optional `params` argument is folded into the query key (see
+ * `queryKeys.videos.list`) so distinct filter tuples produce
+ * distinct cache slots — the dashboard's "non-published, page 1"
+ * query and a future admin view's "all videos, page 1" can both
+ * live in the cache at once.
+ *
+ * Returns the full paginated envelope (`videos + total + page +
+ * pageSize + totalPages`) — not a bare array — so the API surface
+ * stays consistent across `list` / `get` / etc. and consumers
+ * don't have to special-case "is this paginated".
  *
  * Note: pending uploads (in-flight, no row yet) are NOT included.
  * They live in the upload dialog's local state and only appear on the
@@ -39,11 +49,11 @@ import { queryKeys } from "@/lib/query-keys";
  * this it would fire without an Authorization header, get 401'd,
  * trip the SessionExpiredError global handler, and redirect-loop.
  */
-export function useVideos() {
+export function useVideos(params?: ListVideosParams) {
   const api = useApi();
-  return useQuery<{ videos: Video[] }>({
-    queryKey: queryKeys.videos.list(),
-    queryFn: () => api.listVideos(),
+  return useQuery<PaginatedVideos>({
+    queryKey: queryKeys.videos.list(params ?? {}),
+    queryFn: () => api.listVideos(params),
     enabled: !!api,
   });
 }
@@ -63,8 +73,9 @@ export function useCreateVideo() {
 /**
  * Step 3 of the upload flow: notify the API that the browser has
  * finished uploading to S3. The API HEADs the object, validates the
- * size, and only then creates the `Video` row. Invalidates the videos
- * list so the dashboard re-fetches and the new row appears.
+ * size, and only then creates the `Video` row. Invalidates every
+ * videos-list cache slot (any filter / page) so the dashboard
+ * re-fetches and the new row appears.
  */
 export function useFinalizeUpload() {
   const api = useApi();
@@ -72,7 +83,7 @@ export function useFinalizeUpload() {
   return useMutation<Video, Error, string>({
     mutationFn: (pendingUploadId) => api.finalizeUpload(pendingUploadId),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: queryKeys.videos.list() });
+      void qc.invalidateQueries({ queryKey: ["videos", "list"] });
     },
   });
 }
@@ -92,14 +103,15 @@ export function useCancelPendingUpload() {
       // A row never existed for a cancelled pending upload, so
       // invalidating the list is just defensive. The dialog closes
       // immediately on success.
-      void qc.invalidateQueries({ queryKey: queryKeys.videos.list() });
+      void qc.invalidateQueries({ queryKey: ["videos", "list"] });
     },
   });
 }
 
 /**
  * Delete (cancel) a committed, not-yet-published video. The row exists
- * at this point, so the list query needs invalidation.
+ * at this point, so the list query needs invalidation across every
+ * filter / page slot.
  */
 export function useDeleteVideo() {
   const api = useApi();
@@ -107,31 +119,42 @@ export function useDeleteVideo() {
   return useMutation<void, Error, string>({
     mutationFn: (id) => api.deleteVideo(id),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: queryKeys.videos.list() });
+      void qc.invalidateQueries({ queryKey: ["videos", "list"] });
     },
   });
 }
 
 /**
- * List the current user's PUBLISHED videos, newest published first.
- * Powers the `/dashboard/published` page (its server component is
- * the SSR source of truth; this hook is for any client-driven
- * refresh, e.g. after a successful unpublish from the detail page).
+ * List the current user's PUBLISHED videos, paginated. Powers the
+ * `/dashboard/published` page. Accepts the same `q` / `page` /
+ * `pageSize` filters as the generic list endpoint so the published
+ * page can host the same search + pagination UX without duplicating
+ * the schema.
+ *
+ * Always filtered to `status: "PUBLISHED"` server-side; the
+ * `publishedAt desc` ordering is a hard contract for this endpoint.
  */
-export function useListPublishedVideos() {
+export function useListPublishedVideos(
+  params?: ListPublishedVideosParams,
+  options?: { placeholderData?: typeof keepPreviousData },
+) {
   const api = useApi();
-  return useQuery<{ videos: Video[] }>({
-    queryKey: queryKeys.videos.published(),
-    queryFn: () => api.listPublishedVideos(),
+  return useQuery<PaginatedVideos>({
+    queryKey: queryKeys.videos.published(params ?? {}),
+    queryFn: () => api.listPublishedVideos(params),
     enabled: !!api,
+    ...(options?.placeholderData
+      ? { placeholderData: options.placeholderData }
+      : {}),
   });
 }
 
 /**
- * Unpublish a live video. Invalidates the published list (the row's
- * `privacyStatus` flipped to `private`, but it remains in the
- * published list until a future slice distinguishes the two — for
- * now we just invalidate so any open views refetch).
+ * Unpublish a live video. Invalidates every videos-list and
+ * videos-published cache slot (any filter / page) so any open view
+ * re-fetches. The row's `privacyStatus` flipped to `private`, but it
+ * remains in the published list until a future slice distinguishes
+ * the two — for now we just invalidate so any open views refetch.
  */
 export function useUnpublishVideo() {
   const api = useApi();
@@ -139,8 +162,8 @@ export function useUnpublishVideo() {
   return useMutation<Video, Error, string>({
     mutationFn: (id) => api.unpublishVideo(id),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: queryKeys.videos.published() });
-      void qc.invalidateQueries({ queryKey: queryKeys.videos.list() });
+      void qc.invalidateQueries({ queryKey: ["videos", "published"] });
+      void qc.invalidateQueries({ queryKey: ["videos", "list"] });
     },
   });
 }
@@ -175,48 +198,88 @@ export function useUploadVideo() {
     presigned: CreateVideoResponse,
     onProgress: (p: UploadProgress) => void,
   ): UploadHandle {
-    const xhr = new XMLHttpRequest();
-    const controller = new AbortController();
+    return uploadViaPresignedPost(file, presigned.postUrl, presigned.fields, onProgress);
+  };
+}
 
-    const promise = new Promise<void>((resolve, reject) => {
-      xhr.open("POST", presigned.postUrl);
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          onProgress({ loaded: e.loaded, total: e.total });
-        }
-      };
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve();
-        } else {
-          reject(
-            new Error(
-              `Upload failed: ${xhr.status} ${xhr.responseText?.slice(0, 200) ?? ""}`,
-            ),
-          );
-        }
-      };
-      xhr.onerror = () => reject(new Error("Network error during upload."));
-      xhr.onabort = () => reject(new Error("Upload cancelled."));
+/**
+ * Upload the custom thumbnail alongside the video. The browser
+ * `PUT`s the image to a second presigned POST URL the API mints in
+ * `createVideo`. The returned handle exposes the same `promise` /
+ * `abort` shape as the video uploader so the dialog can cancel
+ * either mid-flight without special-casing.
+ *
+ * Returns `null` if the create response didn't include a thumbnail
+ * block (user didn't pick one) — the dialog then skips the
+ * thumbnail PUT entirely.
+ */
+export function useUploadThumbnail() {
+  return function uploadThumbnail(
+    file: File,
+    presigned: NonNullable<CreateVideoResponse["thumbnail"]>,
+    onProgress?: (p: UploadProgress) => void,
+  ): UploadHandle {
+    return uploadViaPresignedPost(
+      file,
+      presigned.postUrl,
+      presigned.fields,
+      onProgress ?? (() => {}),
+    );
+  };
+}
 
-      const form = new FormData();
-      // The presigned `fields` must come first in the multipart body, in
-      // the order the API returned them. `FormData.append` preserves
-      // insertion order.
-      for (const [k, v] of Object.entries(presigned.fields)) {
-        form.append(k, v);
+/**
+ * Shared XHR helper for both video and thumbnail uploads. Pulled out
+ * so the two wrappers above stay declarative — the dialog only sees
+ * "upload a file to this presigned URL with this progress callback".
+ */
+function uploadViaPresignedPost(
+  file: File,
+  postUrl: string,
+  fields: Record<string, string>,
+  onProgress: (p: UploadProgress) => void,
+): UploadHandle {
+  const xhr = new XMLHttpRequest();
+  const controller = new AbortController();
+
+  const promise = new Promise<void>((resolve, reject) => {
+    xhr.open("POST", postUrl);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        onProgress({ loaded: e.loaded, total: e.total });
       }
-      form.append("file", file);
-
-      xhr.send(form);
-    });
-
-    return {
-      promise,
-      abort: () => {
-        controller.abort();
-        xhr.abort();
-      },
     };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(
+          new Error(
+            `Upload failed: ${xhr.status} ${xhr.responseText?.slice(0, 200) ?? ""}`,
+          ),
+        );
+      }
+    };
+    xhr.onerror = () => reject(new Error("Network error during upload."));
+    xhr.onabort = () => reject(new Error("Upload cancelled."));
+
+    const form = new FormData();
+    // The presigned `fields` must come first in the multipart body, in
+    // the order the API returned them. `FormData.append` preserves
+    // insertion order.
+    for (const [k, v] of Object.entries(fields)) {
+      form.append(k, v);
+    }
+    form.append("file", file);
+
+    xhr.send(form);
+  });
+
+  return {
+    promise,
+    abort: () => {
+      controller.abort();
+      xhr.abort();
+    },
   };
 }

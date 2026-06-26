@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   Check,
+  ImageIcon,
   Link2,
   Loader2,
   RotateCw,
@@ -43,6 +44,7 @@ import {
   useCancelPendingUpload,
   useCreateVideo,
   useFinalizeUpload,
+  useUploadThumbnail,
   useUploadVideo,
   type UploadProgress,
 } from "@/hooks/use-videos";
@@ -55,6 +57,11 @@ import type {
 } from "@clipflow/types";
 
 const FIVE_GB = 5 * 1024 * 1024 * 1024;
+// YouTube's hard cap on `thumbnails.set` uploads. Mirrored in
+// `videos.schemas.ts → thumbnailFileSizeBytesSchema`; client-side
+// guard here so the form rejects oversize images before the create
+// call ever goes out.
+const TWO_MB = 2 * 1024 * 1024;
 
 // YouTube's top categories. "Other" collapses to 22 (People & Blogs) —
 // we don't expose every YouTube category in v1.
@@ -174,6 +181,28 @@ const createVideoFormSchema = z.object({
       (f) => f.size <= FIVE_GB,
       "This file exceeds the 5 GB upload limit. Please pick a smaller video.",
     ),
+  /**
+   * Optional custom thumbnail. JPEG / PNG only, 2 MB max — matches
+   * what YouTube accepts on `thumbnails.set`. `undefined` is "user
+   * didn't pick one"; a value is "user picked one" and triggers the
+   * thumbnail PUT in `runUpload`.
+   */
+  thumbnail: z
+    .instanceof(File)
+    .refine(
+      (f) =>
+        f.type === "image/jpeg" ||
+        f.type === "image/png" ||
+        /\.jpe?g$/i.test(f.name) ||
+        /\.png$/i.test(f.name),
+      "Thumbnail must be a JPEG or PNG image.",
+    )
+    .refine((f) => f.size > 0, "Thumbnail appears to be empty.")
+    .refine(
+      (f) => f.size <= TWO_MB,
+      "Thumbnail exceeds the 2 MB limit. YouTube will reject larger images.",
+    )
+    .optional(),
 });
 
 type CreateVideoFormValues = z.infer<typeof createVideoFormSchema>;
@@ -262,7 +291,9 @@ export function CreateVideoDialog({
   const finalizeMutation = useFinalizeUpload();
   const cancelMutation = useCancelPendingUpload();
   const uploadFn = useUploadVideo();
+  const uploadThumbnailFn = useUploadThumbnail();
   const uploadRef = React.useRef<ReturnType<typeof uploadFn> | null>(null);
+  const thumbnailUploadRef = React.useRef<ReturnType<typeof uploadThumbnailFn> | null>(null);
 
   const [open, setOpen] = React.useState(false);
   // `effectivePhase` keeps the dialog body in `connect-youtube` when
@@ -270,8 +301,13 @@ export function CreateVideoDialog({
   // trigger came from (empty state vs list header).
   const [phase, setPhase] = React.useState<Phase>("form");
   const [progress, setProgress] = React.useState<UploadProgress>({ loaded: 0, total: 0 });
+  const [thumbnailProgress, setThumbnailProgress] = React.useState<UploadProgress>({
+    loaded: 0,
+    total: 0,
+  });
   const [pendingUploadId, setPendingUploadId] = React.useState<string | null>(null);
   const [fileRef, setFileRef] = React.useState<File | null>(null);
+  const [thumbnailRef, setThumbnailRef] = React.useState<File | null>(null);
   const [lastFormValues, setLastFormValues] =
     React.useState<CreateVideoFormValues | null>(null);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
@@ -300,6 +336,7 @@ export function CreateVideoDialog({
       license: "standard",
       publicStatsViewable: true,
       commentPolicy: "allowAll",
+      thumbnail: undefined,
     },
   });
 
@@ -315,8 +352,10 @@ export function CreateVideoDialog({
       reset();
       setPhase("form");
       setProgress({ loaded: 0, total: 0 });
+      setThumbnailProgress({ loaded: 0, total: 0 });
       setPendingUploadId(null);
       setFileRef(null);
+      setThumbnailRef(null);
       setLastFormValues(null);
       setErrorMessage(null);
       setTagInput("");
@@ -364,6 +403,7 @@ export function CreateVideoDialog({
     ): Promise<void> => {
       setErrorMessage(null);
       setProgress({ loaded: 0, total: values.file.size });
+      setThumbnailProgress({ loaded: 0, total: values.thumbnail?.size ?? 0 });
 
       let presigned = preCreated;
       if (!presigned) {
@@ -386,6 +426,13 @@ export function CreateVideoDialog({
           originalFilename: values.file.name,
           contentType: values.file.type || "video/mp4",
           fileSizeBytes: values.file.size,
+          ...(values.thumbnail
+            ? {
+                thumbnailContentType: values.thumbnail.type || "image/jpeg",
+                thumbnailFileSizeBytes: values.thumbnail.size,
+                thumbnailOriginalFilename: values.thumbnail.name,
+              }
+            : {}),
         });
         setPendingUploadId(presigned.pendingUploadId);
       } else {
@@ -393,13 +440,39 @@ export function CreateVideoDialog({
       }
 
       setPhase("uploading");
+
+      // Upload the video and the thumbnail in parallel. Both go to
+      // their own presigned POST URL — S3 doesn't need the order,
+      // and the server's `finalize` HEADs each independently so an
+      // early failure on one doesn't have to block the other.
+      const tasks: Array<Promise<void>> = [];
+
       uploadRef.current = uploadFn(values.file, presigned, setProgress);
-      try {
-        await uploadRef.current.promise;
-      } catch (err) {
-        if ((err as Error).message === "Upload cancelled.") return;
-        throw err;
+      tasks.push(
+        uploadRef.current.promise.catch((err) => {
+          if ((err as Error).message === "Upload cancelled.") return;
+          throw err;
+        }),
+      );
+
+      if (values.thumbnail && presigned.thumbnail) {
+        thumbnailUploadRef.current = uploadThumbnailFn(
+          values.thumbnail,
+          presigned.thumbnail,
+          setThumbnailProgress,
+        );
+        tasks.push(
+          thumbnailUploadRef.current.promise.catch((err) => {
+            if ((err as Error).message === "Upload cancelled.") return;
+            throw err;
+          }),
+        );
       }
+
+      // `Promise.all` so a thumbnail error fails the whole submit —
+      // the server's `finalize` validates both objects, and partial
+      // success would still be a 400 on the way out.
+      await Promise.all(tasks);
 
       setPhase("finalizing");
       await finalizeMutation.mutateAsync(presigned.pendingUploadId);
@@ -407,12 +480,13 @@ export function CreateVideoDialog({
       setOpen(false);
       router.refresh();
     },
-    [createMutation, finalizeMutation, router, uploadFn],
+    [createMutation, finalizeMutation, router, uploadFn, uploadThumbnailFn],
   );
 
   const onSubmit = handleSubmit(async (values) => {
     setLastFormValues(values);
     setFileRef(values.file);
+    setThumbnailRef(values.thumbnail ?? null);
     try {
       await runUpload(values, null);
     } catch (err) {
@@ -446,8 +520,10 @@ export function CreateVideoDialog({
     const values: CreateVideoFormValues = {
       ...lastFormValues,
       file: fileRef,
+      ...(thumbnailRef ? { thumbnail: thumbnailRef } : {}),
     };
     setValue("file", fileRef, { shouldValidate: false });
+    if (thumbnailRef) setValue("thumbnail", thumbnailRef, { shouldValidate: false });
     try {
       let preCreated: CreateVideoResponse | null = null;
       if (pendingUploadId) {
@@ -465,6 +541,7 @@ export function CreateVideoDialog({
             postUrl: fresh.postUrl,
             fields: fresh.fields,
             contentLengthMaxBytes: fresh.contentLengthMaxBytes,
+            thumbnail: null, // The thumbnail URL doesn't refresh via this path.
           };
         } catch {
           // 404 — pending upload expired in cache. Fall through to
@@ -479,7 +556,7 @@ export function CreateVideoDialog({
       setErrorMessage(err instanceof Error ? err.message : "Upload failed.");
       setPhase("failed");
     }
-  }, [api, fileRef, lastFormValues, pendingUploadId, runUpload, setValue]);
+  }, [api, fileRef, lastFormValues, pendingUploadId, runUpload, setValue, thumbnailRef]);
 
   /**
    * Cancel handler for the in-flight upload phase. Aborts the XHR
@@ -490,6 +567,7 @@ export function CreateVideoDialog({
   const handleCancel = React.useCallback(async () => {
     if (phase === "uploading" || phase === "finalizing") {
       uploadRef.current?.abort();
+      thumbnailUploadRef.current?.abort();
       setPhase("form");
       return;
     }
@@ -629,6 +707,15 @@ export function CreateVideoDialog({
                   {fileRef.name}
                 </span>{" "}
                 ({formatBytes(fileRef.size)})
+                {thumbnailRef ? (
+                  <>
+                    {" + "}
+                    <span className="font-medium text-foreground">
+                      {thumbnailRef.name}
+                    </span>{" "}
+                    ({formatBytes(thumbnailRef.size)})
+                  </>
+                ) : null}
               </p>
             ) : null}
 
@@ -1086,6 +1173,43 @@ export function CreateVideoDialog({
               />
             </div>
 
+            {/* Optional custom thumbnail. YouTube accepts only JPEG /
+                PNG up to 2 MB on `thumbnails.set`; the dropzone's
+                `accept` + `maxSizeBytes` enforce both client-side
+                so an oversize image never reaches the create call.
+                `describe` is hidden when a file is picked (the
+                preview takes its place) to avoid duplicate copy. */}
+            <div className="space-y-1.5">
+              <div className="flex items-baseline justify-between gap-2">
+                <label
+                  htmlFor="create-video-thumbnail"
+                  className="flex items-center gap-1.5 text-sm font-medium leading-none text-foreground"
+                >
+                  <ImageIcon className="h-3.5 w-3.5" aria-hidden />
+                  Thumbnail (optional)
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                JPEG or PNG, up to 2 MB. Replaces YouTube&apos;s generated
+                frame after publish.
+              </p>
+              <Controller
+                control={control}
+                name="thumbnail"
+                render={({ field, fieldState }) => (
+                  <FileDropzone
+                    id="create-video-thumbnail"
+                    value={field.value ?? null}
+                    onFileChange={(file) => field.onChange(file)}
+                    accept="image/jpeg,image/png"
+                    maxSizeBytes={TWO_MB}
+                    error={fieldState.error?.message}
+                    ariaLabel="Choose a custom thumbnail image"
+                  />
+                )}
+              />
+            </div>
+
             <DialogFooter className="gap-2 pt-2">
               <Button
                 type="button"
@@ -1120,6 +1244,7 @@ export function CreateVideoDialog({
 
             <div
               role="progressbar"
+              aria-label="Video upload progress"
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={percent}
@@ -1132,7 +1257,7 @@ export function CreateVideoDialog({
             </div>
             <div className="flex items-baseline justify-between text-xs text-muted-foreground">
               <span>
-                {formatBytes(progress.loaded)} of {formatBytes(progress.total)}{" "}
+                Video: {formatBytes(progress.loaded)} of {formatBytes(progress.total)}{" "}
                 ({percent}%)
               </span>
               {pendingUploadId ? (
@@ -1141,6 +1266,51 @@ export function CreateVideoDialog({
                 </span>
               ) : null}
             </div>
+
+            {thumbnailProgress.total > 0 ? (
+              <>
+                <div
+                  role="progressbar"
+                  aria-label="Thumbnail upload progress"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={
+                    thumbnailProgress.total > 0
+                      ? Math.min(
+                          100,
+                          Math.round(
+                            (thumbnailProgress.loaded / thumbnailProgress.total) *
+                              100,
+                          ),
+                        )
+                      : 0
+                  }
+                  className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+                >
+                  <div
+                    className="h-full bg-foreground/70 transition-all"
+                    style={{
+                      width: `${
+                        thumbnailProgress.total > 0
+                          ? Math.min(
+                              100,
+                              Math.round(
+                                (thumbnailProgress.loaded /
+                                  thumbnailProgress.total) *
+                                  100,
+                              ),
+                            )
+                          : 0
+                      }%`,
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Thumbnail: {formatBytes(thumbnailProgress.loaded)} of{" "}
+                  {formatBytes(thumbnailProgress.total)}
+                </p>
+              </>
+            ) : null}
 
             {errorMessage ? (
               <div

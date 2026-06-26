@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Film, CreditCard, Settings, LogOut } from "lucide-react";
+import {
+  LayoutDashboard,
+  Film,
+  CreditCard,
+  Settings,
+  LogOut,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useSession } from "next-auth/react";
 
@@ -21,15 +27,30 @@ interface NavItem {
 }
 
 const PRIMARY_NAV: ReadonlyArray<NavItem> = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, enabled: true },
+  {
+    href: "/dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    enabled: true,
+  },
   // "Published" — the user's library of videos already on YouTube.
   // The dashboard itself shows only in-progress / not-yet-published
   // videos; this entry is the home for the live library. Routed under
   // /dashboard/published so it stays inside the dashboard shell.
-  { href: "/dashboard/published", label: "Published", icon: Film, enabled: true },
+  {
+    href: "/dashboard/published",
+    label: "Published",
+    icon: Film,
+    enabled: true,
+  },
   { href: "/billing", label: "Billing", icon: CreditCard, enabled: false },
   // Settings lives under /dashboard/settings/* — see apps/web/app/dashboard/settings.
-  { href: "/dashboard/settings", label: "Settings", icon: Settings, enabled: true },
+  {
+    href: "/dashboard/settings",
+    label: "Settings",
+    icon: Settings,
+    enabled: true,
+  },
 ];
 
 /**
@@ -87,7 +108,11 @@ export function Sidebar() {
       className="flex w-64 shrink-0 flex-col border-r border-border bg-card/40 h-screen"
     >
       <div className="flex h-14 items-center px-5">
-        <Link href="/dashboard" aria-label="ClipFlow home" className="inline-flex">
+        <Link
+          href="/dashboard"
+          aria-label="ClipFlow home"
+          className="inline-flex"
+        >
           <Logo />
         </Link>
       </div>
@@ -97,7 +122,10 @@ export function Sidebar() {
           {PRIMARY_NAV.map((item) => {
             const active =
               item.enabled &&
-              (pathname === item.href || pathname.startsWith(`${item.href}/`));
+              (item.href === "/dashboard"
+                ? pathname === "/dashboard"
+                : pathname === item.href ||
+                  pathname.startsWith(`${item.href}/`));
             const Icon = item.icon;
             const className = cn(
               "group flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
@@ -144,9 +172,7 @@ export function Sidebar() {
             aria-hidden="true"
             className={cn(
               "h-2 w-2 shrink-0 rounded-full",
-              channelState === "connected"
-                ? "bg-status-ready"
-                : "bg-amber-500",
+              channelState === "connected" ? "bg-status-ready" : "bg-amber-500",
             )}
           />
           <span className="flex-1 truncate text-muted-foreground">

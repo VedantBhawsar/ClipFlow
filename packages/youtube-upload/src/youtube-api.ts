@@ -34,6 +34,9 @@ const YOUTUBE_UPLOAD_ENDPOINT =
 
 const YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3/videos";
 
+const YOUTUBE_THUMBNAILS_SET_ENDPOINT =
+  "https://www.googleapis.com/upload/youtube/v3/thumbnails/set";
+
 export interface VideoMetadataInput {
   title: string;
   description: string;
@@ -333,4 +336,76 @@ const classifyMetadataError = (body: string): "QUOTA_EXCEEDED" | "INVALID_METADA
   if (/quotaExceeded|quota/i.test(body)) return "QUOTA_EXCEEDED";
   if (/invalid|required|missing/i.test(body)) return "INVALID_METADATA";
   return "FORBIDDEN";
+};
+
+export interface SetThumbnailInput {
+  accessToken: string;
+  /** YouTube video id returned by `videos.insert`. */
+  youtubeVideoId: string;
+  /** Image bytes (JPEG or PNG; max 2 MB enforced upstream by the create flow). */
+  body: ReadableStream<Uint8Array> | import("node:stream").Readable;
+  contentLength: number;
+  /** Image content type — must be `image/jpeg` or `image/png`. */
+  contentType: "image/jpeg" | "image/png";
+}
+
+/**
+ * Upload a custom thumbnail to a published YouTube video via
+ * `POST /upload/youtube/v3/thumbnails/set?videoId=<id>`.
+ *
+ * YouTube's `thumbnails.set` is a single-call upload: the body IS
+ * the image bytes (no multipart envelope, no resumable session),
+ * with `Content-Type` set to the image's MIME type. A successful
+ * response is `200` with the new thumbnail's URL + dimensions; the
+ * caller doesn't need the body, so we discard it.
+ *
+ * Failure modes (mapped to the existing publish error classes):
+ *  - 5xx / 408 / 429 / network → `TransientPublishError` (BullMQ retries)
+ *  - 4xx → `PermanentPublishError` (don't retry — bad content, missing
+ *    scope, or quota issues won't fix themselves)
+ *
+ * `@throws TransientPublishError` on 5xx / 408 / 429 / network.
+ * `@throws PermanentPublishError` on other 4xx.
+ */
+export const setYouTubeThumbnail = async (
+  input: SetThumbnailInput,
+): Promise<void> => {
+  let res: Response;
+  try {
+    res = await fetch(
+      `${YOUTUBE_THUMBNAILS_SET_ENDPOINT}?videoId=${encodeURIComponent(input.youtubeVideoId)}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${input.accessToken}`,
+          "Content-Type": input.contentType,
+          "Content-Length": String(input.contentLength),
+        },
+        body: input.body as unknown as BodyInit,
+        // @ts-expect-error -- undici's duplex option for streaming bodies
+        duplex: "half",
+      },
+    );
+  } catch (err) {
+    throw new TransientPublishError(
+      `Network failure uploading YouTube thumbnail: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    if (isTransientHttpStatus(res.status)) {
+      throw new TransientPublishError(
+        `YouTube thumbnail upload transient failure (${res.status}): ${body.slice(0, 200)}`,
+        res.status,
+      );
+    }
+    throw new PermanentPublishError(
+      "FORBIDDEN",
+      `YouTube rejected thumbnail upload (${res.status}): ${body.slice(0, 300)}`,
+      res.status,
+    );
+  }
 };
