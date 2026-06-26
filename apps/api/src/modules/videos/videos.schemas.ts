@@ -74,6 +74,69 @@ const contentTypeSchema = z
   .regex(/^video\//, "contentType must start with 'video/'.")
   .default("video/mp4");
 
+// ---- Thumbnail (optional) ----
+//
+// YouTube accepts only JPEG / PNG on `thumbnails.set` and rejects
+// anything >2 MB. We enforce both at the edge so a malformed client
+// payload fails fast (400) instead of reaching S3 + YouTube. The
+// matching runtime guards live in the service.
+const THUMBNAIL_CONTENT_TYPES = ["image/jpeg", "image/png"] as const;
+const thumbnailContentTypeSchema = z
+  .string()
+  .refine(
+    (v) => (THUMBNAIL_CONTENT_TYPES as readonly string[]).includes(v),
+    "thumbnailContentType must be image/jpeg or image/png.",
+  )
+  .optional();
+const thumbnailFileSizeBytesSchema = z
+  .number()
+  .int("thumbnailFileSizeBytes must be an integer.")
+  .positive("thumbnailFileSizeBytes must be positive.")
+  .max(
+    2 * 1024 * 1024,
+    "thumbnailFileSizeBytes must be at most 2 MB (YouTube's limit).",
+  )
+  .optional();
+const thumbnailOriginalFilenameSchema = z
+  .string()
+  .trim()
+  .min(1, "thumbnailOriginalFilename is required when thumbnail bytes are provided.")
+  .max(255, "thumbnailOriginalFilename is too long.")
+  .optional();
+
+/**
+ * If the thumbnail byte size is provided, contentType + filename must
+ * be too — partial payloads are almost always a client bug, so reject
+ * them at the edge instead of silently dropping the thumbnail.
+ */
+const thumbnailRefinement = (
+  data: {
+    thumbnailContentType?: string;
+    thumbnailFileSizeBytes?: number;
+    thumbnailOriginalFilename?: string;
+  },
+): boolean | { path: string[]; message: string }[] => {
+  const present: Array<keyof typeof data> = [];
+  if (data.thumbnailContentType !== undefined) present.push("thumbnailContentType");
+  if (data.thumbnailFileSizeBytes !== undefined) present.push("thumbnailFileSizeBytes");
+  if (data.thumbnailOriginalFilename !== undefined)
+    present.push("thumbnailOriginalFilename");
+  if (present.length === 0) return true;
+  if (present.length === 3) return true;
+  const allKeys: Array<keyof typeof data> = [
+    "thumbnailContentType",
+    "thumbnailFileSizeBytes",
+    "thumbnailOriginalFilename",
+  ];
+  const missing = allKeys.filter((k) => !present.includes(k));
+  return [
+    {
+      path: ["thumbnail"],
+      message: `Provide ${missing.join(", ")} together, or omit all three.`,
+    },
+  ];
+};
+
 // ---- YouTube content controls (status block) ----
 //
 // These mirror the fields the YouTube Data API v3 accepts under
@@ -125,15 +188,29 @@ export const createVideoSchema = z.object({
     .number()
     .int("fileSizeBytes must be an integer.")
     .positive("fileSizeBytes must be positive."),
-});
+  thumbnailContentType: thumbnailContentTypeSchema,
+  thumbnailFileSizeBytes: thumbnailFileSizeBytesSchema,
+  thumbnailOriginalFilename: thumbnailOriginalFilenameSchema,
+}).superRefine(thumbnailRefinement);
 
 export type CreateVideoInput = z.infer<typeof createVideoSchema>;
 
 /**
- * Query for `GET /api/videos?status=...`. Powering the SSR dashboard
- * (excludes PUBLISHED) and the published page (`status=PUBLISHED`).
- * Anything else is rejected at the edge so the service can rely on
- * the enum shape.
+ * Query for `GET /api/videos?status=...&q=...&page=...&pageSize=...`.
+ *
+ * - `status` accepts the real lifecycle states OR the virtual
+ *   `NOT_PUBLISHED` sentinel — that value maps to a `status: { not:
+ *   "PUBLISHED" }` Prisma filter in the service so the dashboard can
+ *   ask for "everything except PUBLISHED" without dragging that
+ *   decision onto the client.
+ * - `q` is a case-insensitive substring search against title,
+ *   description, and tags (the three columns a user can plausibly
+ *   remember a video by). Empty string is equivalent to omitting it.
+ * - `page` is 1-indexed; `pageSize` is capped at 100 so a runaway
+ *   client can't ask for the whole table.
+ *
+ * All fields are optional. Anything else is rejected at the edge so
+ * the service can rely on the parsed shape.
  */
 export const listVideosQuerySchema = z.object({
   status: z
@@ -144,8 +221,69 @@ export const listVideosQuerySchema = z.object({
       "PUBLISHING",
       "PUBLISHED",
       "PUBLISH_FAILED",
+      "NOT_PUBLISHED",
     ])
     .optional(),
+  q: z
+    .string()
+    .trim()
+    .max(100, "Search query must be at most 100 characters.")
+    .optional()
+    .transform((v) => (v && v.length > 0 ? v : undefined)),
+  page: z
+    .string()
+    .optional()
+    .transform((v) => (v ? Number.parseInt(v, 10) : 1))
+    .pipe(
+      z
+        .number()
+        .int("page must be an integer.")
+        .min(1, "page must be at least 1.")
+        .max(1000, "page must be at most 1000."),
+    ),
+  pageSize: z
+    .string()
+    .optional()
+    .transform((v) => (v ? Number.parseInt(v, 10) : 12))
+    .pipe(
+      z
+        .number()
+        .int("pageSize must be an integer.")
+        .min(1, "pageSize must be at least 1.")
+        .max(100, "pageSize must be at most 100."),
+    ),
 });
 
 export type ListVideosQuery = z.infer<typeof listVideosQuerySchema>;
+
+/**
+ * Query for `GET /api/videos/published?q=...&page=...&pageSize=...&privacy=...&since=...`.
+ * The status is implicitly PUBLISHED; the schema mirrors
+ * `listVideosQuerySchema` minus the status field so the
+ * `publishedAt desc` ordering in the service stays a hard guarantee
+ * (the endpoint can never be asked for non-published rows).
+ *
+ * - `privacy` narrows the list to public / unlisted / private rows.
+ *   Omit (or send "all") for no privacy filter — `privacy` is a
+ *   fan-out filter, not a default.
+ * - `since` is an ISO8601 date; the service translates it into a
+ *   `publishedAt: { gte: since }` Prisma filter. Useful for "last 30
+ *   days / last year" chips on the published page.
+ */
+export const listPublishedVideosQuerySchema = z.object({
+  q: listVideosQuerySchema.shape.q,
+  privacy: z
+    .enum(["all", "public", "unlisted", "private"])
+    .optional()
+    .transform((v) => (v === "all" ? undefined : v)),
+  since: z
+    .string()
+    .datetime({ message: "since must be ISO8601." })
+    .optional(),
+  page: listVideosQuerySchema.shape.page,
+  pageSize: listVideosQuerySchema.shape.pageSize,
+});
+
+export type ListPublishedVideosQuery = z.infer<
+  typeof listPublishedVideosQuerySchema
+>;

@@ -424,6 +424,24 @@ export interface CreateVideoRequest {
   contentType?: string;
   /** Client-declared byte size. Server re-checks on finalize. */
   fileSizeBytes: number;
+  /**
+   * Optional custom thumbnail. The server mints a second presigned
+   * POST URL so the browser can upload the image alongside the video;
+   * after the video publishes, the worker forwards it to YouTube's
+   * `thumbnails.set` endpoint.
+   *
+   * YouTube's hard cap is 2 MB and only JPEG / PNG are accepted.
+   * The dropzone in the create dialog enforces both client-side;
+   * the server mirrors them so a hand-rolled client can't bypass.
+   */
+  thumbnailContentType?: string;
+  /** Client-declared thumbnail byte size. Server re-checks on finalize. */
+  thumbnailFileSizeBytes?: number;
+  /**
+   * Original filename of the thumbnail. Used to infer the S3 key
+   * extension when the content type is ambiguous; not persisted.
+   */
+  thumbnailOriginalFilename?: string;
 }
 
 /**
@@ -444,12 +462,85 @@ export interface CreateVideoResponse {
   fields: Record<string, string>;
   /** Hard cap the presigned POST will accept (== env.YOUTUBE_MAX_VIDEO_BYTES). */
   contentLengthMaxBytes: number;
+  /**
+   * Presigned POST for the custom thumbnail. Present only when the
+   * client supplied `thumbnailContentType` + `thumbnailFileSizeBytes`
+   * in the create request — otherwise `null` and the browser skips
+   * the thumbnail PUT. The video PUT can still proceed regardless.
+   */
+  thumbnail: {
+    s3KeyThumbnail: string;
+    postUrl: string;
+    fields: Record<string, string>;
+    /** Hard cap == YouTube's 2 MB thumbnail limit. */
+    contentLengthMaxBytes: number;
+  } | null;
 }
 
 export interface UploadUrlResponse {
   postUrl: string;
   fields: Record<string, string>;
   contentLengthMaxBytes: number;
+}
+
+/**
+ * Paginated envelope returned by every list endpoint
+ * (`/api/videos` and `/api/videos/published`).
+ *
+ * - `videos` is the current page slice (size <= pageSize).
+ * - `total` is the total number of rows matching the filter
+ *   (BEFORE pagination). The client uses this to render a page
+ *   count and "X of Y" counters.
+ * - `page` is the 1-indexed page that produced this slice — useful
+ *   for echoing back in the UI without re-parsing query strings.
+ * - `pageSize` echoes the requested page size (already capped
+ *   server-side).
+ * - `totalPages` is `ceil(total / pageSize)`, floored at 1 so the
+ *   client never has to guard against "0 pages" while rendering.
+ */
+export interface PaginatedVideos {
+  videos: Video[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+/**
+ * Query params accepted by `/api/videos`. Mirrors the zod schema in
+ * `apps/api/src/modules/videos/videos.schemas.ts`. Empty / omitted
+ * fields are equivalent to their defaults.
+ *
+ * `status` includes the virtual `NOT_PUBLISHED` sentinel which the
+ * service translates into a `status: { not: "PUBLISHED" }` filter —
+ * used by the dashboard so it doesn't have to mirror the lifecycle
+ * union client-side.
+ */
+export interface ListVideosParams {
+  status?:
+    | VideoStatus
+    | "NOT_PUBLISHED";
+  q?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface ListPublishedVideosParams {
+  q?: string;
+  /**
+   * Narrow the list to public / unlisted / private rows. Omit (or
+   * send "all") for no privacy filter — it's a fan-out filter, not a
+   * default that hides rows the user might want to see.
+   */
+  privacy?: VideoPrivacyStatus | "all";
+  /**
+   * ISO8601 date string. The service translates it into a
+   * `publishedAt: { gte: since }` filter — useful for "last 30 days
+   * / last year" chips on the published page.
+   */
+  since?: string;
+  page?: number;
+  pageSize?: number;
 }
 
 /**
@@ -475,6 +566,10 @@ export interface Video {
   fileSizeBytes: number;
   contentType: string;
   s3KeyOriginal: string;
+  /** Custom thumbnail S3 key. The publish path forwards this to YouTube. */
+  s3KeyThumbnail: string | null;
+  /** Original content type of the uploaded thumbnail. */
+  thumbnailContentType: string | null;
   failureReason: string | null;
   scheduledPublishAt: string | null;
   youtubeVideoId: string | null;

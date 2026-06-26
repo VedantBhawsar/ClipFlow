@@ -32,6 +32,8 @@ export const toVideoDto = (v: {
   fileSizeBytes: bigint;
   contentType: string;
   s3KeyOriginal: string;
+  s3KeyThumbnail?: string | null;
+  thumbnailContentType?: string | null;
   failureReason: string | null;
   scheduledPublishAt: Date | null;
   youtubeVideoId: string | null;
@@ -56,6 +58,8 @@ export const toVideoDto = (v: {
   fileSizeBytes: Number(v.fileSizeBytes),
   contentType: v.contentType,
   s3KeyOriginal: v.s3KeyOriginal,
+  s3KeyThumbnail: v.s3KeyThumbnail ?? null,
+  thumbnailContentType: v.thumbnailContentType ?? null,
   failureReason: v.failureReason,
   scheduledPublishAt: v.scheduledPublishAt?.toISOString() ?? null,
   youtubeVideoId: v.youtubeVideoId,

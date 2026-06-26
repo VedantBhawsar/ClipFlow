@@ -25,10 +25,10 @@ import { useYouTubeConnection } from "@/hooks/use-youtube-connection";
  *    the narrow read owned by the YouTubeConnectCard; the sidebar
  *    subscribes to the same hook so both stay in sync without a
  *    shared cache.
- *  - Videos come from `useVideos()` — the existing query hook used by
- *    other client surfaces. PUBLISHED is filtered out in JS; volume
- *    per user is small enough that this is fine for v1 (a future slice
- *    can add `?status=NOT_PUBLISHED` server-side and drop the filter).
+ *  - Videos come from `useVideos({ status: "NOT_PUBLISHED" })` — the
+ *    virtual `NOT_PUBLISHED` sentinel translates into a Prisma
+ *    `status: { not: "PUBLISHED" }` filter on the server, so the
+ *    dashboard never has to hide non-matching rows client-side.
  *
  * Before the bundle-split refactor this component called
  * `useUserBundle()` to get profile + user + YouTube connection in a
@@ -40,7 +40,7 @@ import { useYouTubeConnection } from "@/hooks/use-youtube-connection";
  */
 export function DashboardContent() {
   const { data: session } = useSession();
-  const videosQuery = useVideos();
+  const videosQuery = useVideos({ status: "NOT_PUBLISHED" });
   const { data: youtubeConnection } = useYouTubeConnection();
 
   const sessionUser = session?.user ?? null;
@@ -52,9 +52,7 @@ export function DashboardContent() {
   const firstName = displayName.split(/\s+/)[0] || "creator";
   const channelConnected = youtubeConnection?.status === "connected";
 
-  const videos = (videosQuery.data?.videos ?? []).filter(
-    (v) => v.status !== "PUBLISHED",
-  );
+  const videos = videosQuery.data?.videos ?? [];
 
   return (
     <div className="space-y-8">

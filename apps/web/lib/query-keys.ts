@@ -29,10 +29,21 @@ export const queryKeys = {
     status: () => ["onboarding", "status"] as const,
   },
   videos: {
-    /** All videos for the current user. */
-    list: () => ["videos", "list"] as const,
+    /**
+     * Videos list cache slot. The trailing `params` segment lets the
+     * dashboard's "non-published, page 1, q='minecraft'" query and the
+     * published page's "PUBLISHED, page 3" query coexist in the cache
+     * without colliding — TanStack Query's structural sharing keys on
+     * the full array, so distinct filter tuples produce distinct slots.
+     *
+     * Typed as `unknown` rather than `Record<string, unknown>` so the
+     * params interfaces (which have known keys and no index signature)
+     * pass straight through without a cast.
+     */
+    list: (params: unknown = {}) => ["videos", "list", params] as const,
     /** PUBLISHED videos for the current user (sidebar destination). */
-    published: () => ["videos", "published"] as const,
+    published: (params: unknown = {}) =>
+      ["videos", "published", params] as const,
     /** Single video by id. */
     detail: (id: string) => ["videos", "detail", id] as const,
   },

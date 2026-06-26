@@ -26,6 +26,12 @@ export const recoverMissedScheduledJobs = async (
   const now = new Date();
   const due = await prisma.video.findMany({
     where: {
+      // Only videos that haven't been published yet are eligible for
+      // recovery. `publishedAt` is set only when status moves to
+      // PUBLISHED, so this is a defensive belt-and-braces alongside
+      // the status filter — explicit so the intent survives a future
+      // schema change.
+      publishedAt: null,
       status: { in: ["READY", "SCHEDULED"] },
       // Scheduled-at is null (immediate) OR in the past.
       OR: [{ scheduledPublishAt: null }, { scheduledPublishAt: { lte: now } }],

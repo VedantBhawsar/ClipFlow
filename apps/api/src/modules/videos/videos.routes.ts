@@ -39,6 +39,7 @@ import {
 } from "./videos.controller.js";
 import {
   createVideoSchema,
+  listPublishedVideosQuerySchema,
   listVideosQuerySchema,
   pendingUploadIdParamsSchema,
   videoIdParamsSchema,
@@ -106,7 +107,12 @@ export const buildVideosRouter = (env: Env): Router => {
 
   // Mounted BEFORE the `/:id` route so `/published` isn't matched as
   // an id parameter (Express matches in declaration order).
-  router.get("/published", auth, listPublishedVideosController);
+  router.get(
+    "/published",
+    auth,
+    validate({ query: listPublishedVideosQuerySchema }),
+    listPublishedVideosController,
+  );
 
   router.get(
     "/:id",

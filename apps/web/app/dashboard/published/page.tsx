@@ -1,13 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-import type { Video } from "@clipflow/types";
 
-import { VideoList } from "@/components/dashboard/video-list";
-import { Button } from "@/components/ui/button";
+import { PublishedVideoList } from "@/components/dashboard/published-video-list";
 import { auth } from "@/auth";
-import { serverFetch } from "@/lib/api-client";
 
 export const metadata: Metadata = {
   title: "Published — ClipFlow",
@@ -16,79 +11,41 @@ export const metadata: Metadata = {
 
 /**
  * `/dashboard/published` — the user's library of videos already on
- * YouTube. Server-rendered so the first paint is meaningful (no
- * client round-trip for the initial list).
+ * YouTube.
  *
  * Companion page to `/dashboard`: that page is the "what's in flight"
  * view (uploads, scheduled, failed); this page is the "what's live"
  * view. Both source from the same `videos` table; the split is by
  * `status === "PUBLISHED"`.
  *
- * The `VideoList` component handles its own empty state — distinct
- * copy here ("no published videos yet") but the same shell so the
- * create-video CTA is always one click away.
+ * The list itself is rendered by `<PublishedVideoList />` — a client
+ * component that owns the search box, the pagination, and the
+ * empty/loading states. The page stays a server component so we can
+ * export `metadata` and so the dashboard chrome (sidebar, header)
+ * still SSRs into meaningful first paint.
  *
  * Server-side auth: NextAuth's `auth()` reads its own httpOnly session
  * cookie, runs the `jwt` callback (which may refresh the access token
- * silently), and returns the session object. We pull
- * `session.accessToken` and pass it as the bearer token to
- * `serverFetch`. There's no cookie-name coupling between this file
- * and NextAuth internals.
+ * silently), and returns the session object. We redirect on a
+ * missing session; the list itself surfaces its own unauthenticated
+ * state via the standard QueryCache 401 path.
  */
 export default async function PublishedPage() {
   const session = await auth();
-  const token = session?.accessToken ?? null;
-  if (!token) {
+  if (!session?.accessToken) {
     redirect("/signin?next=/dashboard/published");
   }
 
-  let videos: Video[] = [];
-  try {
-    videos = await fetchPublishedVideos(token);
-  } catch {
-    videos = [];
-  }
-
   return (
-    <div className="space-y-8">
-      <header className="flex items-center justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Published</h1>
-          <p className="text-sm text-muted-foreground">
-            Videos that have been published to your YouTube channel.
-          </p>
-        </div>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/dashboard">
-            <ArrowLeft aria-hidden="true" />
-            Back to dashboard
-          </Link>
-        </Button>
+    <div className="space-y-6">
+      <header className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight">Published</h1>
+        <p className="text-sm text-muted-foreground">
+          Every video you&apos;ve shipped to YouTube.
+        </p>
       </header>
 
-      <section aria-labelledby="published-heading" className="space-y-4">
-        <h2 id="published-heading" className="sr-only">
-          Published videos
-        </h2>
-        <VideoList
-          videos={videos}
-          // The create CTA stays visible on the published page; if
-          // the user wants to drop a new video from here, they can.
-          // We just pass `true` because the channel-connection gate
-          // only matters for the upload itself — the page is still
-          // viewable without a channel.
-          channelConnected={true}
-          emptyHint="Once you publish a video, it'll show up here."
-        />
-      </section>
+      <PublishedVideoList />
     </div>
   );
-}
-
-async function fetchPublishedVideos(token: string): Promise<Video[]> {
-  const data = await serverFetch<{ videos: Video[] }>(
-    token,
-    "/api/videos/published",
-  );
-  return data.videos;
 }

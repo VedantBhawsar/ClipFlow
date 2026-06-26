@@ -121,10 +121,14 @@
   --color-status-scheduled: var(--status-scheduled);
   --color-status-error: var(--status-error);
 
-  /* Fonts (per Design.md). Inter Tight is the single grotesque used
-     for both display + body to keep the weight palette tight. */
+  /* Fonts (per Design.md). Inter Tight is the default grotesque;
+     Fraunces is the editorial serif opt-in for surfaces that want a
+     more printed / catalog feel (the published-video library uses it
+     for titles; marketing pages can opt in too). */
   --font-sans: var(--font-inter-tight), ui-sans-serif, system-ui,
     -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: var(--font-fraunces), ui-serif, Georgia, Cambria,
+    "Times New Roman", Times, serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular,
     Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 

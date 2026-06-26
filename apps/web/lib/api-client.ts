@@ -29,9 +29,12 @@ import type {
   ChangePasswordRequest,
   CreateVideoRequest,
   CreateVideoResponse,
+  ListPublishedVideosParams,
+  ListVideosParams,
   LoginRequest,
   LogoutRequest,
   OnboardingStatusResponse,
+  PaginatedVideos,
   PatchProfileRequest,
   RefreshRequest,
   RefreshResponse,
@@ -43,7 +46,6 @@ import type {
   UserPreferences,
   UserProfile,
   Video,
-  VideoStatus,
   YouTubeConnection,
 } from "@clipflow/types";
 
@@ -174,8 +176,28 @@ export interface ApiClient {
   getUploadUrl(pendingUploadId: string): Promise<UploadUrlResponse>;
   finalizeUpload(pendingUploadId: string): Promise<Video>;
   cancelPendingUpload(pendingUploadId: string): Promise<void>;
-  listVideos(params?: { status?: VideoStatus }): Promise<{ videos: Video[] }>;
-  listPublishedVideos(): Promise<{ videos: Video[] }>;
+  /**
+   * List the current user's committed videos, paginated.
+   *
+   * The optional `status` filter accepts the lifecycle enum OR the
+   * virtual `"NOT_PUBLISHED"` sentinel — the dashboard uses that to
+   * ask for "everything except PUBLISHED" without mirroring the
+   * union client-side.
+   *
+   * Returns the full paginated envelope (`videos + total + page +
+   * pageSize + totalPages`) so the client doesn't need a second
+   * round-trip to know how many pages exist.
+   */
+  listVideos(params?: ListVideosParams): Promise<PaginatedVideos>;
+  /**
+   * List the current user's PUBLISHED videos, paginated.
+   *
+   * Always filtered to `status: "PUBLISHED"` server-side; the
+   * `publishedAt desc` ordering is a hard contract for this endpoint.
+   */
+  listPublishedVideos(
+    params?: ListPublishedVideosParams,
+  ): Promise<PaginatedVideos>;
   getVideo(id: string): Promise<Video>;
   deleteVideo(id: string): Promise<void>;
   unpublishVideo(id: string): Promise<Video>;
@@ -309,11 +331,21 @@ export function createApiClient(accessToken: string | null): ApiClient {
       return request<void>("DELETE", `/api/videos/pending/${pendingUploadId}`);
     },
     listVideos(params) {
-      const qs = params?.status ? `?status=${encodeURIComponent(params.status)}` : "";
-      return request("GET", `/api/videos${qs}`);
+      const search = new URLSearchParams();
+      if (params?.status) search.set("status", params.status);
+      if (params?.q) search.set("q", params.q);
+      if (params?.page) search.set("page", String(params.page));
+      if (params?.pageSize) search.set("pageSize", String(params.pageSize));
+      const qs = search.toString();
+      return request("GET", `/api/videos${qs ? `?${qs}` : ""}`);
     },
-    listPublishedVideos() {
-      return request("GET", "/api/videos/published");
+    listPublishedVideos(params) {
+      const search = new URLSearchParams();
+      if (params?.q) search.set("q", params.q);
+      if (params?.page) search.set("page", String(params.page));
+      if (params?.pageSize) search.set("pageSize", String(params.pageSize));
+      const qs = search.toString();
+      return request("GET", `/api/videos/published${qs ? `?${qs}` : ""}`);
     },
     getVideo(id) {
       return request("GET", `/api/videos/${id}`);

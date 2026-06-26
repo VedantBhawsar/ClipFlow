@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { Inter_Tight, JetBrains_Mono } from "next/font/google";
+import { Inter_Tight, JetBrains_Mono, Fraunces } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 
 import { QueryProvider } from "@/components/shared/query-provider";
 import { ThemeProvider } from "@/components/shared/theme-provider";
 import { Toaster } from "@/components/shared/toaster";
+import NextTopLoader from "nextjs-toploader";
 
 import "./globals.css";
 
@@ -20,6 +21,13 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
   display: "swap",
   weight: ["400", "500"],
+});
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-fraunces",
+  display: "swap",
+  weight: "variable",
 });
 
 export const metadata: Metadata = {
@@ -39,12 +47,13 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${interTight.variable} ${jetbrainsMono.variable}`}
+      className={`${interTight.variable} ${jetbrainsMono.variable} ${fraunces.variable}`}
     >
       <body className="font-sans antialiased">
         <SessionProvider>
           <QueryProvider>
             <ThemeProvider>
+              <NextTopLoader color="#2A5C4D" />
               {children}
               <Toaster />
             </ThemeProvider>

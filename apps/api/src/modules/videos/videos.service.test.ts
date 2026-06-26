@@ -40,6 +40,7 @@ vi.mock("../../lib/prisma.js", () => ({
       findUnique: vi.fn(),
       findUniqueOrThrow: vi.fn(),
       findMany: vi.fn(),
+      count: vi.fn(),
       delete: vi.fn(),
     },
   },
@@ -203,6 +204,8 @@ type StubVideo = {
   fileSizeBytes: bigint;
   contentType: string;
   s3KeyOriginal: string;
+  s3KeyThumbnail: string | null;
+  thumbnailContentType: string | null;
   status: "UPLOADED" | "READY" | "SCHEDULED" | "PUBLISHING" | "PUBLISHED" | "PUBLISH_FAILED";
   failureReason: string | null;
   scheduledPublishAt: Date | null;
@@ -231,6 +234,8 @@ const stubCreatedVideo: StubVideo = {
   fileSizeBytes: BigInt(1024),
   contentType: "video/mp4",
   s3KeyOriginal: basePending.s3KeyOriginal,
+  s3KeyThumbnail: null,
+  thumbnailContentType: null,
   status: "UPLOADED",
   failureReason: null,
   scheduledPublishAt: null,
@@ -453,31 +458,139 @@ describe("videos.service", () => {
   describe("listVideos", () => {
     it("returns every committed video when no status filter is given", async () => {
       mockVideoFindMany.mockResolvedValue([stubCreatedVideo]);
-      const result = await videosService.listVideos("user-1");
+      // The service signature requires a parsed query (page / pageSize
+      // are guaranteed after the schema transform). Pass an explicit
+      // defaults shape here so the call matches what the controller
+      // would forward post-validation.
+      const result = await videosService.listVideos("user-1", {
+        page: 1,
+        pageSize: 12,
+      });
       expect(mockVideoFindMany).toHaveBeenCalledWith({
         where: { userId: "user-1" },
         orderBy: { createdAt: "desc" },
+        skip: 0,
+        take: 12,
       });
-      expect(result).toHaveLength(1);
+      expect(result.videos).toHaveLength(1);
+      expect(result.page).toBe(1);
+      expect(result.pageSize).toBe(12);
     });
 
     it("filters by status when provided", async () => {
       mockVideoFindMany.mockResolvedValue([]);
-      await videosService.listVideos("user-1", { status: "PUBLISHED" });
+      await videosService.listVideos("user-1", { status: "PUBLISHED", page: 1, pageSize: 12 });
       expect(mockVideoFindMany).toHaveBeenCalledWith({
         where: { userId: "user-1", status: "PUBLISHED" },
         orderBy: { createdAt: "desc" },
+        skip: 0,
+        take: 12,
       });
+    });
+
+    it("translates the NOT_PUBLISHED virtual status into a NOT filter", async () => {
+      mockVideoFindMany.mockResolvedValue([]);
+      await videosService.listVideos("user-1", {
+        status: "NOT_PUBLISHED",
+        page: 1,
+        pageSize: 12,
+      });
+      expect(mockVideoFindMany).toHaveBeenCalledWith({
+        where: { userId: "user-1", status: { not: "PUBLISHED" } },
+        orderBy: { createdAt: "desc" },
+        skip: 0,
+        take: 12,
+      });
+    });
+
+    it("adds an OR-based search across title/description/tags when q is given", async () => {
+      mockVideoFindMany.mockResolvedValue([]);
+      await videosService.listVideos("user-1", {
+        q: "minecraft",
+        page: 1,
+        pageSize: 12,
+      });
+      expect(mockVideoFindMany).toHaveBeenCalledWith({
+        where: {
+          userId: "user-1",
+          OR: [
+            { title: { contains: "minecraft", mode: "insensitive" } },
+            { description: { contains: "minecraft", mode: "insensitive" } },
+            { tags: { has: "minecraft" } },
+          ],
+        },
+        orderBy: { createdAt: "desc" },
+        skip: 0,
+        take: 12,
+      });
+    });
+
+    it("computes skip from the page number", async () => {
+      mockVideoFindMany.mockResolvedValue([]);
+      await videosService.listVideos("user-1", { page: 3, pageSize: 20 });
+      expect(mockVideoFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 40, take: 20 }),
+      );
+    });
+
+    it("returns total + totalPages derived from the count query", async () => {
+      mockVideoFindMany.mockResolvedValue([stubCreatedVideo]);
+      // The mock for `count` is the second registered mock on prisma.video
+      // (after findMany). Cast through unknown so the typed mock object
+      // doesn't get in the way.
+      (prisma.video as unknown as { count: ReturnType<typeof vi.fn> }).count = vi
+        .fn()
+        .mockResolvedValue(25);
+      const result = await videosService.listVideos("user-1", {
+        page: 1,
+        pageSize: 12,
+      });
+      expect(result.total).toBe(25);
+      expect(result.totalPages).toBe(3);
     });
   });
 
   describe("listPublishedVideos", () => {
     it("queries only PUBLISHED rows, newest publishedAt first", async () => {
       mockVideoFindMany.mockResolvedValue([]);
-      await videosService.listPublishedVideos("user-1");
+      (prisma.video as unknown as { count: ReturnType<typeof vi.fn> }).count = vi
+        .fn()
+        .mockResolvedValue(0);
+      await videosService.listPublishedVideos("user-1", {
+        page: 1,
+        pageSize: 12,
+      });
       expect(mockVideoFindMany).toHaveBeenCalledWith({
         where: { userId: "user-1", status: "PUBLISHED" },
         orderBy: { publishedAt: "desc" },
+        skip: 0,
+        take: 12,
+      });
+    });
+
+    it("threads q through to the search OR-clause", async () => {
+      mockVideoFindMany.mockResolvedValue([]);
+      (prisma.video as unknown as { count: ReturnType<typeof vi.fn> }).count = vi
+        .fn()
+        .mockResolvedValue(0);
+      await videosService.listPublishedVideos("user-1", {
+        q: "speedrun",
+        page: 1,
+        pageSize: 12,
+      });
+      expect(mockVideoFindMany).toHaveBeenCalledWith({
+        where: {
+          userId: "user-1",
+          status: "PUBLISHED",
+          OR: [
+            { title: { contains: "speedrun", mode: "insensitive" } },
+            { description: { contains: "speedrun", mode: "insensitive" } },
+            { tags: { has: "speedrun" } },
+          ],
+        },
+        orderBy: { publishedAt: "desc" },
+        skip: 0,
+        take: 12,
       });
     });
   });

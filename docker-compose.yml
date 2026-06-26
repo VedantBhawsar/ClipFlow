@@ -1,21 +1,36 @@
 # Local-dev infrastructure for ClipFlow.
 #
 # Brings up everything the API + worker need to run end-to-end:
-#   - Postgres 16 (Prisma data store)
+#   - Postgres 18 (Prisma data store) — image version must match the
+#     server the dump was produced by. `neon_backup.sql` was produced by
+#     pg_dump 18.4 and contains a `\restrict ...` directive that older
+#     psql versions reject.
 #   - Redis 7   (BullMQ queues)
 #   - MinIO     (S3-compatible object storage, dev stand-in for R2)
 #   - minio-init (creates the videos bucket on first boot)
 #
+# Postgres init scripts (mounted into /docker-entrypoint-initdb.d/) run
+# once, on first boot of an empty data volume, in lexical order:
+#   1. 00-create-neondb-owner.sql  — creates the `neondb_owner` role the
+#      dump grants ownership to. Idempotent (uses IF NOT EXISTS).
+#   2. neon_backup.sql             — schema + data dumped from Neon.
+#
 # Usage:
-#   docker compose up -d            # start
-#   docker compose down -v          # stop + delete volumes (resets state)
+#   docker compose up -d            # start (imports neon_backup.sql on first boot)
+#   docker compose down -v          # stop + delete volumes (resets state; next up re-imports)
+#
+# To point the API at the local DB instead of Neon, swap DATABASE_URL in
+# apps/api/.env to:
+#   postgresql://clipflow:clipflow@localhost:5432/clipflow
 #
 # The worker runs OUTSIDE compose (via `pnpm --filter worker dev`) for
 # faster iteration — a Dockerfile + worker service is a follow-up.
 
 services:
   postgres:
-    image: postgres:16-alpine
+    # pg 18-alpine matches the dump's source (Neon runs 18.4). 17 works too
+    # if you'd rather pin to the previous major.
+    image: postgres:18-alpine
     container_name: clipflow-postgres
     environment:
       POSTGRES_USER: clipflow
@@ -24,7 +39,18 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # pg 18+ images expect data under /var/lib/postgresql (the entrypoint
+      # picks the version-specific subdir itself). Mounting at
+      # /var/lib/postgresql/data refuses to start if the dir was created by
+      # a different major version — which is exactly what we hit coming from
+      # postgres:16-alpine. Wipe with `docker compose down -v` after switching.
+      - pgdata:/var/lib/postgresql
+      # Init scripts run only on the first boot of an empty volume.
+      # Order is lexical: the role-creation script MUST come before
+      # neon_backup.sql, otherwise the dump's `ALTER ... OWNER TO
+      # neondb_owner` statements fail.
+      - ./docker/postgres/init/00-create-neondb-owner.sql:/docker-entrypoint-initdb.d/00-create-neondb-owner.sql:ro
+      - ./neon_backup.sql:/docker-entrypoint-initdb.d/10-neon_backup.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U clipflow -d clipflow"]
       interval: 5s

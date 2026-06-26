@@ -25,6 +25,7 @@
     "next": "16.2.0",
     "next-auth": "5.0.0-beta.31",
     "next-themes": "^0.4.4",
+    "nextjs-toploader": "^3.9.17",
     "radix-ui": "^1.6.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
