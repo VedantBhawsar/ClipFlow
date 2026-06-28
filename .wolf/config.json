@@ -67,7 +67,7 @@
         { "name": "mobile", "width": 375, "height": 812 }
       ],
       "max_screenshots": 6,
-      "chrome_path": null
+      "chrome_path": "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
     }
   }
 }

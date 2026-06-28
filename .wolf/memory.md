@@ -187,3 +187,33 @@
 | 09:26 | Edited apps/worker/src/index.ts | modified verifyRedis() | ~104 |
 | 09:30 | Migrated cache from in-memory to Redis: added RedisCacheClient (ioredis, lazyConnect + PING verify) in apps/api/src/lib/cache.ts; initCache(env)/verifyCache(env)/disposeCache() lifecycle; existing `cache` singleton now delegates to active backend so all 4 service call sites + 1 test mock are untouched. Added boot-time service-check banner (Database + Cache + Queue with ✓/✗ + latency) in both apps/api/src/index.ts and apps/worker/src/index.ts. Production-aware warnings in apps/api/src/config/env.ts when DATABASE_URL or REDIS_URL is unset. | 5 files (cache.ts, queue.ts, index.ts × 2, env.ts) + 4 anatomy descriptions | api + worker typecheck clean; videos.service.test green; 2 pre-existing youtube.service.test failures unchanged | ~3800 |
 | 09:29 | Session end: 7 writes across 4 files (cache.ts, queue.ts, index.ts, env.ts) | 12 reads | ~16873 tok |
+| 09:32 | Session end: 7 writes across 4 files (cache.ts, queue.ts, index.ts, env.ts) | 12 reads | ~17155 tok |
+| 09:34 | designqc: captured 2 screenshots (62KB, ~5000 tok) | / | ready for eval | ~0 |
+
+## Session: 2026-06-28 09:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:37 | Read & evaluate designqc screenshots | .wolf/designqc-captures/root_desktop_top.jpg, root_mobile_top.jpg | Findings: mobile footer avatar overlap bug; empty hero (no product visual); no nav links; no social proof; CTA pair disjoint; sage-green on dark works well | ~0 tokens (read-only)
+| 09:39 | Edited apps/web/app/globals.css | modified media() | ~1558 |
+| 09:39 | designqc: captured 2 screenshots (30KB, ~5000 tok) | / | ready for eval | ~0 |
+
+## Session: 2026-06-28 09:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-28 09:44
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-28 11:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-28 11:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|

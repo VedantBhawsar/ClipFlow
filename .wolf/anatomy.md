@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-28T03:56:03.194Z
-> Files: 271 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-28T04:09:34.723Z
+> Files: 270 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -55,7 +55,6 @@
 
 ## apps/api/src/lib/
 
-- `cache.ts` — Cache abstraction. Two backends (RedisCacheClient via ioredis when REDIS_URL is set, InMemoryCache fallback) share the CacheClient interface. `cache` singleton delegates to the active backend. `initCache(env)` / `verifyCache(env)` / `disposeCache()` are the lifecycle hooks called from index.ts at boot.
 - `crypto.ts` — AES-256-GCM at-rest encryption helper. (~102 tok)
 - `db-guard.ts` — Database availability guard. (~210 tok)
 - `jwt.ts` — JWT helpers. (~583 tok)
@@ -162,7 +161,7 @@
 
 ## apps/web/app/
 
-- `globals.css` — Styles: 6 rules, 89 vars (~1590 tok)
+- `globals.css` — Styles: 7 rules, 91 vars (~3088 tok)
 - `layout.tsx` — interTight (~479 tok)
 - `page.tsx` — Marketing landing. (~833 tok)
 
