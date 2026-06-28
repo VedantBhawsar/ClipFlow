@@ -113,7 +113,7 @@ describe("onboarding.schemas", () => {
       const result = patchProfileSchema.safeParse({});
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toBe(
+        expect(result.error.issues[0]?.message).toBe(
           "Provide at least one field to update.",
         );
       }

@@ -225,8 +225,9 @@ describe("youtube.service", () => {
           }),
         }),
       );
-      expect(result.connection.channelId).toBe("UC_new456");
-      expect(result.connection.status).toBe("connected");
+
+      expect(result?.connection.channelId).toBe("UC_new456");
+      expect(result?.connection.status).toBe("connected");
     });
 
     it("throws AppError on token exchange failure", async () => {

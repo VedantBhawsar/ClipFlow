@@ -52,9 +52,9 @@ export function parseDurationMs(input: string): number {
   if (!match) {
     throw new Error(`Invalid duration: ${input}`);
   }
-  const n = parseInt(match[1], 10);
-  const unit = match[2];
-  return n * DURATION_UNITS_MS[unit];
+  const n = parseInt(match[1]!, 10);
+  const unit = match[2] || 'ms';
+  return n * DURATION_UNITS_MS[unit]!;
 }
 
 /**

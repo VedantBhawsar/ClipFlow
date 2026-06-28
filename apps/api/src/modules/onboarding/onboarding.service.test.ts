@@ -21,16 +21,19 @@ vi.mock("./plan-recommendation.js", () => ({
 
 import { prisma } from "../../lib/prisma.js";
 import { recommendPlan } from "./plan-recommendation.js";
+import { ContentNiche, PrimaryGoal, UploadFrequency } from "@clipflow/db";
 
 const mockProfile = {
   id: "profile-123",
   userId: "user-123",
   displayName: "My Channel",
-  niche: "GAMING",
-  uploadFrequency: "ONE_TO_FOUR",
-  primaryGoal: "GROW_VIEWS",
+  niche: "GAMING" as ContentNiche,
+  uploadFrequency: "ONE_TO_FOUR" as UploadFrequency,
+  primaryGoal: "GROW_VIEWS" as PrimaryGoal,
   recommendedPlanId: "starter",
   onboardingCompletedAt: new Date("2024-01-15"),
+  createdAt: new Date(),
+  updatedAt: new Date(),
 };
 
 describe("onboarding.service", () => {
@@ -224,7 +227,8 @@ describe("onboarding.service", () => {
         displayName: "New Name",
       });
 
-      const updateCall = vi.mocked(prisma.userProfile.update).mock.calls[0][0];
+      expect(prisma.userProfile.update).toHaveBeenCalled();
+      const updateCall = vi.mocked(prisma.userProfile.update).mock.calls[0]![0];
       expect(updateCall.data.onboardingCompletedAt).toBeUndefined();
     });
   });
