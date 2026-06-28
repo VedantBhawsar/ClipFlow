@@ -18,7 +18,6 @@
  */
 import type {
   SettingsResponse,
-  UserPreferences,
   UserProfile,
   YouTubeConnection,
 } from "@clipflow/types";
@@ -27,7 +26,6 @@ import { cache } from "../../lib/cache.js";
 import { prisma } from "../../lib/prisma.js";
 import { requireDatabase } from "../../lib/db-guard.js";
 import {
-  getPreferences,
   toPreferencesDto,
 } from "../preferences/preferences.service.js";
 

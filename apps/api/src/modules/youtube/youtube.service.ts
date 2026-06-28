@@ -8,10 +8,9 @@
  * worker can call it without depending on the API package. Re-exported
  * here for the few API-side callers that still want it from this path.
  */
-import { randomUUID } from "node:crypto";
 import type { Env } from "@clipflow/config";
 import type { YouTubeConnection } from "@clipflow/types";
-import type { YouTubeChannel, ChannelConnectionStatus } from "@prisma/client";
+import type { YouTubeChannel } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { requireDatabase } from "../../lib/db-guard.js";
 import { encryptToken } from "../../lib/crypto.js";

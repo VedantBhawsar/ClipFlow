@@ -1,9 +1,6 @@
 import type { ReactNode } from "react";
-
-import { Sidebar } from "@/components/dashboard/sidebar";
 import { ProtectedShell } from "@/components/shared/protected-shell";
 import { SettingsLayout as SettingsLayoutComponent } from "@/components/settings/settings-layout";
-import { OnboardingGuard } from "@/lib/onboarding-guard";
 
 /**
  * Settings chrome. Same dashboard shell (sidebar + main content) so the

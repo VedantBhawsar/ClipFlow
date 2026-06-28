@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { Youtube, Check, AlertCircle, Loader2, Unlink } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -138,10 +139,13 @@ export function YouTubeConnectCard({ className }: { className?: string }) {
       >
         <CardContent className="flex items-center gap-4 p-4">
           {channelThumbnailUrl ? (
-            <img
+            <Image
               src={channelThumbnailUrl}
               alt=""
+              width={48}
+              height={48}
               className="h-12 w-12 rounded-full object-cover"
+              unoptimized
             />
           ) : (
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">

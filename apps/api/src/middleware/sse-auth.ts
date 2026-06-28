@@ -13,7 +13,6 @@ import type { NextFunction, Request, Response } from "express";
 import { AppError } from "../errors/AppError.js";
 import { verifyJwt } from "../lib/jwt.js";
 import type { Env } from "@clipflow/config";
-import type { AuthUser } from "@clipflow/types";
 
 export const requireSseAuth = (env: Env) => {
   return (req: Request, _res: Response, next: NextFunction): void => {

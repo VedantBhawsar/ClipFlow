@@ -135,7 +135,6 @@ class RedisCacheClient implements CacheClient {
       // Logged at the point of failure (typically connect() / first command).
       // ioredis emits `error` on socket-level failures; we don't want the
       // process to crash mid-flight.
-      // eslint-disable-next-line no-console
       console.error("[cache] redis error:", err.message);
     });
   }

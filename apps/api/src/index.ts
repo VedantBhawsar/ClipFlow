@@ -195,7 +195,6 @@ const main = async (): Promise<void> => {
 main().catch((err: unknown) => {
   // Use stderr directly because the logger may not have been built yet
   // (env validation failure happens before logger construction).
-  // eslint-disable-next-line no-console
   console.error("Fatal error during startup:", err);
   process.exit(1);
 });

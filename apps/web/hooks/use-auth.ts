@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 
 /**
@@ -60,19 +60,23 @@ export function useAuth(): UseAuthValue {
   const { status, data: session, update } = useSession();
 
   const userId = typeof session?.userId === "string" ? session.userId : null;
-  const user = userId
-    ? {
-        id: userId,
-        email: session?.user?.email,
-        name: session?.user?.name,
-        onboardingCompleted: session?.user?.onboardingCompleted ?? false,
-        displayName: session?.user?.displayName ?? null,
-      }
-    : null;
+  const user = useMemo(
+    () =>
+      userId
+        ? {
+            id: userId,
+            email: session?.user?.email,
+            name: session?.user?.name,
+            onboardingCompleted: session?.user?.onboardingCompleted ?? false,
+            displayName: session?.user?.displayName ?? null,
+          }
+        : null,
+    [userId, session],
+  );
 
-  const refresh = async (): Promise<void> => {
+  const refresh = useCallback(async (): Promise<void> => {
     await update();
-  };
+  }, [update]);
 
   return useMemo<UseAuthValue>(
     () => ({
@@ -83,6 +87,6 @@ export function useAuth(): UseAuthValue {
       refresh,
       update,
     }),
-    [status, user, update],
+    [status, user, update, refresh],
   );
 }
