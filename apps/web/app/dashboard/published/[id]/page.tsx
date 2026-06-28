@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ExternalLink, Loader2, AlertCircle } from "lucide-react";
 import type { Video, VideoStatus } from "@clipflow/types";

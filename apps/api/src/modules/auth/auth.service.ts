@@ -19,7 +19,6 @@ import type {
   AuthUser,
   LogoutRequest,
   RefreshResponse,
-  UserProfile,
 } from "@clipflow/types";
 import { AppError } from "../../errors/AppError.js";
 import { prisma } from "../../lib/prisma.js";
@@ -57,35 +56,6 @@ const toAuthUser = (user: {
     authProvider: user.authProvider,
     emailVerifiedAt: user.emailVerifiedAt?.toISOString() ?? null,
     createdAt: user.createdAt.toISOString(),
-  };
-};
-
-/**
- * Map a Prisma `UserProfile` row to the wire-format `UserProfile` DTO,
- * or `null` if no row exists.
- */
-const toProfileDto = (
-  profile:
-    | {
-        id: string;
-        displayName: string | null;
-        niche: string | null;
-        uploadFrequency: string | null;
-        primaryGoal: string | null;
-        recommendedPlanId: string | null;
-        onboardingCompletedAt: Date | null;
-      }
-    | null,
-): UserProfile | null => {
-  if (!profile) return null;
-  return {
-    id: profile.id,
-    displayName: profile.displayName,
-    niche: profile.niche as UserProfile["niche"],
-    uploadFrequency: profile.uploadFrequency as UserProfile["uploadFrequency"],
-    primaryGoal: profile.primaryGoal as UserProfile["primaryGoal"],
-    recommendedPlanId: profile.recommendedPlanId,
-    onboardingCompletedAt: profile.onboardingCompletedAt?.toISOString() ?? null,
   };
 };
 
@@ -258,6 +228,7 @@ export const logout = async (input: LogoutRequest | undefined): Promise<void> =>
  * obviously wired and the controller contract is exercised end-to-end.
  */
 export const googleSignIn = async (_idToken: string): Promise<AuthResponse> => {
+  void _idToken;
   throw new AppError(
     501,
     "NOT_IMPLEMENTED",

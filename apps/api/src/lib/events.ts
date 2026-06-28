@@ -10,7 +10,7 @@
  *   video:<videoId>   — events scoped to a single video
  *   user:<userId>     — all events for a user's videos
  */
-import { EventEmitter, once } from "node:events";
+import { EventEmitter } from "node:events";
 import { Redis } from "ioredis";
 import type { Env } from "@clipflow/config";
 
@@ -138,7 +138,6 @@ class RedisEventBus implements EventBus {
       this.subscriptions.set(channel, new Set());
       this.subscriber.subscribe(channel, (err) => {
         if (err) {
-          // eslint-disable-next-line no-console
           console.error(`[events] subscribe error on ${channel}:`, err.message);
         }
       });

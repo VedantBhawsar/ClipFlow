@@ -48,7 +48,7 @@ export function useSignIn() {
       if (result.error) {
         // NextAuth wraps backend error messages here. We pull the most
         // useful copy out so the form can show it directly.
-        throw new Error(extractAuthErrorMessage(result.error));
+        throw new Error(extractAuthErrorMessage());
       }
       if (!result.ok) {
         throw new Error("Sign in failed. Please try again.");
@@ -70,6 +70,6 @@ export function useSignIn() {
  * message ("Invalid email or password") so we keep this simple and
  * map the well-known codes; if more codes land we can extend this.
  */
-function extractAuthErrorMessage(_code: string): string {
+function extractAuthErrorMessage(): string {
   return "Invalid email or password.";
 }

@@ -40,7 +40,6 @@ export const getPublishQueue = (env: Env): Queue | null => {
   cachedConnection.on("error", (err) => {
     // Surfaced here for visibility; verifyPublishQueue() is the
     // authoritative reachability check.
-    // eslint-disable-next-line no-console
     console.error("[queue] redis error:", err.message);
   });
   cachedQueue = new Queue(YOUTUBE_PUBLISH_QUEUE, {

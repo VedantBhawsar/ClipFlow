@@ -61,7 +61,8 @@ export const logoutController = async (req: Request, res: Response): Promise<voi
   sendEmpty(res, "Signed out.");
 };
 
-export const googleController = async (req: Request, res: Response): Promise<void> => {
+export const googleController = async (req: Request, _res: Response): Promise<void> => {
+  void _res;
   const input = req.body as GoogleAuthInput;
   await authService.googleSignIn(input.idToken);
   // 501 Not Implemented — wraps the original AppError thrown inside the

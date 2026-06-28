@@ -34,7 +34,9 @@
         "YOUTUBE_CATEGORY_DEFAULT",
         "YOUTUBE_MAX_VIDEO_BYTES",
         "YOUTUBE_PRESIGNED_POST_TTL",
-        "NODE_ENV"
+        "NODE_ENV",
+        "AUTH_SECRET",
+        "NEXTAUTH_SECRET"
       ]
     }
   }

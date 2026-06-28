@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { AppError } from "../../errors/AppError.js";
 import * as youtubeService from "./youtube.service.js";
 
 vi.mock("@clipflow/youtube-upload", () => ({
@@ -166,12 +165,6 @@ describe("youtube.service", () => {
       access_token: "test-access-token",
       expires_in: 3600,
       refresh_token: "test-refresh-token",
-    };
-
-    const mockChannelInfo = {
-      id: "UC_new456",
-      title: "New Channel",
-      thumbnailUrl: "https://example.com/new-thumb.jpg",
     };
 
     it("exchanges code, fetches channel info, and stores connection", async () => {

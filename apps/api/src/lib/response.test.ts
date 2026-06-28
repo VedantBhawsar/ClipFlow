@@ -16,11 +16,10 @@ import { sendOk, sendCreated, sendEmpty } from "./response.js";
  * further chaining at the call site.
  */
 const buildMockResponse = () => {
-  let resRef: Response;
   const json = vi.fn().mockImplementation(() => resRef);
   const status = vi.fn().mockImplementation(() => ({ json }));
   const res = { status, json } as unknown as Response;
-  resRef = res;
+  const resRef: Response = res;
   return { res, json, status };
 };
 
