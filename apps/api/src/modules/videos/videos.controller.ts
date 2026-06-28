@@ -11,11 +11,17 @@
  * (`requireUser`, `requireEnv`) now throw `AppError` instead of
  * writing a response directly, so the central error middleware is
  * the only place that emits failure bodies.
+ *
+ * SSE streaming:
+ *   GET /api/videos/stream        → all events for the current user
+ *   GET /api/videos/:id/stream    → events for a specific video
  */
 import type { Request, Response } from "express";
 import type { Env } from "@clipflow/config";
 import { sendCreated, sendEmpty, sendOk } from "../../lib/response.js";
 import { AppError } from "../../errors/AppError.js";
+import { eventBus, type VideoEvent } from "../../lib/events.js";
+import { sseWrite } from "../../lib/sse.js";
 import * as videosService from "./videos.service.js";
 import type {
   CreateVideoInput,
@@ -233,4 +239,86 @@ export const unpublishVideoController = async (
   }
   const result = await videosService.unpublishVideo(userId, id, env);
   sendOk(res, result, "Video unpublished.");
+};
+
+/**
+ * GET /api/videos/stream
+ *
+ * Opens an SSE connection that streams all video processing events
+ * for the authenticated user. Sends a heartbeat every 30 s to keep
+ * proxies from closing the connection. Cleans up on client disconnect.
+ */
+export const streamUserVideosController = (
+  req: Request,
+  res: Response,
+): void => {
+  const userId = requireUser(req);
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+
+  // Send initial connection event
+  sseWrite(res, "connected", JSON.stringify({ userId }));
+
+  // Subscribe to user-level event bus
+  const unsubscribe = eventBus.subscribe(userId, null, (event: VideoEvent) => {
+    sseWrite(res, event.type.toLowerCase(), JSON.stringify(event));
+  });
+
+  // Heartbeat every 30 s
+  const heartbeat = setInterval(() => {
+    sseWrite(res, "heartbeat", JSON.stringify({ ts: Date.now() }));
+  }, 30_000);
+
+  // Clean up on client disconnect
+  req.on("close", () => {
+    unsubscribe();
+    clearInterval(heartbeat);
+  });
+};
+
+/**
+ * GET /api/videos/:id/stream
+ *
+ * Opens an SSE connection that streams events for a specific video.
+ * Verifies the user owns the video before opening the stream.
+ */
+export const streamVideoController = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  const userId = requireUser(req);
+  const videoId = (req.params as { id?: string }).id;
+  if (!videoId) {
+    throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
+  }
+
+  // Verify ownership before streaming
+  await videosService.getVideo(userId, videoId);
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+
+  sseWrite(res, "connected", JSON.stringify({ videoId, userId }));
+
+  const unsubscribe = eventBus.subscribe(userId, videoId, (event: VideoEvent) => {
+    sseWrite(res, event.type.toLowerCase(), JSON.stringify(event));
+  });
+
+  const heartbeat = setInterval(() => {
+    sseWrite(res, "heartbeat", JSON.stringify({ ts: Date.now() }));
+  }, 30_000);
+
+  req.on("close", () => {
+    unsubscribe();
+    clearInterval(heartbeat);
+  });
 };

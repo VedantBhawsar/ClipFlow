@@ -178,60 +178,6 @@ export const publishVideo = async (
     },
   });
 
-  // ---- Custom thumbnail (optional) ----
-  //
-  // YouTube's `thumbnails.set` needs the bytes AFTER `videos.insert`
-  // returns the youtubeVideoId — the thumbnail can't be uploaded
-  // until YouTube knows about the video. We stream the S3 object
-  // straight through so we don't buffer a 2 MB image in memory.
-  //
-  // Thumbnail failures are logged but DON'T fail the publish — the
-  // video is live with YouTube's default frame, which is still a
-  // valid outcome. Transient errors get retried by BullMQ (we
-  // re-throw); permanent ones are swallowed + logged so a bad
-  // thumbnail can't undo a successful publish.
-  if (video.s3KeyThumbnail && video.thumbnailContentType) {
-    const thumbContentType = video.thumbnailContentType as "image/jpeg" | "image/png";
-    if (thumbContentType === "image/jpeg" || thumbContentType === "image/png") {
-      try {
-        const { body: thumbBody, contentLength: thumbLength } = await getObjectStream(
-          client,
-          s3,
-          video.s3KeyThumbnail,
-        );
-        const webThumb = (
-          thumbBody as unknown as { transformToWebStream(): ReadableStream<Uint8Array> }
-        ).transformToWebStream();
-        await setYouTubeThumbnail({
-          accessToken,
-          youtubeVideoId: uploaded.youtubeVideoId,
-          body: webThumb,
-          contentLength: thumbLength,
-          contentType: thumbContentType,
-        });
-        logger.info(
-          { videoId: video.id, s3KeyThumbnail: video.s3KeyThumbnail },
-          "Custom thumbnail uploaded to YouTube.",
-        );
-      } catch (err) {
-        const reason =
-          err instanceof PermanentPublishError
-            ? `permanent: ${err.message}`
-            : err instanceof Error
-              ? `transient: ${err.message}`
-              : "unknown error";
-        logger.warn(
-          { videoId: video.id, err: reason },
-          "Thumbnail upload failed; video is published but using YouTube's default thumbnail.",
-        );
-        if (!(err instanceof PermanentPublishError)) {
-          // Transient → let BullMQ retry. Permanent → swallow (see above).
-          throw err;
-        }
-      }
-    }
-  }
-
   logger.info(
     {
       videoId: video.id,
@@ -242,6 +188,98 @@ export const publishVideo = async (
   );
 
   return { youtubeVideoId: uploaded.youtubeVideoId, publishedAt };
+};
+
+/**
+ * Upload a custom thumbnail to an already-published YouTube video.
+ *
+ * Designed to be called AFTER `publishVideo` so the thumbnail upload
+ * never blocks the publish. Idempotent — YouTube's `thumbnails.set`
+ * replaces the existing thumbnail with the new bytes on every call.
+ *
+ * This is a separate function (not part of `publishVideo`) so the
+ * worker can retry it independently without re-publishing the video.
+ * When `publishVideo` is retried for a PUBLISHED video it returns
+ * early; the thumbnail still gets another attempt because the worker
+ * calls this function unconditionally after `publishVideo` resolves.
+ *
+ * Silently skips when the video has no custom thumbnail
+ * (`s3KeyThumbnail` is null) or the content type is not JPEG/PNG.
+ *
+ * @throws TransientPublishError — caller should retry.
+ * @throws PermanentPublishError — caller should swallow and log.
+ */
+export const uploadVideoThumbnail = async (
+  input: PublishVideoInput & { youtubeVideoId: string },
+  ctx: PublishVideoContext,
+): Promise<void> => {
+  const { prisma, env, logger } = ctx;
+
+  const video = await prisma.video.findUnique({
+    where: { id: input.videoId },
+    include: { youtubeChannel: true },
+  });
+  if (!video || !video.s3KeyThumbnail || !video.thumbnailContentType) {
+    return;
+  }
+
+  const thumbContentType = video.thumbnailContentType as "image/jpeg" | "image/png";
+  if (thumbContentType !== "image/jpeg" && thumbContentType !== "image/png") {
+    logger.warn(
+      { videoId: video.id, contentType: video.thumbnailContentType },
+      "Unsupported thumbnail content type — skipping.",
+    );
+    return;
+  }
+
+  // Refresh a fresh access token (the one used by publishVideo may have
+  // come from a now-revoked context).
+  let accessToken: string;
+  try {
+    const refreshed = await refreshAccessToken(prisma, video.youtubeChannel, env);
+    accessToken = refreshed.accessToken;
+  } catch (err) {
+    if (err instanceof PermanentPublishError) {
+      logger.warn(
+        { videoId: video.id, err: err.message },
+        "Thumbnail upload skipped — channel needs reauth.",
+      );
+      return;
+    }
+    throw err;
+  }
+
+  const s3 = buildS3Config(env);
+  const client = getS3Client(s3);
+
+  let thumbLength: number;
+  let webThumb: ReadableStream<Uint8Array>;
+  try {
+    const { body, contentLength } = await getObjectStream(client, s3, video.s3KeyThumbnail);
+    thumbLength = contentLength;
+    webThumb = (
+      body as unknown as { transformToWebStream(): ReadableStream<Uint8Array> }
+    ).transformToWebStream();
+  } catch (err) {
+    logger.warn(
+      { videoId: video.id, s3Key: video.s3KeyThumbnail, err: String(err) },
+      "Thumbnail S3 object not found — skipping.",
+    );
+    return;
+  }
+
+  await setYouTubeThumbnail({
+    accessToken,
+    youtubeVideoId: input.youtubeVideoId,
+    body: webThumb,
+    contentLength: thumbLength,
+    contentType: thumbContentType,
+  });
+
+  logger.info(
+    { videoId: video.id, s3KeyThumbnail: video.s3KeyThumbnail },
+    "Custom thumbnail uploaded to YouTube.",
+  );
 };
 
 /**

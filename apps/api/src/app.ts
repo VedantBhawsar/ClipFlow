@@ -85,7 +85,16 @@ export const createApp = ({ env, logger }: CreateAppOptions): Application => {
       contentSecurityPolicy: false, // CSP isn't useful for a JSON API.
     }),
   );
-  app.use(compression());
+  app.use(
+    compression({
+      // Don't compress SSE event streams — compression buffers the
+      // response, which prevents the EventSource from receiving data.
+      filter: (req, res) => {
+        if (req.url?.includes("/stream")) return false;
+        return compression.filter(req, res);
+      },
+    }),
+  );
   app.use(
     cors({
       origin: env.WEB_ORIGIN,
