@@ -4,6 +4,7 @@
 export {
   publishVideo,
   unpublishVideo,
+  uploadVideoThumbnail,
   type PublishVideoContext,
   type PublishVideoInput,
   type PublishVideoResult,

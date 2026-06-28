@@ -9,7 +9,10 @@ import { VideoList } from "@/components/dashboard/video-list";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useVideos } from "@/hooks/use-videos";
+import { useVideoSSE } from "@/hooks/use-video-sse";
 import { useYouTubeConnection } from "@/hooks/use-youtube-connection";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 /**
  * Dashboard home (client component).
@@ -29,6 +32,10 @@ import { useYouTubeConnection } from "@/hooks/use-youtube-connection";
  *    virtual `NOT_PUBLISHED` sentinel translates into a Prisma
  *    `status: { not: "PUBLISHED" }` filter on the server, so the
  *    dashboard never has to hide non-matching rows client-side.
+ *  - SSE event stream (`useVideoSSE`) provides real-time progress
+ *    updates for video processing. When a STATUS_UPDATE event arrives
+ *    the TanStack Query cache is invalidated so the video list
+ *    re-fetches with the latest data.
  *
  * Before the bundle-split refactor this component called
  * `useUserBundle()` to get profile + user + YouTube connection in a
@@ -40,8 +47,20 @@ import { useYouTubeConnection } from "@/hooks/use-youtube-connection";
  */
 export function DashboardContent() {
   const { data: session } = useSession();
+  const qc = useQueryClient();
   const videosQuery = useVideos({ status: "NOT_PUBLISHED" });
   const { data: youtubeConnection } = useYouTubeConnection();
+  const videos = videosQuery.data?.videos ?? [];
+  const hasUnpublishedVideos = videosQuery.isSuccess && videos.length > 0;
+  const sse = useVideoSSE(undefined, { enabled: hasUnpublishedVideos });
+
+  // Invalidate video list when a STATUS_UPDATE arrives via SSE
+  useEffect(() => {
+    const last = sse.events.at(-1);
+    if (last?.type === "STATUS_UPDATE") {
+      void qc.invalidateQueries({ queryKey: ["videos", "list"] });
+    }
+  }, [sse.events, qc]);
 
   const sessionUser = session?.user ?? null;
   const displayName =
@@ -52,17 +71,18 @@ export function DashboardContent() {
   const firstName = displayName.split(/\s+/)[0] || "creator";
   const channelConnected = youtubeConnection?.status === "connected";
 
-  const videos = videosQuery.data?.videos ?? [];
-
   return (
     <div className="space-y-8">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">
           Welcome back, {firstName}.
         </h1>
-        <p className="text-sm text-muted-foreground">
-          Your publishing pipeline, one glance.
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm text-muted-foreground">
+            Your publishing pipeline, one glance.
+          </p>
+          <LiveDot connected={sse.connected} />
+        </div>
       </header>
 
       <YouTubeConnectCard />
@@ -83,6 +103,7 @@ export function DashboardContent() {
           <VideoList
             videos={videos}
             channelConnected={channelConnected}
+            sseEvents={sse.events}
             emptyHint={
               channelConnected
                 ? "Up to 5 GB per video. MP4, MOV, or WebM."
@@ -118,5 +139,22 @@ export function DashboardContent() {
         </div>
       </section>
     </div>
+  );
+}
+
+function LiveDot({ connected }: { connected: boolean }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 text-xs ${
+        connected ? "text-green-600" : "text-muted-foreground"
+      }`}
+    >
+      <span
+        className={`inline-block h-2 w-2 rounded-full ${
+          connected ? "bg-green-500" : "bg-gray-300"
+        }`}
+      />
+      {connected ? "Live" : "Offline"}
+    </span>
   );
 }

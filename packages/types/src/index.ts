@@ -344,18 +344,28 @@ export type ApiErrorBody = ApiFailure;
 // ---------- Video upload → publish ----------
 
 /**
- * Lifecycle states for an uploaded video. Six values for the
- * upload-publish slice; the transcript / thumbnail / chapter slice
- * extends this enum via a follow-up migration. Mirrors the Prisma
- * `VideoStatus` enum in packages/db.
+ * Lifecycle states for an uploaded video.
+ *
+ * The current Prisma enum is a 6-value subset (UPLOADED / READY /
+ * SCHEDULED / PUBLISHING / PUBLISHED / PUBLISH_FAILED) for the
+ * upload-publish slice. The transcript / thumbnail / chapter slice
+ * will add EXTRACTING / TRANSCRIBING / GENERATING / READY_FOR_REVIEW /
+ * FAILED via a follow-up migration. The type is forward-declared here
+ * so the frontend can handle all pipeline stages before the migration
+ * lands.
  */
 export const VIDEO_STATUSES = [
   "UPLOADED",
   "READY",
+  "EXTRACTING",
+  "TRANSCRIBING",
+  "GENERATING",
+  "READY_FOR_REVIEW",
   "SCHEDULED",
   "PUBLISHING",
   "PUBLISHED",
   "PUBLISH_FAILED",
+  "FAILED",
 ] as const;
 export type VideoStatus = (typeof VIDEO_STATUSES)[number];
 
@@ -577,3 +587,32 @@ export interface Video {
   updatedAt: string;
   publishedAt: string | null;
 }
+
+// ---------- SSE event types ----------
+
+export interface SseStatusUpdateEvent {
+  type: "STATUS_UPDATE";
+  videoId: string;
+  userId: string;
+  status: string;
+  timestamp: string;
+}
+
+export interface SseProgressEvent {
+  type: "PROGRESS";
+  videoId: string;
+  userId: string;
+  progress: number;
+  stage: string;
+  timestamp: string;
+}
+
+export interface SseErrorEvent {
+  type: "ERROR";
+  videoId: string;
+  userId: string;
+  error: string;
+  timestamp: string;
+}
+
+export type SseVideoEvent = SseStatusUpdateEvent | SseProgressEvent | SseErrorEvent;

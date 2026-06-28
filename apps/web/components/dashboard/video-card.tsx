@@ -7,56 +7,87 @@ import type { TimelineStatus } from "@/components/dashboard/status-timeline";
 import { StatusTimeline } from "@/components/dashboard/status-timeline";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { Video } from "@clipflow/types";
+import type { Video, SseVideoEvent } from "@clipflow/types";
 
 interface VideoCardProps {
   video: Video;
   onCancel?: (id: string) => void;
   isCancelling?: boolean;
+  /** Latest SSE events for real-time progress display */
+  sseEvents?: SseVideoEvent[];
 }
 
 /**
- * Map a server-side VideoStatus to the timeline's narrow `TimelineStatus`
- * union so we can reuse the existing 5-stage pipeline visual.
+ * Map a server-side VideoStatus to the timeline's visual stage.
  *
- * For this slice, EXTRACTING / TRANSCRIBING / READY_FOR_REVIEW don't
- * exist (no processing pipeline yet). READY collapses to "uploaded"
- * since the file is in S3 and waiting for the publish job.
+ * The timeline has 5 user-facing buckets. Multiple backend statuses
+ * collapse into a single bucket where the distinction isn't meaningful
+ * to the user (e.g. EXTRACTING → TRANSCRIBING → GENERATING all show
+ * as "Processing").
+ *
+ * Failed statuses (PUBLISH_FAILED, FAILED) map to the stage they were
+ * in when the failure occurred so the timeline still reflects
+ * progress; the error is communicated via the card's red border,
+ * failure reason text, and SSE error events.
  */
 const mapStatus = (status: Video["status"]): TimelineStatus => {
   switch (status) {
     case "UPLOADED":
     case "READY":
-    case "PUBLISH_FAILED":
       return "uploaded";
+    case "EXTRACTING":
+    case "TRANSCRIBING":
+    case "GENERATING":
+      return "processing";
+    case "READY_FOR_REVIEW":
+      return "ready_for_review";
     case "SCHEDULED":
     case "PUBLISHING":
+    case "PUBLISH_FAILED":
       return "scheduled";
     case "PUBLISHED":
       return "published";
+    case "FAILED":
+      return "uploaded";
   }
 };
 
 const STATUS_LABEL: Record<Video["status"], string> = {
   UPLOADED: "Awaiting upload",
-  READY: "Ready to publish",
+  READY: "Ready to process",
+  EXTRACTING: "Extracting audio & frames",
+  TRANSCRIBING: "Transcribing",
+  GENERATING: "Generating chapters & thumbnails",
+  READY_FOR_REVIEW: "Ready for review",
   SCHEDULED: "Scheduled",
   PUBLISHING: "Publishing…",
   PUBLISHED: "Published",
   PUBLISH_FAILED: "Publish failed",
+  FAILED: "Processing failed",
 };
 
 /**
  * One row in the dashboard video list. Renders the title, status badge,
  * status timeline, and a "View on YouTube" link once published.
+ *
+ * When `sseEvents` is provided the card picks the latest SSE event for
+ * its video ID and renders a live progress bar (PROGRESS) or status
+ * indicator (STATUS_UPDATE / ERROR) above the timeline.
  */
-export function VideoCard({ video, onCancel, isCancelling }: VideoCardProps) {
+export function VideoCard({ video, onCancel, isCancelling, sseEvents }: VideoCardProps) {
   const timelineStatus = mapStatus(video.status);
   const thumbnailUrl = video.youtubeVideoId
     ? `https://i.ytimg.com/vi/${video.youtubeVideoId}/hqdefault.jpg`
     : null;
-  const canCancel = ["UPLOADED", "READY", "SCHEDULED", "PUBLISH_FAILED"].includes(
-    video.status,
+  const canCancel = [
+    "UPLOADED", "READY", "EXTRACTING", "TRANSCRIBING",
+    "GENERATING", "SCHEDULED", "PUBLISH_FAILED", "FAILED",
+  ].includes(video.status);
+
+  // Find the latest SSE event for this specific video
+  const latestSseEvent = sseEvents?.reduceRight<SseVideoEvent | undefined>(
+    (found, e) => found ?? (e.videoId === video.id ? e : undefined),
+    undefined,
   );
 
   return (
@@ -103,6 +134,30 @@ export function VideoCard({ video, onCancel, isCancelling }: VideoCardProps) {
             </h3>
             <StatusBadge status={video.status} />
           </div>
+
+          {latestSseEvent?.type === "PROGRESS" ? (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-primary">{latestSseEvent.stage}</span>
+                <span className="text-muted-foreground">
+                  {latestSseEvent.progress}%
+                </span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
+                  style={{ width: `${latestSseEvent.progress}%` }}
+                />
+              </div>
+            </div>
+          ) : null}
+
+          {latestSseEvent?.type === "ERROR" ? (
+            <p className="truncate text-xs text-destructive text-ellipsis">
+              Error: {latestSseEvent.error}
+            </p>
+          ) : null}
+
           <StatusTimeline status={timelineStatus} />
           {video.failureReason ? (
             <p className="truncate text-xs text-destructive text-ellipsis">
@@ -153,11 +208,16 @@ export function VideoCard({ video, onCancel, isCancelling }: VideoCardProps) {
 function StatusBadge({ status }: { status: Video["status"] }) {
   const className = {
     UPLOADED: "bg-muted text-muted-foreground",
-    READY: "bg-status-processing/15 text-status-processing",
+    READY: "bg-muted text-muted-foreground",
+    EXTRACTING: "bg-status-processing/15 text-status-processing",
+    TRANSCRIBING: "bg-status-processing/15 text-status-processing",
+    GENERATING: "bg-status-processing/15 text-status-processing",
+    READY_FOR_REVIEW: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
     SCHEDULED: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
     PUBLISHING: "bg-status-processing/15 text-status-processing",
     PUBLISHED: "bg-status-ready/15 text-status-ready",
     PUBLISH_FAILED: "bg-destructive/15 text-destructive",
+    FAILED: "bg-destructive/15 text-destructive",
   }[status];
   return (
     <span

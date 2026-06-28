@@ -3,27 +3,28 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Video status values — narrow, semantic subset of the full VideoStatus
- * enum from the backend. The timeline strip is rendered for these in
- * the order shown; any other status would be unknown to this component
- * and intentionally not rendered (callers should fall back to a plain
- * status badge).
+ * Visual pipeline stages shown in the timeline strip.
  *
- * NOTE: the full VideoStatus enum lives in packages/db; the published
- * web types only surface what's relevant to UI state. If we ever need
- * FAILED / PUBLISH_FAILED / PUBLISHING here, extend this list and the
- * color mapping together.
+ * These are a user-facing consolidation of the more granular backend
+ * `VideoStatus` enum. Multiple backend statuses collapse into a single
+ * visual bucket — for example EXTRACTING / TRANSCRIBING / GENERATING
+ * all show as "Processing" because they run sequentially without user
+ * intervention.
+ *
+ * Failed states (PUBLISH_FAILED, FAILED) are not represented as their
+ * own stage — the card/detail page shows the failure reason, error
+ * styling, and SSE error events instead.
  */
 export type TimelineStatus =
   | "uploaded"
-  | "transcribing"
+  | "processing"
   | "ready_for_review"
   | "scheduled"
   | "published";
 
 const STAGES: ReadonlyArray<{ id: TimelineStatus; label: string }> = [
   { id: "uploaded", label: "Uploaded" },
-  { id: "transcribing", label: "Transcribing" },
+  { id: "processing", label: "Processing" },
   { id: "ready_for_review", label: "Ready for review" },
   { id: "scheduled", label: "Scheduled" },
   { id: "published", label: "Published" },

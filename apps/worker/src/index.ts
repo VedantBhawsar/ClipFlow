@@ -5,15 +5,16 @@
  * runs the startup-recovery scan, and wires graceful shutdown on
  * SIGTERM / SIGINT.
  *
- * Like the API, the worker probes every external dependency at boot
- * (Postgres + Redis-backed BullMQ) and prints a one-line-per-service
- * banner so an operator can confirm health at a glance. Required-service
- * outages exit the process non-zero.
+ * Every external dependency (Postgres, Redis) is probed at boot using
+ * the actual connections that will serve traffic — no throwaway probes.
+ * Any required-service outage exits non-zero before recovery or job
+ * processing begins.
  */
 import { Redis } from "ioredis";
 import { loadWorkerEnv } from "./env.js";
 import { buildLogger } from "./config/logger.js";
 import { buildPublishQueue } from "./config/queue.js";
+import { WorkerEventPublisher } from "./lib/events.js";
 import {
   recoverMissedScheduledJobs,
   recoverOrphanedPublishingJobs,
@@ -27,7 +28,7 @@ interface ServiceCheck {
 }
 
 /**
- * Probe Postgres with `SELECT 1` for the boot banner.
+ * Probe Postgres with `SELECT 1`.
  */
 const verifyDatabase = async (
   logger: ReturnType<typeof buildLogger>,
@@ -42,42 +43,6 @@ const verifyDatabase = async (
       ok: false,
       detail: err instanceof Error ? err.message : String(err),
     };
-  }
-};
-
-/**
- * Probe the worker-side Redis connection. We open a fresh connection here
- * rather than reusing the BullMQ one — the worker constructs the queue
- * first so the connection is in `connect()` state by the time we check.
- */
-const verifyRedis = async (
-  redisUrl: string,
-  logger: ReturnType<typeof buildLogger>,
-): Promise<{ ok: boolean; detail: string }> => {
-  const probe = new Redis(redisUrl, {
-    lazyConnect: true,
-    maxRetriesPerRequest: null,
-  });
-  probe.on("error", (err) => {
-    // eslint-disable-next-line no-console
-    console.error("[worker:probe] redis error:", err.message);
-  });
-  try {
-    const start = Date.now();
-    await probe.connect();
-    const pong = await probe.ping();
-    if (pong !== "PONG") {
-      return { ok: false, detail: `PING returned ${pong}` };
-    }
-    return { ok: true, detail: `${Date.now() - start}ms` };
-  } catch (err) {
-    logger.error({ err }, "Redis probe failed");
-    return {
-      ok: false,
-      detail: err instanceof Error ? err.message : String(err),
-    };
-  } finally {
-    await probe.quit().catch(() => probe.disconnect());
   }
 };
 
@@ -110,17 +75,64 @@ const main = async (): Promise<void> => {
     detail: db.ok ? `reachable in ${db.detail}` : `FAILED — ${db.detail}`,
   });
 
-  // loadWorkerEnv() throws if REDIS_URL is unset, so the ?? branch is
-  // unreachable at runtime — but TS doesn't narrow the type, so we guard
-  // explicitly and emit a "skipped" line instead of attempting an empty URL.
-  const redis = env.REDIS_URL
-    ? await verifyRedis(env.REDIS_URL, logger)
-    : { ok: false as const, detail: "REDIS_URL not configured" };
-  checks.push({
-    name: "Redis (BullMQ)",
-    ok: redis.ok,
-    detail: redis.ok ? `reachable in ${redis.detail}` : `FAILED — ${redis.detail}`,
-  });
+  // Redis connection for BullMQ — create and PING the actual connection,
+  // then pass it to the queue builder (no throwaway probe).
+  let redisConnection: Redis | null = null;
+  if (env.REDIS_URL) {
+    const start = Date.now();
+    try {
+      redisConnection = new Redis(env.REDIS_URL, {
+        maxRetriesPerRequest: null,
+      });
+      await redisConnection.ping();
+      checks.push({
+        name: "Redis (BullMQ)",
+        ok: true,
+        detail: `reachable in ${Date.now() - start}ms`,
+      });
+    } catch (err) {
+      checks.push({
+        name: "Redis (BullMQ)",
+        ok: false,
+        detail: `FAILED — ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+  } else {
+    checks.push({
+      name: "Redis (BullMQ)",
+      ok: false,
+      detail: "FAILED — REDIS_URL not configured",
+    });
+  }
+
+  // Event publisher connection — separate from BullMQ so pub/sub
+  // failures never interfere with job processing.
+  let eventPublisher: WorkerEventPublisher | null = null;
+  if (env.REDIS_URL) {
+    const start = Date.now();
+    try {
+      const publisher = new WorkerEventPublisher(env.REDIS_URL);
+      await publisher.connect();
+      eventPublisher = publisher;
+      checks.push({
+        name: "Redis (Events)",
+        ok: true,
+        detail: `reachable in ${Date.now() - start}ms`,
+      });
+    } catch (err) {
+      checks.push({
+        name: "Redis (Events)",
+        ok: false,
+        detail: `FAILED — ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+  } else {
+    checks.push({
+      name: "Redis (Events)",
+      ok: false,
+      detail: "FAILED — REDIS_URL not configured",
+    });
+  }
 
   logger.info(`Service checks:\n  ${formatServiceBanner(checks)}`);
 
@@ -132,10 +144,21 @@ const main = async (): Promise<void> => {
         .map((f) => f.name)
         .join(", ")}`,
     );
+    if (redisConnection) {
+      await redisConnection.quit().catch(() => redisConnection!.disconnect());
+    }
+    if (eventPublisher) {
+      await eventPublisher.dispose();
+    }
     process.exit(1);
   }
 
-  const { queue, worker, connection } = buildPublishQueue(env, logger);
+  const { queue, worker } = buildPublishQueue(
+    redisConnection!,
+    env,
+    logger,
+    eventPublisher ?? undefined,
+  );
 
   // First pass: reconcile any rows orphaned in PUBLISHING by a previous
   // worker crash. Doing this BEFORE the READY/SCHEDULED pass means a
@@ -157,7 +180,8 @@ const main = async (): Promise<void> => {
     try {
       await worker.close();
       await queue.close();
-      connection.disconnect();
+      redisConnection!.disconnect();
+      await eventPublisher?.dispose();
       await prisma.$disconnect();
       logger.info("Shutdown complete.");
       process.exit(0);

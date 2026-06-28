@@ -11,6 +11,7 @@ import { Redis } from "ioredis";
 import type { Env } from "@clipflow/config";
 import type { Logger } from "./logger.js";
 import { processYoutubePublishJob, type PublishJobData } from "../jobs/youtube-publish.js";
+import type { EventPublisher } from "../lib/events.js";
 
 export const YOUTUBE_PUBLISH_QUEUE = "youtube-publish";
 
@@ -23,15 +24,15 @@ export interface BuiltQueue {
 /**
  * Build the queue + worker pair and wire the failed-job listener so
  * retried-and-exhausted jobs mark the Video as PUBLISH_FAILED.
+ *
+ * @param events Optional event publisher for real-time SSE progress.
  */
-export const buildPublishQueue = (env: Env, logger: Logger): BuiltQueue => {
-  if (!env.REDIS_URL) {
-    throw new Error("REDIS_URL is required to build the publish queue.");
-  }
-  const connection = new Redis(env.REDIS_URL, {
-    maxRetriesPerRequest: null,
-  });
-
+export const buildPublishQueue = (
+  connection: Redis,
+  env: Env,
+  logger: Logger,
+  events?: EventPublisher,
+): BuiltQueue => {
   const queue = new Queue<PublishJobData>(YOUTUBE_PUBLISH_QUEUE, {
     connection,
     prefix: env.BULLMQ_PREFIX,
@@ -45,7 +46,8 @@ export const buildPublishQueue = (env: Env, logger: Logger): BuiltQueue => {
 
   const worker = new Worker<PublishJobData>(
     YOUTUBE_PUBLISH_QUEUE,
-    async (job) => processYoutubePublishJob(job, { env, logger }),
+    async (job) =>
+      processYoutubePublishJob(job, { env, logger, events }),
     {
       connection,
       prefix: env.BULLMQ_PREFIX,

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { CreateVideoDialog } from "@/components/dashboard/create-video-dialog";
 import { VideoCard } from "@/components/dashboard/video-card";
 import { useDeleteVideo } from "@/hooks/use-videos";
-import type { Video } from "@clipflow/types";
+import type { Video, SseVideoEvent } from "@clipflow/types";
 
 interface VideoListProps {
   /**
@@ -28,6 +28,8 @@ interface VideoListProps {
    * showed (file size / format guidance).
    */
   emptyHint?: string;
+  /** Latest SSE events for real-time progress display in VideoCards */
+  sseEvents?: SseVideoEvent[];
 }
 
 /**
@@ -47,6 +49,7 @@ export function VideoList({
   videos,
   channelConnected,
   emptyHint,
+  sseEvents,
 }: VideoListProps) {
   const router = useRouter();
   const deleteMutation = useDeleteVideo();
@@ -120,6 +123,7 @@ export function VideoList({
             video={v}
             onCancel={handleCancel}
             isCancelling={deleteMutation.isPending && deleteMutation.variables === v.id}
+            sseEvents={sseEvents}
           />
         ))}
       </div>

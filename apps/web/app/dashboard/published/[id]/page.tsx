@@ -8,6 +8,7 @@ import {
   StatusTimeline,
   type TimelineStatus,
 } from "@/components/dashboard/status-timeline";
+import { VideoDetailLiveProgress } from "@/components/dashboard/video-detail-live-progress";
 import { UnpublishButton } from "@/app/dashboard/published/[id]/unpublish-button";
 import { CancelButton } from "@/app/dashboard/published/[id]/cancel-button";
 import { Badge } from "@/components/ui/badge";
@@ -27,11 +28,16 @@ export const metadata: Metadata = {
 
 const STATUS_LABEL: Record<VideoStatus, string> = {
   UPLOADED: "Awaiting upload",
-  READY: "Ready to publish",
+  READY: "Ready to process",
+  EXTRACTING: "Extracting audio & frames",
+  TRANSCRIBING: "Transcribing",
+  GENERATING: "Generating chapters & thumbnails",
+  READY_FOR_REVIEW: "Ready for review",
   SCHEDULED: "Scheduled",
   PUBLISHING: "Publishing…",
   PUBLISHED: "Published",
   PUBLISH_FAILED: "Publish failed",
+  FAILED: "Processing failed",
 };
 
 /**
@@ -43,13 +49,21 @@ const mapStatus = (status: Video["status"]): TimelineStatus => {
   switch (status) {
     case "UPLOADED":
     case "READY":
-    case "PUBLISH_FAILED":
       return "uploaded";
+    case "EXTRACTING":
+    case "TRANSCRIBING":
+    case "GENERATING":
+      return "processing";
+    case "READY_FOR_REVIEW":
+      return "ready_for_review";
     case "SCHEDULED":
     case "PUBLISHING":
+    case "PUBLISH_FAILED":
       return "scheduled";
     case "PUBLISHED":
       return "published";
+    case "FAILED":
+      return "uploaded";
   }
 };
 
@@ -143,6 +157,11 @@ export default async function VideoDetailPage({ params }: PageProps) {
           <p className="mt-3 text-xs text-muted-foreground">
             Will publish {new Date(video.scheduledPublishAt).toLocaleString()}
           </p>
+        ) : null}
+        {video.status !== "PUBLISHED" ? (
+          <div className="mt-4">
+            <VideoDetailLiveProgress videoId={video.id} />
+          </div>
         ) : null}
       </section>
 
@@ -268,11 +287,16 @@ async function fetchVideo(token: string, id: string): Promise<Video> {
 function StatusBadge({ status }: { status: VideoStatus }) {
   const className = {
     UPLOADED: "bg-muted text-muted-foreground",
-    READY: "bg-status-processing/15 text-status-processing",
+    READY: "bg-muted text-muted-foreground",
+    EXTRACTING: "bg-status-processing/15 text-status-processing",
+    TRANSCRIBING: "bg-status-processing/15 text-status-processing",
+    GENERATING: "bg-status-processing/15 text-status-processing",
+    READY_FOR_REVIEW: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
     SCHEDULED: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
     PUBLISHING: "bg-status-processing/15 text-status-processing",
     PUBLISHED: "bg-status-ready/15 text-status-ready",
     PUBLISH_FAILED: "bg-destructive/15 text-destructive",
+    FAILED: "bg-destructive/15 text-destructive",
   }[status];
   return (
     <span

@@ -50,7 +50,7 @@ import {
   getS3Client,
   headObject,
 } from "@clipflow/s3";
-import { publishVideo, unpublishVideo as unpublishVideoOnYouTube } from "@clipflow/youtube-upload";
+import { publishVideo, unpublishVideo as unpublishVideoOnYouTube, uploadVideoThumbnail } from "@clipflow/youtube-upload";
 import { pino } from "pino";
 import { AppError } from "../../errors/AppError.js";
 import { prisma } from "../../lib/prisma.js";
@@ -756,10 +756,21 @@ export const publishVideoNow = async (
 ): Promise<Video> => {
   requireDatabase();
   await loadVideoForOwner(userId, videoId);
-  await publishVideo(
+  const result = await publishVideo(
     { videoId },
     { prisma, env, logger: buildConsoleLogger("api") },
   );
+  // Best-effort thumbnail upload — the video is already live.
+  if (result.youtubeVideoId) {
+    try {
+      await uploadVideoThumbnail(
+        { videoId, youtubeVideoId: result.youtubeVideoId },
+        { prisma, env, logger: buildConsoleLogger("api") },
+      );
+    } catch {
+      // Thumbnail failure doesn't undo the publish.
+    }
+  }
   const updated = await prisma.video.findUniqueOrThrow({ where: { id: videoId } });
   return toVideoDto(updated);
 };

@@ -10,6 +10,8 @@
  *   DELETE /api/videos/pending/:id             → in-flight: cancel
  *   GET    /api/videos                         → committed: list (?status=…)
  *   GET    /api/videos/published               → committed: list PUBLISHED
+ *   GET    /api/videos/stream                  → SSE: user's video events
+ *   GET    /api/videos/:id/stream              → SSE: single video events
  *   GET    /api/videos/:id                     → committed: read
  *   DELETE /api/videos/:id                     → committed: cancel
  *   POST   /api/videos/:id/unpublish           → committed: unpublish
@@ -24,6 +26,7 @@
 import { Router } from "express";
 import type { Env } from "@clipflow/config";
 import { requireAuth } from "../../middleware/auth.js";
+import { requireSseAuth } from "../../middleware/sse-auth.js";
 import { validate } from "../../middleware/validate.js";
 import { buildPerUserRateLimiter } from "../../middleware/rate-limit.js";
 import {
@@ -35,6 +38,8 @@ import {
   getVideoController,
   listPublishedVideosController,
   listVideosController,
+  streamUserVideosController,
+  streamVideoController,
   unpublishVideoController,
 } from "./videos.controller.js";
 import {
@@ -105,13 +110,22 @@ export const buildVideosRouter = (env: Env): Router => {
     listVideosController,
   );
 
-  // Mounted BEFORE the `/:id` route so `/published` isn't matched as
-  // an id parameter (Express matches in declaration order).
+  // Mounted BEFORE the `/:id` route so `/published` and `/stream`
+  // aren't matched as an id parameter (Express matches in declaration order).
   router.get(
     "/published",
     auth,
     validate({ query: listPublishedVideosQuerySchema }),
     listPublishedVideosController,
+  );
+
+  router.get("/stream", requireSseAuth(env), streamUserVideosController);
+
+  router.get(
+    "/:id/stream",
+    requireSseAuth(env),
+    validate({ params: videoIdParamsSchema }),
+    streamVideoController,
   );
 
   router.get(
