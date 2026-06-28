@@ -173,27 +173,21 @@ describe("youtube.service", () => {
         ok: true,
         json: () => Promise.resolve(mockTokenResponse),
       });
-      // Mock subscriptions list (fetches channel title/thumbnail)
+      // Mock channels list (fetches channel ID, title, thumbnail in one call)
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () =>
           Promise.resolve({
             items: [
               {
+                id: "UC_new456",
                 snippet: {
                   title: "New Channel",
                   thumbnails: { default: { url: "https://example.com/new-thumb.jpg" } },
                 },
+                contentDetails: { relatedPlaylists: { uploads: "uuu" } },
               },
             ],
-          }),
-      });
-      // Mock channel content details (fetches channel ID)
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            items: [{ id: "UC_new456", contentDetails: { relatedPlaylists: { uploads: "uuu" } } }],
           }),
       });
 
@@ -206,7 +200,7 @@ describe("youtube.service", () => {
 
       const result = await youtubeService.connectYouTubeChannel("user-1", "auth-code-123", baseEnv);
 
-      expect(mockFetch).toHaveBeenCalledTimes(3); // token + 2 YouTube API calls
+      expect(mockFetch).toHaveBeenCalledTimes(2); // token exchange + YouTube channels API
       expect(mockEncrypt).toHaveBeenCalledWith("test-refresh-token", baseEnv.ENCRYPTION_KEY);
       expect(mockUpsert).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -243,16 +237,12 @@ describe("youtube.service", () => {
         ok: true,
         json: () => Promise.resolve(mockTokenResponse),
       });
-      // Mock subscriptions list failure
+      // Mock channels API failure
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
+        text: () => Promise.resolve("Internal Server Error"),
         json: () => Promise.resolve({}),
-      });
-      // Mock channels endpoint (not reached due to earlier failure, but needed for type correctness)
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ items: [] }),
       });
 
       await expect(
