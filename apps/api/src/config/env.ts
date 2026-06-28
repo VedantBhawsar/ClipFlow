@@ -73,12 +73,26 @@ export const loadApiEnv = (): { env: Env; databaseAvailable: boolean } => {
     const databaseAvailable = isDev
       ? process.env.DATABASE_URL !== "postgresql://stub:stub@localhost:5432/stub"
       : true;
-    if (!databaseAvailable) {
+
+    // Surface config gaps that the boot banner would otherwise bury. We
+    // log (not throw) so the operator still gets to see the banner and
+    // the failure reasons themselves — the banner is the source of truth.
+    if (!databaseAvailable || !env.REDIS_URL) {
       const log = buildLogger(env);
-      log.warn(
-        "DATABASE_URL is not set; Prisma will not be initialized. Routes that touch the DB will return 503.",
-      );
+      if (!databaseAvailable) {
+        log.warn(
+          "DATABASE_URL is not set; Prisma will not be initialized. Routes that touch the DB will return 503.",
+        );
+      }
+      if (!env.REDIS_URL) {
+        log.warn(
+          env.NODE_ENV === "production"
+            ? "REDIS_URL is not set in production — cache will fall back to in-memory (per-process) and publish jobs cannot be enqueued. Set REDIS_URL before deploying."
+            : "REDIS_URL is not set; cache will use the in-memory fallback and the publish queue will be disabled.",
+        );
+      }
     }
+
     return { env, databaseAvailable };
   } catch (error) {
     // Re-throw but with extra context.
@@ -86,3 +100,4 @@ export const loadApiEnv = (): { env: Env; databaseAvailable: boolean } => {
     throw new Error(`Environment validation failed: ${message}`);
   }
 };
+

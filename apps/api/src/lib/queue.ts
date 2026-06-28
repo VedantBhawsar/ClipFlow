@@ -8,6 +8,10 @@
  * null and `enqueuePublishJob` throws QUEUE_UNAVAILABLE so the API
  * caller can decide whether to surface that to the user or fall back
  * to the immediate-publish path.
+ *
+ * `verifyPublishQueue()` is the boot-time PING. It builds the connection
+ * (if needed) and confirms Redis is reachable, so a bad REDIS_URL shows up
+ * in the startup banner instead of as a 503 on the first publish request.
  */
 import { Queue } from "bullmq";
 import { Redis, type Redis as RedisType } from "ioredis";
@@ -31,12 +35,59 @@ export const getPublishQueue = (env: Env): Queue | null => {
   if (cachedQueue) return cachedQueue;
   cachedConnection = new Redis(env.REDIS_URL, {
     maxRetriesPerRequest: null, // required by BullMQ
+    lazyConnect: true,
+  });
+  cachedConnection.on("error", (err) => {
+    // Surfaced here for visibility; verifyPublishQueue() is the
+    // authoritative reachability check.
+    // eslint-disable-next-line no-console
+    console.error("[queue] redis error:", err.message);
   });
   cachedQueue = new Queue(YOUTUBE_PUBLISH_QUEUE, {
     connection: cachedConnection,
     prefix: env.BULLMQ_PREFIX,
   });
   return cachedQueue;
+};
+
+/**
+ * Boot-time reachability check for the BullMQ backing Redis. Connects the
+ * shared `cachedConnection` (if it isn't already) and PINGs. Safe to call
+ * before any `enqueuePublishJob` calls.
+ *
+ * @param env Validated env.
+ * @returns `{ ok: true, latencyMs }` when reachable, otherwise
+ *   `{ ok: false, error }`. Returns `{ ok: false, error: "not-configured" }`
+ *   when REDIS_URL is unset (queue is optional in dev).
+ */
+export const verifyPublishQueue = async (
+  env: Env,
+): Promise<
+  | { ok: true; latencyMs: number }
+  | { ok: false; error: string }
+> => {
+  if (!env.REDIS_URL) {
+    return { ok: false, error: "not-configured" };
+  }
+  const start = Date.now();
+  try {
+    // getPublishQueue() is idempotent — calling it here both constructs and
+    // returns the connection we need to ping.
+    getPublishQueue(env);
+    if (!cachedConnection) {
+      return { ok: false, error: "connection-not-initialized" };
+    }
+    if (cachedConnection.status === "wait" || cachedConnection.status === "end") {
+      await cachedConnection.connect();
+    }
+    const pong = await cachedConnection.ping();
+    if (pong !== "PONG") {
+      return { ok: false, error: `PING returned unexpected response: ${pong}` };
+    }
+    return { ok: true, latencyMs: Date.now() - start };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
 };
 
 /**
