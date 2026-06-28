@@ -20,6 +20,7 @@ import { startServer } from "./server.js";
 import { disposeCache, getCacheBackend, verifyCache } from "./lib/cache.js";
 import { closePublishQueue, verifyPublishQueue } from "./lib/queue.js";
 import { prisma, setDatabaseAvailable } from "./lib/prisma.js";
+import { connectEventBus, eventBus } from "./lib/events.js";
 import type { Logger } from "./lib/logger.js";
 
 /**
@@ -151,6 +152,9 @@ const main = async (): Promise<void> => {
     process.exit(1);
   }
 
+  // Connect the event bus (Redis pub/sub or in-memory fallback).
+  await connectEventBus(env);
+
   const app = createApp({ env, logger });
   const running = await startServer({ app, port: env.PORT, logger });
 
@@ -160,6 +164,7 @@ const main = async (): Promise<void> => {
       await running.close();
       await closePublishQueue();
       await disposeCache();
+      await eventBus.dispose();
       if (databaseAvailable) {
         await prisma.$disconnect();
       }
