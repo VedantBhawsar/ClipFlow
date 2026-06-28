@@ -342,6 +342,15 @@ export function createApiClient(accessToken: string | null): ApiClient {
     listPublishedVideos(params) {
       const search = new URLSearchParams();
       if (params?.q) search.set("q", params.q);
+      // The published page's privacy segmented control and date-range
+      // select flow through `ListPublishedVideosParams` and the hook
+      // forwards them here — but if we don't actually serialize them
+      // into the query string the server sees an empty filter and
+      // returns the unfiltered list regardless of which button the
+      // user clicked. The server schema accepts "all" and transforms
+      // it to undefined, so passing the raw value is fine.
+      if (params?.privacy) search.set("privacy", params.privacy);
+      if (params?.since) search.set("since", params.since);
       if (params?.page) search.set("page", String(params.page));
       if (params?.pageSize) search.set("pageSize", String(params.pageSize));
       const qs = search.toString();
