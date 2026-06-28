@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-26T05:13:58.893Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-28T03:56:03.194Z
 > Files: 271 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
@@ -42,12 +42,12 @@
 ## apps/api/src/
 
 - `app.ts` — Express app factory. (~1395 tok)
-- `index.ts` — Entrypoint. (~678 tok)
+- `index.ts` — Entrypoint. Loads env, runs boot-time service checks (Database Postgres + Cache Redis/in-memory + Queue BullMQ) with a ✓/✗ banner, then starts the HTTP server and wires SIGTERM/SIGINT graceful shutdown. (~1813 tok)
 - `server.ts` — HTTP server lifecycle. (~844 tok)
 
 ## apps/api/src/config/
 
-- `env.ts` — Environment configuration loader. (~948 tok)
+- `env.ts` — Environment configuration loader. Loads .env, calls @clipflow/config.loadEnv, warns when DATABASE_URL or REDIS_URL is unset (louder in production). (~1141 tok)
 
 ## apps/api/src/errors/
 
@@ -55,14 +55,14 @@
 
 ## apps/api/src/lib/
 
-- `cache.ts` — Tiny cache abstraction. (~853 tok)
+- `cache.ts` — Cache abstraction. Two backends (RedisCacheClient via ioredis when REDIS_URL is set, InMemoryCache fallback) share the CacheClient interface. `cache` singleton delegates to the active backend. `initCache(env)` / `verifyCache(env)` / `disposeCache()` are the lifecycle hooks called from index.ts at boot.
 - `crypto.ts` — AES-256-GCM at-rest encryption helper. (~102 tok)
 - `db-guard.ts` — Database availability guard. (~210 tok)
 - `jwt.ts` — JWT helpers. (~583 tok)
 - `logger.ts` — Structured logger (pino). The single source of truth for application (~306 tok)
 - `password.ts` — Password hashing helpers. (~264 tok)
 - `prisma.ts` — Prisma client re-export. (~328 tok)
-- `queue.ts` — BullMQ enqueue helpers. (~779 tok)
+- `queue.ts` — BullMQ enqueue helpers. `getPublishQueue(env)` builds a lazy Redis-backed Queue, `enqueuePublishJob` is called from videos.service, `verifyPublishQueue(env)` PINGs the connection for the boot banner, `closePublishQueue` runs on SIGTERM. Returns null when REDIS_URL is unset. (~1321 tok)
 - `refresh-token.test.ts` — Declares prismaMock (~2701 tok)
 - `refresh-token.ts` — Refresh-token rotation primitives. (~2158 tok)
 - `response.test.ts` — Unit tests for the centralized response helpers. (~926 tok)
@@ -335,7 +335,7 @@
 
 ## apps/web/lib/
 
-- `api-client.ts` — Typed API surface for talking to the Express backend. (~3542 tok)
+- `api-client.ts` — Typed API surface for talking to the Express backend. (~3714 tok)
 - `auth-guard.test.tsx` — mockReplace (~700 tok)
 - `auth-guard.tsx` — Where to send unauthenticated users. Defaults to /signin. (~521 tok)
 - `env.ts` — Centralized access to NEXT_PUBLIC_* env vars. (~184 tok)
@@ -356,8 +356,8 @@
 ## apps/worker/src/
 
 - `env.ts` — Worker environment loader. (~504 tok)
-- `index.ts` — Worker entrypoint. (~531 tok)
-- `startup-recovery.ts` — Worker startup-recovery scan. (~506 tok)
+- `index.ts` — Worker entrypoint. Loads env, runs boot-time service checks (Postgres + Redis PING), builds the BullMQ Queue + Worker, runs the 2-pass startup-recovery scan (orphaned PUBLISHING rows → READY/SCHEDULED re-enqueue), wires SIGTERM/SIGINT graceful shutdown. (~1622 tok)
+- `startup-recovery.ts` — Worker startup-recovery scan. Two passes: recoverOrphanedPublishingJobs (reconciles rows left in PUBLISHING by a crashed worker) runs BEFORE recoverMissedScheduledJobs (re-enqueues due READY/SCHEDULED rows). (~1313 tok)
 
 ## apps/worker/src/config/
 

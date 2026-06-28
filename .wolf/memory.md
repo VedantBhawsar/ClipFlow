@@ -7,6 +7,7 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+| 09:12 | Drafted resume bullet points + prerequisite skill list from project context (Turborepo monorepo, Next.js 16, Express, Prisma 7, BullMQ, YouTube OAuth, AES-256-GCM) | .wolf/memory.md | Delivered 8 bullets + skills checklist | ~3.5k |
 
 ## Session: 2026-06-26 09:44
 
@@ -132,3 +133,57 @@
 | 10:44 | Added explicit `publishedAt: null` filter to startup-recovery's where clause so the "videos that haven't been published yet" intent is clear in the query (not just implicit from the status filter). No behavior change for existing READY/SCHEDULED rows. | apps/worker/src/startup-recovery.ts | literal interpretation of "requeue videos where publish date is null" — defensive belt-and-braces | ~150 |
 | 10:44 | Session end: 1 write to apps/worker/src/startup-recovery.ts | 5 reads (anatomy, cerebrum, index, startup-recovery, queue, env, youtube-publish, schema, buglog, memory) | ~4200 tok |
 | 10:44 | Session end: 1 writes across 1 files (startup-recovery.ts) | 6 reads | ~5885 tok |
+
+## Session: 2026-06-27 20:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-27 20:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-27 20:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-27 20:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:28 | Created apps/worker/src/startup-recovery.ts | — | ~1313 |
+| 20:28 | Edited apps/worker/src/index.ts | 1→4 lines | ~30 |
+| 20:28 | Edited apps/worker/src/index.ts | expanded (+12 lines) | ~188 |
+| 20:30 | Edited apps/worker/src/startup-recovery.ts | added recoverOrphanedPublishingJobs() | ~1313 |
+| 20:30 | Edited apps/worker/src/index.ts | added recoverOrphanedPublishingJobs() | ~672 |
+| 20:30 | Wired worker startup recovery into 2 passes: recoverOrphanedPublishingJobs (PUBLISHING→PUBLISHED if youtubeVideoId set, else READY) runs BEFORE recoverMissedScheduledJobs. Orphan + re-enqueue counts both logged from index.ts. | apps/worker/src/startup-recovery.ts + index.ts | orphan reconciliation now happens before READY/SCHEDULED re-enqueue | ~1450 |
+| 20:29 | Session end: 3 writes across 2 files (startup-recovery.ts, index.ts) | 6 reads | ~12488 tok |
+
+## Session: 2026-06-27 20:45
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:46 | Edited apps/web/lib/api-client.ts | added 2 condition(s) | ~281 |
+| 20:48 | Fixed `/dashboard/published` privacy + date filters: api-client's `listPublishedVideos()` was dropping `privacy` and `since` from the query string. Server schema + types already supported both; only the wire layer was missing the `search.set(...)` calls. | apps/web/lib/api-client.ts | check-types clean; filters now reach the API | ~900 |
+| 20:47 | Session end: 1 writes across 1 files (api-client.ts) | 7 reads | ~11318 tok |
+
+## Session: 2026-06-27 22:19
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-28 09:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:24 | Created apps/api/src/lib/cache.ts | — | ~2537 |
+| 09:24 | Created apps/api/src/lib/queue.ts | — | ~1321 |
+| 09:25 | Created apps/api/src/index.ts | — | ~1813 |
+| 09:25 | Edited apps/api/src/config/env.ts | added 2 condition(s) | ~317 |
+| 09:25 | Created apps/worker/src/index.ts | — | ~1534 |
+| 09:25 | Edited apps/worker/src/index.ts | added nullish coalescing | ~18 |
+| 09:26 | Edited apps/worker/src/index.ts | modified verifyRedis() | ~104 |
+| 09:30 | Migrated cache from in-memory to Redis: added RedisCacheClient (ioredis, lazyConnect + PING verify) in apps/api/src/lib/cache.ts; initCache(env)/verifyCache(env)/disposeCache() lifecycle; existing `cache` singleton now delegates to active backend so all 4 service call sites + 1 test mock are untouched. Added boot-time service-check banner (Database + Cache + Queue with ✓/✗ + latency) in both apps/api/src/index.ts and apps/worker/src/index.ts. Production-aware warnings in apps/api/src/config/env.ts when DATABASE_URL or REDIS_URL is unset. | 5 files (cache.ts, queue.ts, index.ts × 2, env.ts) + 4 anatomy descriptions | api + worker typecheck clean; videos.service.test green; 2 pre-existing youtube.service.test failures unchanged | ~3800 |
+| 09:29 | Session end: 7 writes across 4 files (cache.ts, queue.ts, index.ts, env.ts) | 12 reads | ~16873 tok |

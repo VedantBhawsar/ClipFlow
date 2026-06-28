@@ -1,12 +1,27 @@
 /**
- * Tiny cache abstraction.
+ * Cache abstraction.
  *
- * In-memory Map + TTL today. The interface is intentionally async so that
- * swapping to Redis is a one-file change (`apps/api/src/lib/cache.ts`)
- * without touching any call site.
+ * Two backends share one interface:
+ *   - `RedisCacheClient`  → production + any environment with REDIS_URL
+ *   - `InMemoryCache`     → dev fallback when REDIS_URL is unset; also the
+ *                            default for unit tests that never call initCache()
  *
- * Currently used to short-circuit `GET /api/settings` for 30s per user
- * (low-priority optimization, but wired so the abstraction is proven).
+ * `initCache(env)` is called once at boot from `index.ts` and picks the
+ * backend from `env.REDIS_URL`. The exported `cache` object delegates to the
+ * active backend, so existing call sites (`cache.get/set/del`) stay
+ * unchanged. Tests that mock this module with `vi.mock("../../lib/cache.js")`
+ * keep working because the mock replaces the whole module surface.
+ *
+ * `connectCache()` + `disconnectCache()` are the lifecycle hooks called from
+ * `index.ts`. `connectCache()` PINGs Redis so a misconfigured REDIS_URL
+ * surfaces at startup, not on the first request.
+ */
+import { Redis } from "ioredis";
+import type { Env } from "@clipflow/config";
+
+/**
+ * Cache contract used by every consumer. Async on purpose so the swap from
+ * in-memory to a network client is invisible at call sites.
  */
 export interface CacheClient {
   /**
@@ -87,7 +102,7 @@ class InMemoryCache implements CacheClient {
   }
 
   /**
-   * Stop the background sweeper. Call from graceful shutdown.
+   * Stop the background sweeper. Called from graceful shutdown.
    */
   public dispose(): void {
     if (this.sweeper) {
@@ -98,17 +113,173 @@ class InMemoryCache implements CacheClient {
 }
 
 /**
- * Singleton cache instance. Swap this out for a Redis-backed client when
- * `REDIS_URL` is present.
+ * Redis-backed implementation. Uses ioredis with `lazyConnect: true` so we
+ * can fail fast at boot via `connect()` rather than on the first cache call.
+ *
+ * `maxRetriesPerRequest: null` is required for BullMQ compatibility — we
+ * use the same ioredis options the queue does so either client could
+ * theoretically be reused for queueing later.
  */
-export const cache: CacheClient = new InMemoryCache();
+class RedisCacheClient implements CacheClient {
+  private readonly redis: Redis;
+  private connected = false;
+
+  constructor(redisUrl: string) {
+    this.redis = new Redis(redisUrl, {
+      lazyConnect: true,
+      maxRetriesPerRequest: null,
+      // Surface errors to stderr rather than throwing — boot-time connect()
+      // is the authoritative check.
+    });
+    this.redis.on("error", (err) => {
+      // Logged at the point of failure (typically connect() / first command).
+      // ioredis emits `error` on socket-level failures; we don't want the
+      // process to crash mid-flight.
+      // eslint-disable-next-line no-console
+      console.error("[cache] redis error:", err.message);
+    });
+  }
+
+  /**
+   * Connect + PING. Throws on unreachable Redis so boot fails fast.
+   */
+  public async connect(): Promise<void> {
+    if (this.connected) return;
+    await this.redis.connect();
+    const pong = await this.redis.ping();
+    if (pong !== "PONG") {
+      await this.redis.quit().catch(() => undefined);
+      throw new Error(`Redis PING returned unexpected response: ${pong}`);
+    }
+    this.connected = true;
+  }
+
+  public async get(key: string): Promise<string | null> {
+    return this.redis.get(key);
+  }
+
+  public async set(key: string, value: string, ttlSeconds: number): Promise<void> {
+    // Atomic SET ... EX — survives a process restart mid-flight.
+    await this.redis.set(key, value, "EX", ttlSeconds);
+  }
+
+  public async del(key: string): Promise<void> {
+    await this.redis.del(key);
+  }
+
+  /**
+   * Graceful shutdown — sends QUIT so the server side closes the socket
+   * cleanly. Falls back to `disconnect()` on a hanging server.
+   */
+  public async disconnect(): Promise<void> {
+    try {
+      await this.redis.quit();
+    } catch {
+      this.redis.disconnect();
+    }
+    this.connected = false;
+  }
+}
 
 /**
- * Helper to dispose the in-memory cache's background sweeper. Called from
- * graceful shutdown so the process can exit cleanly.
+ * The active backend singleton. Null until `initCache(env)` runs. We expose
+ * a delegating `cache` object below so existing call sites (`cache.get/set/del`)
+ * keep working without knowing which backend is active.
  */
-export const disposeCache = (): void => {
-  if (cache instanceof InMemoryCache) {
-    cache.dispose();
+let instance: CacheClient | null = null;
+
+/**
+ * Pick the backend from env and return the active instance. Idempotent —
+ * repeated calls return the same instance.
+ *
+ * @param env Validated env.
+ * @returns The active cache client.
+ */
+export const initCache = (env: Env): CacheClient => {
+  if (instance) return instance;
+  instance = env.REDIS_URL ? new RedisCacheClient(env.REDIS_URL) : new InMemoryCache();
+  return instance;
+};
+
+/**
+ * Return the active instance, lazily constructing the in-memory fallback if
+ * `initCache()` was never called. Keeps legacy behavior for tests that
+ * exercise the cache without booting the full API.
+ */
+const ensureInstance = (): CacheClient => {
+  if (!instance) instance = new InMemoryCache();
+  return instance;
+};
+
+/**
+ * Singleton used by every consumer. Methods delegate to the active backend.
+ * Tests that mock this module replace the entire export, so the delegation
+ * here never runs in test code paths.
+ */
+export const cache: CacheClient = {
+  get: (key) => ensureInstance().get(key),
+  set: (key, value, ttlSeconds) => ensureInstance().set(key, value, ttlSeconds),
+  del: (key) => ensureInstance().del(key),
+};
+
+/**
+ * Which backend is currently active. Used by the boot banner to log which
+ * cache layer is wired in.
+ *
+ * @returns `"redis"` if REDIS_URL was provided, otherwise `"memory"`.
+ */
+export const getCacheBackend = (): "redis" | "memory" =>
+  instance instanceof RedisCacheClient ? "redis" : "memory";
+
+/**
+ * Verify the cache is reachable. Called once at boot from `index.ts` so a
+ * misconfigured Redis URL surfaces as a clear startup error rather than a
+ * confusing request-time 500. For the in-memory backend this is a no-op.
+ *
+ * @param env Validated env.
+ * @returns `{ ok: true, backend, latencyMs }` on success, otherwise
+ *   `{ ok: false, backend, error }`.
+ */
+export const verifyCache = async (
+  env: Env,
+): Promise<
+  | { ok: true; backend: "redis" | "memory"; latencyMs: number }
+  | { ok: false; backend: "redis" | "memory"; error: string }
+> => {
+  const backend: "redis" | "memory" = env.REDIS_URL ? "redis" : "memory";
+  if (!env.REDIS_URL) {
+    // In-memory is always reachable — there's no network to fail.
+    initCache(env);
+    return { ok: true, backend, latencyMs: 0 };
+  }
+  const start = Date.now();
+  try {
+    initCache(env);
+    const client = ensureInstance();
+    if (client instanceof RedisCacheClient) {
+      await client.connect();
+    }
+    return { ok: true, backend, latencyMs: Date.now() - start };
+  } catch (err) {
+    return {
+      ok: false,
+      backend,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+};
+
+/**
+ * Disconnect the active cache on graceful shutdown. Safe to call when the
+ * backend is the in-memory fallback (the inner `dispose()` is a no-op for
+ * the in-memory case except for the sweeper, which we still want cleared).
+ */
+export const disposeCache = async (): Promise<void> => {
+  const client = instance;
+  if (!client) return;
+  if (client instanceof RedisCacheClient) {
+    await client.disconnect();
+  } else if (client instanceof InMemoryCache) {
+    client.dispose();
   }
 };
