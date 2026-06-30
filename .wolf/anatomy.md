@@ -1,21 +1,30 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-28T04:09:34.723Z
-> Files: 270 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-30T04:20:32.435Z
+> Files: 299 tracked | Anatomy hits: 0 | Misses: 0
+
+## ../../../../../tmp/pw-capture/
+
+- `capture.mjs` — Declares __dirname (~363 tok)
+
+## ../../../.claude/plans/
+
+- `zazzy-plotting-peacock.md` — Audio + Frame Extraction (`video-ingest` queue) (~3360 tok)
 
 ## ./
 
+- `.dockerignore` — Repo-root .dockerignore. Applies to every docker build whose context (~144 tok)
 - `.DS_Store` (~1640 tok)
 - `.gitignore` — Git ignore rules (~107 tok)
 - `.npmrc` (~0 tok)
 - `CLAUDE.md` — OpenWolf (~3549 tok)
-- `docker-compose.yml` — Docker Compose services (~1162 tok)
+- `docker-compose.yml` — Docker Compose services (~1610 tok)
 - `neon_backup.sql` — PostgreSQL database dump (~6500 tok)
 - `package.json` — Node.js package manifest (~123 tok)
-- `pnpm-lock.yaml` — pnpm lock file (~99856 tok)
+- `pnpm-lock.yaml` — pnpm lock file (~100120 tok)
 - `pnpm-workspace.yaml` (~12 tok)
 - `README.md` — Project documentation (~3869 tok)
-- `turbo.json` — Turborepo configuration (~271 tok)
+- `turbo.json` — Turborepo configuration (~286 tok)
 - `z.mjs` — Declares args (~84 tok)
 
 ## .claude/
@@ -26,6 +35,10 @@
 ## .claude/rules/
 
 - `openwolf.md` (~313 tok)
+
+## .github/workflows/
+
+- `pr.yml` — CI: PR Checks (~369 tok)
 
 ## apps/api/
 
@@ -41,13 +54,13 @@
 
 ## apps/api/src/
 
-- `app.ts` — Express app factory. (~1395 tok)
-- `index.ts` — Entrypoint. Loads env, runs boot-time service checks (Database Postgres + Cache Redis/in-memory + Queue BullMQ) with a ✓/✗ banner, then starts the HTTP server and wires SIGTERM/SIGINT graceful shutdown. (~1813 tok)
+- `app.ts` — Express app factory. (~1479 tok)
+- `index.ts` — Entrypoint. (~2056 tok)
 - `server.ts` — HTTP server lifecycle. (~844 tok)
 
 ## apps/api/src/config/
 
-- `env.ts` — Environment configuration loader. Loads .env, calls @clipflow/config.loadEnv, warns when DATABASE_URL or REDIS_URL is unset (louder in production). (~1141 tok)
+- `env.ts` — Environment configuration loader. (~1142 tok)
 
 ## apps/api/src/errors/
 
@@ -55,17 +68,20 @@
 
 ## apps/api/src/lib/
 
+- `cache.ts` — Cache abstraction. (~2524 tok)
 - `crypto.ts` — AES-256-GCM at-rest encryption helper. (~102 tok)
 - `db-guard.ts` — Database availability guard. (~210 tok)
+- `events.ts` — Event bus for video processing progress. (~1658 tok)
 - `jwt.ts` — JWT helpers. (~583 tok)
 - `logger.ts` — Structured logger (pino). The single source of truth for application (~306 tok)
 - `password.ts` — Password hashing helpers. (~264 tok)
 - `prisma.ts` — Prisma client re-export. (~328 tok)
-- `queue.ts` — BullMQ enqueue helpers. `getPublishQueue(env)` builds a lazy Redis-backed Queue, `enqueuePublishJob` is called from videos.service, `verifyPublishQueue(env)` PINGs the connection for the boot banner, `closePublishQueue` runs on SIGTERM. Returns null when REDIS_URL is unset. (~1321 tok)
+- `queue.ts` — BullMQ enqueue helpers. (~2058 tok)
 - `refresh-token.test.ts` — Declares prismaMock (~2701 tok)
-- `refresh-token.ts` — Refresh-token rotation primitives. (~2158 tok)
-- `response.test.ts` — Unit tests for the centralized response helpers. (~926 tok)
+- `refresh-token.ts` — Refresh-token rotation primitives. (~2161 tok)
+- `response.test.ts` — Unit tests for the centralized response helpers. (~924 tok)
 - `response.ts` — Centralized response helpers for the Express API. (~547 tok)
+- `sse.ts` — Write an SSE event to the response stream. (~116 tok)
 
 ## apps/api/src/middleware/
 
@@ -73,16 +89,17 @@
 - `error.ts` — Central error handler. (~966 tok)
 - `rate-limit.ts` — Rate limiting middleware. (~1210 tok)
 - `request-id.ts` — Request-ID middleware. (~298 tok)
+- `sse-auth.ts` — SSE authentication middleware. (~362 tok)
 - `validate.ts` — Request validation middleware. (~593 tok)
 
 ## apps/api/src/modules/auth/
 
-- `auth.controller.ts` — Auth controller. (~766 tok)
+- `auth.controller.ts` — Auth controller. (~770 tok)
 - `auth.routes.ts` — Auth route definitions. (~532 tok)
 - `auth.schemas.test.ts` — Declares result (~1693 tok)
 - `auth.schemas.ts` — Zod schemas for auth routes. (~717 tok)
-- `auth.service.test.ts` — Declares mockEnv (~2510 tok)
-- `auth.service.ts` — Auth service. (~2359 tok)
+- `auth.service.test.ts` — Declares mockEnv (~2518 tok)
+- `auth.service.ts` — Auth service. (~2107 tok)
 - `auth.types.ts` — Auth-module-specific type helpers. (~87 tok)
 
 ## apps/api/src/modules/health/
@@ -95,7 +112,7 @@
 - `onboarding.routes.ts` — Onboarding route definitions. (~315 tok)
 - `onboarding.schemas.test.ts` — Declares result (~1241 tok)
 - `onboarding.schemas.ts` — Zod schemas for onboarding routes. (~512 tok)
-- `onboarding.service.test.ts` — Declares mockProfile (~2036 tok)
+- `onboarding.service.test.ts` — Declares mockProfile (~2103 tok)
 - `onboarding.service.ts` — Onboarding service. (~1295 tok)
 - `plan-recommendation.test.ts` (~175 tok)
 - `plan-recommendation.ts` — Plan recommendation logic. (~278 tok)
@@ -113,30 +130,30 @@
 
 - `settings.controller.ts` — Settings controller. (~412 tok)
 - `settings.routes.ts` — Settings route definitions. (~219 tok)
-- `settings.service.ts` — Settings service. (~1160 tok)
+- `settings.service.ts` — Settings service. (~1149 tok)
 
 ## apps/api/src/modules/videos/
 
-- `videos.controller.ts` — Videos controller. (~2220 tok)
-- `videos.routes.ts` — Videos route definitions. (~1141 tok)
-- `videos.schemas.ts` — Zod schemas for the videos module. Now includes optional thumbnail content-type / size / filename block + superRefine that requires all three or none. (~2702 tok)
-- `videos.service.test.ts` — Tests for the videos service. StubVideo includes nullable s3KeyThumbnail + thumbnailContentType. (~6640 tok)
-- `videos.service.ts` — Videos service — owns all DB + S3 + YouTube-publish enqueue logic. Mints a second presigned POST URL for the optional custom thumbnail and HEADs the S3 object on finalize before persisting the key. (~8496 tok)
-- `videos.types.ts` — Module-internal types for the videos module. toVideoDto surfaces nullable s3KeyThumbnail + thumbnailContentType. (~615 tok)
+- `videos.controller.ts` — Videos controller. (~2936 tok)
+- `videos.routes.ts` — Videos route definitions. (~1283 tok)
+- `videos.schemas.ts` — Zod schemas for the videos module. (~2702 tok)
+- `videos.service.test.ts` — Tests for the videos service. (~6974 tok)
+- `videos.service.ts` — Videos service — owns all DB + S3 + YouTube-publish enqueue logic (~8813 tok)
+- `videos.types.ts` — Module-internal types for the videos module. (~615 tok)
 
 ## apps/api/src/modules/youtube/
 
 - `youtube.controller.ts` — YouTube OAuth controller. (~1427 tok)
 - `youtube.routes.ts` — YouTube OAuth route definitions. (~594 tok)
 - `youtube.schemas.ts` — Zod schemas for YouTube module request/response validation. (~372 tok)
-- `youtube.service.test.ts` — Declares PermanentPublishError (~3078 tok)
-- `youtube.service.ts` — YouTube OAuth service. (~2546 tok)
+- `youtube.service.test.ts` — Declares PermanentPublishError (~2929 tok)
+- `youtube.service.ts` — YouTube OAuth service. (~2526 tok)
 - `youtube.types.ts` — YouTube module types. (~365 tok)
 
 ## apps/api/src/scripts/
 
-- `crypto-self-test.js` — Crypto self-test. (~855 tok)
-- `crypto-self-test.ts` — Crypto self-test. (~784 tok)
+- `crypto-self-test.js` — Crypto self-test. (~735 tok)
+- `crypto-self-test.ts` — Crypto self-test. (~671 tok)
 
 ## apps/api/src/types/
 
@@ -149,10 +166,10 @@
 - `auth.ts` — Full NextAuth (Auth.js v5) configuration. (~3420 tok)
 - `components.json` (~122 tok)
 - `eslint.config.js` — ESLint flat configuration (~41 tok)
-- `middleware.ts` — Edge middleware. (~548 tok)
-- `next-env.d.ts` — / <reference types="next" /> (~72 tok)
-- `next.config.js` — Next.js configuration (~34 tok)
-- `package.json` — Node.js package manifest (~471 tok)
+- `middleware.ts` — Edge middleware (Auth.js v5). Exports `NextAuth(authConfig).auth` as a function reference — NOT invoked at module load (Next.js 16 + Auth.js v5 pitfall: eager `auth()` hits the RSC branch and calls `headers()` outside a request scope). (~830 tok)
+- `next-env.d.ts` — / <reference types="next" /> (~71 tok)
+- `next.config.js` — Declares nextConfig (~94 tok)
+- `package.json` — Node.js package manifest (~481 tok)
 - `postcss.config.mjs` — Declares config (~26 tok)
 - `README.md` — Project documentation (~353 tok)
 - `tsconfig.json` — TypeScript configuration (~114 tok)
@@ -161,9 +178,9 @@
 
 ## apps/web/app/
 
-- `globals.css` — Styles: 7 rules, 91 vars (~3088 tok)
-- `layout.tsx` — interTight (~479 tok)
-- `page.tsx` — Marketing landing. (~833 tok)
+- `globals.css` — Styles: 6 rules, 89 vars, 2 layers (~1590 tok)
+- `layout.tsx` — interTight (~506 tok)
+- `page.tsx` — Marketing landing. (~600 tok)
 
 ## apps/web/app/(auth)/
 
@@ -183,7 +200,7 @@
 
 ## apps/web/app/dashboard/
 
-- `dashboard-content.tsx` — Dashboard home (client component). (~1275 tok)
+- `dashboard-content.tsx` — Dashboard home (client component). (~1675 tok)
 - `layout.tsx` — Dashboard chrome. The sidebar is rendered server-side and the (~314 tok)
 - `page.tsx` — Dashboard route entry. Stays a server component so we can export (~190 tok)
 
@@ -194,12 +211,12 @@
 ## apps/web/app/dashboard/published/[id]/
 
 - `cancel-button.tsx` — Cancel action for the video detail page. Calls (~430 tok)
-- `page.tsx` — Same mapping the dashboard's `VideoCard` uses — keep the visual (~3152 tok)
+- `page.tsx` — Same mapping the dashboard's `VideoCard` uses — keep the visual (~3422 tok)
 - `unpublish-button.tsx` — Unpublish action for the video detail page. Calls (~426 tok)
 
 ## apps/web/app/dashboard/settings/
 
-- `layout.tsx` — Settings chrome. Same dashboard shell (sidebar + main content) so the (~284 tok)
+- `layout.tsx` — Settings chrome. Same dashboard shell (sidebar + main content) so the (~251 tok)
 - `page.tsx` — Settings index. Redirects to the Profile section — that's the most (~98 tok)
 
 ## apps/web/app/dashboard/settings/appearance/
@@ -250,12 +267,23 @@
 
 - `page.tsx` — CallbackContent — uses useSearchParams, useRouter, useEffect (~385 tok)
 
+## apps/web/components/landing/
+
+- `site-header.tsx` — Marketing site header. Logo + three nav links (hidden on mobile) + sign-in / start-free pair. (~940 tok)
+- `hero.tsx` — Asymmetric hero with eyebrow + Fraunces display headline + product card + CTA pair + logline stats strip. (~2400 tok)
+- `hero-product-card.tsx` — Faux product UI in the hero — tilted, glowing card showing "Ready to publish" with a designed thumbnail, schedule, chapter list, and Confirm/Edit buttons. (~2900 tok)
+- `feature-trio.tsx` — Three feature cards (Schedule / Thumbnail / Chapters) each with a small product visual (calendar grid / stacked thumbnails / transcript). (~3600 tok)
+- `how-it-works.tsx` — Three-step timeline (Upload → Review → Confirm) with hairline connectors. (~1700 tok)
+- `creator-voice.tsx` — Single testimonial + 2x2 stats grid + marquee strip of channel handles. (~1700 tok)
+- `cta-band.tsx` — Final conversion card. Ambient radial gradient + primary CTA + sign-in escape. (~980 tok)
+- `site-footer.tsx` — Three-column nav (Product / Resources / Company) + brand block + copyright. Includes a reserved bottom strip so the Next.js dev indicator never overlaps footer content. (~1300 tok)
+
 ## apps/web/components/auth/
 
 - `google-button.tsx` — Label override. Defaults to "Continue with Google" per the design (~713 tok)
 - `password-input.tsx` — Accessible label for the toggle button. Override per-locale. (~497 tok)
 - `signin-form.test.tsx` — mockPush (~1809 tok)
-- `signin-form.tsx` — Email + password sign-in form. Delegates to NextAuth's Credentials (~1313 tok)
+- `signin-form.tsx` — Email + password sign-in form. Delegates to NextAuth's Credentials (~1301 tok)
 - `signup-form.test.tsx` — mockPush (~1844 tok)
 - `signup-form.tsx` — Password rule checkers. Split out so the live hints under the password (~2147 tok)
 
@@ -267,11 +295,23 @@
 - `published-video-card.tsx` — One row in the `/dashboard/published` library. (~1874 tok)
 - `published-video-list.tsx` — Date-range buckets shown in the Select. Each maps to a `since` ISO (~4280 tok)
 - `sidebar.test.tsx` — mockUseSession (~1377 tok)
-- `sidebar.tsx` — Show as a real link vs. a "coming soon" placeholder. (~1933 tok)
-- `status-timeline.tsx` — Video status values — narrow, semantic subset of the full VideoStatus (~1042 tok)
-- `video-card.tsx` — Map a server-side VideoStatus to the timeline's narrow `TimelineStatus` (~1703 tok)
-- `video-list.tsx` — The already-fetched videos to render. In the SSR dashboard flow (~1191 tok)
-- `youtube-connect-card.tsx` — Persistent channel-connection card. Per Design.md, channel-connection (~2582 tok)
+- `sidebar.tsx` — Show as a real link vs. a "coming soon" placeholder. (~1986 tok)
+- `status-timeline.tsx` — Visual pipeline stages shown in the timeline strip. (~1038 tok)
+- `video-card.tsx` — Latest SSE events for real-time progress display (~2406 tok)
+- `video-detail-live-progress.tsx` — VideoDetailLiveProgress — uses useEffect (~828 tok)
+- `video-list.tsx` — The already-fetched videos to render. In the SSR dashboard flow (~1238 tok)
+- `youtube-connect-card.tsx` — Persistent channel-connection card. Per Design.md, channel-connection (~2614 tok)
+
+## apps/web/components/landing/
+
+- `creator-voice.tsx` — Creator voice — a single, strong testimonial centered, with a quiet (~1200 tok)
+- `cta-band.tsx` — CTA band — sits above the footer. Asks the page's last conversion (~663 tok)
+- `feature-trio.tsx` — Feature trio — Schedule / Thumbnail / Chapters. (~2164 tok)
+- `hero-product-card.tsx` — Faux product UI used as the hero visual. (~1980 tok)
+- `hero.tsx` — Hero — asymmetric, two-column on desktop, stacked on mobile. (~1383 tok)
+- `how-it-works.tsx` — How it works — three numbered steps rendered as a horizontal timeline. (~922 tok)
+- `site-footer.tsx` — Marketing footer — three nav columns + brand block + bottom line. (~859 tok)
+- `site-header.tsx` — Marketing site header. (~484 tok)
 
 ## apps/web/components/onboarding/
 
@@ -319,17 +359,19 @@
 
 - `use-api.test.ts` — Behavioral test for `useApi()` — the critical contract that pulls (~1325 tok)
 - `use-api.ts` — Hook that returns a typed `api` surface bound to the current session's (~356 tok)
-- `use-auth.ts` — Identity hook for components. (~821 tok)
+- `use-auth.ts` — Identity hook for components. (~858 tok)
 - `use-change-password.ts` — Change the authenticated user's password. The server returns 204; (~194 tok)
 - `use-connect-youtube.ts` — Connect the authenticated user's YouTube channel by exchanging an (~417 tok)
 - `use-disconnect-youtube.ts` — Disconnect the authenticated user's YouTube channel. Optimistic: we (~766 tok)
 - `use-onboarding-status.ts` — Onboarding-completion status. Used by /onboarding routes to decide (~245 tok)
 - `use-settings.ts` — Lazy settings-shaped read for the settings pages and the YouTube (~253 tok)
-- `use-sign-in.ts` — Sign in via NextAuth's Credentials provider. (~788 tok)
+- `use-sign-in.ts` — Sign in via NextAuth's Credentials provider. (~781 tok)
 - `use-sign-out.ts` — Sign out via NextAuth. (~500 tok)
 - `use-sign-up.ts` — Sign up. (~734 tok)
 - `use-update-preferences.ts` — Partial update of the authenticated user's preferences. The server (~330 tok)
 - `use-update-profile.ts` — Update the authenticated user's profile. Two flavors: (~474 tok)
+- `use-video-sse.ts` — Subscribe to SSE events for video processing. (~847 tok)
+- `use-videos.ts` — TanStack Query hooks + an XHR-based upload helper for the (~2711 tok)
 - `use-youtube-connection.ts` — Narrow YouTube-connection read for /settings/connected. The (~203 tok)
 
 ## apps/web/lib/
@@ -348,24 +390,37 @@
 
 ## apps/worker/
 
+- `.dockerignore` — Files ignored by `docker build` for the worker image. Keep node_modules (~62 tok)
+- `Dockerfile` — Docker container definition (~2169 tok)
 - `eslint.config.mjs` — ESLint flat configuration (~34 tok)
-- `package.json` — Node.js package manifest (~262 tok)
+- `package.json` — Node.js package manifest (~283 tok)
 - `tsconfig.json` — TypeScript configuration (~57 tok)
+- `vitest.config.ts` — /*.test.ts"], (~45 tok)
 
 ## apps/worker/src/
 
 - `env.ts` — Worker environment loader. (~504 tok)
-- `index.ts` — Worker entrypoint. Loads env, runs boot-time service checks (Postgres + Redis PING), builds the BullMQ Queue + Worker, runs the 2-pass startup-recovery scan (orphaned PUBLISHING rows → READY/SCHEDULED re-enqueue), wires SIGTERM/SIGINT graceful shutdown. (~1622 tok)
-- `startup-recovery.ts` — Worker startup-recovery scan. Two passes: recoverOrphanedPublishingJobs (reconciles rows left in PUBLISHING by a crashed worker) runs BEFORE recoverMissedScheduledJobs (re-enqueues due READY/SCHEDULED rows). (~1313 tok)
+- `index.ts` — Worker entrypoint. (~2342 tok)
+- `startup-recovery.ts` — Worker startup-recovery scan. (~2170 tok)
 
 ## apps/worker/src/config/
 
 - `logger.ts` — Pino logger factory for the worker. Mirrors apps/api's logger shape (~209 tok)
-- `queue.ts` — BullMQ queue + worker construction. (~626 tok)
+- `queue.ts` — BullMQ queue + worker construction. (~1222 tok)
 
 ## apps/worker/src/jobs/
 
-- `youtube-publish.ts` — Worker job: publish a Video row to YouTube. (~733 tok)
+- `video-ingest.test.ts` — Integration tests for the `video-ingest` BullMQ job. (~3220 tok)
+- `video-ingest.ts` — Worker job: extract audio + candidate frames from an uploaded video. (~3210 tok)
+- `youtube-publish.ts` — Worker job: publish a Video row to YouTube. (~1482 tok)
+
+## apps/worker/src/lib/
+
+- `events.ts` — Worker event publisher. (~572 tok)
+- `ffmpeg-errors.test.ts` — Unit tests for the FFmpeg error classifier. (~1527 tok)
+- `ffmpeg-errors.ts` — Classify FFmpeg errors into permanent (don't retry) vs transient (~1310 tok)
+- `ffmpeg.test.ts` — Unit tests for the FFmpeg wrapper. (~913 tok)
+- `ffmpeg.ts` — FFmpeg wrapper for the `video-ingest` BullMQ job. (~1987 tok)
 
 ## docker/postgres/init/
 
@@ -386,7 +441,7 @@
 
 ## packages/config/src/
 
-- `index.ts` — Zod schemas: envSchema, publicEnvSchema (~1208 tok)
+- `index.ts` — Zod schemas: envSchema, publicEnvSchema (~1319 tok)
 
 ## packages/crypto/
 
@@ -406,7 +461,7 @@
 
 - `package.json` — Node.js package manifest (~277 tok)
 - `prisma.config.ts` (~89 tok)
-- `schema.prisma` — packages/db/schema.prisma (~3431 tok)
+- `schema.prisma` — packages/db/schema.prisma (~3893 tok)
 - `tsconfig.json` — TypeScript configuration (~75 tok)
 
 ## packages/db/prisma/migrations/
@@ -447,8 +502,11 @@
 
 ## packages/db/prisma/migrations/20260626000000_add_video_thumbnail/
 
-- `migration.sql` — AlterTable — adds nullable s3KeyThumbnail + thumbnailContentType columns on videos. (~146 tok)
-- `migration.sql` — Add custom-thumbnail support to the videos table. (~156 tok)
+- `migration.sql` — Add custom-thumbnail support to the videos table. (~167 tok)
+
+## packages/db/prisma/migrations/20260629000000_add_video_ingest_pipeline/
+
+- `migration.sql` — Add the audio/frame extraction pipeline to the video lifecycle. (~443 tok)
 
 ## packages/db/src/
 
@@ -471,8 +529,8 @@
 ## packages/s3/src/
 
 - `client.ts` — Exports S3Config, buildS3Config, getS3Client (~577 tok)
-- `index.ts` — Declares S3Config (~97 tok)
-- `operations.ts` — Object operations used by the API (finalize, delete) and the worker (~752 tok)
+- `index.ts` — Declares S3Config (~103 tok)
+- `operations.ts` — Object operations used by the API (finalize, delete) and the worker (~1120 tok)
 - `presign.ts` — Presigned upload helpers. (~720 tok)
 
 ## packages/types/
@@ -482,7 +540,7 @@
 
 ## packages/types/src/
 
-- `index.ts` — ---------- Enums (mirror Prisma enums in packages/db) ---------- (~5148 tok)
+- `index.ts` — ---------- Enums (mirror Prisma enums in packages/db) ---------- (~5398 tok)
 
 ## packages/typescript-config/
 
@@ -501,8 +559,8 @@
 ## packages/youtube-upload/src/
 
 - `errors.ts` — Typed errors thrown by `publishVideo` and its collaborators. The (~588 tok)
-- `index.ts` — Declares PublishVideoContext (~212 tok)
-- `publish-video.ts` — Publish a Video row to YouTube. After videos.insert succeeds, streams the row's s3KeyThumbnail (if any) to thumbnails.set. Transient thumbnail errors get retried; permanent errors are logged but don't fail the publish. (~3413 tok)
+- `index.ts` — Declares PublishVideoContext (~218 tok)
+- `publish-video.ts` — Publish a Video row to YouTube. Used by both the API (immediate path (~3664 tok)
 - `token-refresh.ts` — Token refresh for a stored YouTube connection. (~945 tok)
 - `youtube-api.test.ts` — Unit tests for the internal-license → YouTube-API license translator. (~559 tok)
-- `youtube-api.ts` — YouTube Data API v3 — two-step resumable upload for videos.insert + setYouTubeThumbnail() helper that PUTs image bytes to /upload/youtube/v3/thumbnails/set. (~3839 tok)
+- `youtube-api.ts` — YouTube Data API v3 — two-step resumable upload for videos.insert (~3839 tok)
