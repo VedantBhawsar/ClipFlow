@@ -345,3 +345,11 @@
 | 09:18 | Edited apps/web/app/dashboard/published/[id]/page.tsx | added 1 import(s) | ~78 |
 | 09:18 | Edited apps/web/app/dashboard/published/[id]/page.tsx | 2→3 lines | ~43 |
 | 09:19 | Edited apps/web/components/dashboard/processing-substeps.tsx | 21→21 lines | ~152 |
+
+## Session: 2026-07-01 09:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:58 | Created README.md | — | ~7470 |
+| 09:58 | Rewrote README.md to match current shipped state + add a "Next slice: AI processing pipeline" section (transcription → chapters + thumbnails → review screen; TRANSCRIBING → GENERATING → READY_FOR_REVIEW). Added a "Pipeline status" summary table so shipped-vs-coming is obvious at a glance. Updated sequence diagram + state machine to the target end state (transcription/chapters/thumbnails jobs shown in their final shape). | README.md | green — gitignored diff would still parse cleanly | ~5.2k |
+| 09:58 | Session end: 1 writes across 1 files (README.md) | 12 reads | ~37262 tok |
