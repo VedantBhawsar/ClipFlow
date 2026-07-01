@@ -7,6 +7,7 @@ import {
   StatusTimeline,
   type TimelineStatus,
 } from "@/components/dashboard/status-timeline";
+import { ProcessingSubSteps } from "@/components/dashboard/processing-substeps";
 import { VideoDetailLiveProgress } from "@/components/dashboard/video-detail-live-progress";
 import { UnpublishButton } from "@/app/dashboard/published/[id]/unpublish-button";
 import { CancelButton } from "@/app/dashboard/published/[id]/cancel-button";
@@ -143,6 +144,7 @@ export default async function VideoDetailPage({ params }: PageProps) {
           Pipeline status
         </h2>
         <StatusTimeline status={timelineStatus} className="max-w-2xl" />
+        <ProcessingSubSteps status={video.status} />
         {video.failureReason ? (
           <p className="mt-3 text-xs text-destructive">
             <AlertCircle

@@ -69,6 +69,10 @@ const envSchema = z.object({
     .default(5 * 1024 * 1024 * 1024),
   YOUTUBE_PRESIGNED_POST_TTL: z.coerce.number().int().positive().default(900),
 
+  // FFmpeg path for the video-ingest worker (only used by apps/worker).
+  // Defaults to "ffmpeg" so it is found on PATH.
+  FFMPEG_PATH: z.string().min(1).default("ffmpeg"),
+
   // Rate limiting (per-IP defaults; tighten per-route later)
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),

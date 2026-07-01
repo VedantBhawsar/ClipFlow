@@ -1,13 +1,10 @@
 import Link from "next/link";
 
-import { Logo } from "@/components/shared/logo";
-
 /**
  * Marketing footer — three nav columns + brand block + bottom line.
  *
- * Bottom line includes a bottom safe-area padding so the Next.js dev
- * indicator (bottom-left in dev mode) never overlaps footer content when
- * screenshots are captured.
+ * Brand block uses the same sans + italic-serif text treatment as the
+ * header for visual continuity across the top and bottom of the page.
  */
 export function SiteFooter() {
   const cols = [
@@ -42,10 +39,21 @@ export function SiteFooter() {
 
   return (
     <footer className="relative border-t border-border/60">
-      <div className="mx-auto max-w-[1180px] px-6 py-16 sm:px-10">
+      <div className="mx-auto max-w-[1240px] px-6 py-16 sm:px-10">
         <div className="grid grid-cols-2 gap-10 sm:grid-cols-[minmax(0,1.3fr)_repeat(3,minmax(0,1fr))] sm:gap-12">
           <div className="col-span-2 sm:col-span-1">
-            <Logo />
+            <Link
+              href="/"
+              aria-label="ClipFlow home"
+              className="inline-flex items-baseline text-[22px] tracking-[-0.02em]"
+            >
+              <span className="font-sans font-semibold text-foreground">
+                Clip
+              </span>
+              <span className="display-serif italic text-foreground">
+                flow
+              </span>
+            </Link>
             <p className="mt-4 max-w-[36ch] text-sm leading-relaxed text-muted-foreground">
               The three most repetitive parts of publishing a YouTube video,
               done for you in one pass.
@@ -71,9 +79,9 @@ export function SiteFooter() {
           ))}
         </div>
 
-        <div className="mt-14 flex flex-col items-start justify-between gap-3 border-t border-border/60 pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center">
+        <div className="mt-14 flex flex-col items-start justify-between gap-3 border-t border-border/60 pt-6 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:flex-row sm:items-center">
           <span>© {new Date().getFullYear()} ClipFlow</span>
-          <span>Built for YouTube creators who&apos;d rather be creating.</span>
+          <span>Built for creators who&apos;d rather be creating.</span>
         </div>
       </div>
 

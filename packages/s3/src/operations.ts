@@ -6,8 +6,11 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  PutObjectCommand,
   type GetObjectCommandOutput,
 } from "@aws-sdk/client-s3";
+import { createReadStream } from "node:fs";
+import { statSync } from "node:fs";
 import type { S3Client } from "@aws-sdk/client-s3";
 import type { S3Config } from "./client.js";
 
@@ -91,4 +94,36 @@ export const getObjectStream = async (
     );
   }
   return { body: res.Body, contentLength: res.ContentLength ?? 0 };
+};
+
+/**
+ * Upload a local file to S3. Used by the worker to upload extracted
+ * audio and frame files.
+ *
+ * @param client  Initialised S3 client.
+ * @param config  S3 configuration (bucket, region, credentials).
+ * @param key     S3 object key to write.
+ * @param filePath  Absolute path to the local file.
+ * @param contentType  MIME type for Content-Type header.
+ * @returns Size of the uploaded file in bytes.
+ */
+export const putObjectFromFile = async (
+  client: S3Client,
+  config: S3Config,
+  key: string,
+  filePath: string,
+  contentType: string,
+): Promise<{ sizeBytes: number }> => {
+  const stat = statSync(filePath);
+  const body = createReadStream(filePath);
+  await client.send(
+    new PutObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+      Body: body,
+      ContentLength: stat.size,
+      ContentType: contentType,
+    }),
+  );
+  return { sizeBytes: stat.size };
 };

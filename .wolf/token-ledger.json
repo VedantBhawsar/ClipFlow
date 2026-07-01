@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-06-26T04:13:47.972Z",
   "lifetime": {
-    "total_tokens_estimated": 192834,
-    "total_reads": 106,
-    "total_writes": 54,
-    "total_sessions": 18,
-    "anatomy_hits": 76,
-    "anatomy_misses": 0,
-    "repeated_reads_blocked": 6,
-    "estimated_savings_vs_bare_cli": 28438
+    "total_tokens_estimated": 203091,
+    "total_reads": 116,
+    "total_writes": 59,
+    "total_sessions": 29,
+    "anatomy_hits": 83,
+    "anatomy_misses": 2,
+    "repeated_reads_blocked": 11,
+    "estimated_savings_vs_bare_cli": 35417
   },
   "sessions": [
     {
@@ -1101,6 +1101,142 @@
         "writes_count": 7,
         "repeated_reads_blocked": 2,
         "anatomy_lookups": 10
+      }
+    },
+    {
+      "id": "session-2026-06-30-2134",
+      "started": "2026-06-30T16:04:02.299Z",
+      "ended": "2026-06-30T16:09:03.425Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/docker-compose.yml",
+          "tokens_estimated": 1816,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/.env.docker",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/docker-compose.yml",
+          "tokens_estimated": 318,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 1816,
+        "output_tokens_estimated": 318,
+        "reads_count": 2,
+        "writes_count": 1,
+        "repeated_reads_blocked": 1,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-06-30-2134",
+      "started": "2026-06-30T16:04:02.299Z",
+      "ended": "2026-06-30T16:11:18.670Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/docker-compose.yml",
+          "tokens_estimated": 1816,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/.env.docker",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/Dockerfile",
+          "tokens_estimated": 1163,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/docker-compose.yml",
+          "tokens_estimated": 318,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 2979,
+        "output_tokens_estimated": 318,
+        "reads_count": 3,
+        "writes_count": 1,
+        "repeated_reads_blocked": 2,
+        "anatomy_lookups": 2
+      }
+    },
+    {
+      "id": "session-2026-07-01-0840",
+      "started": "2026-07-01T03:10:11.192Z",
+      "ended": "2026-07-01T03:39:28.518Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/auth.config.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/auth.ts",
+          "tokens_estimated": 3420,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/middleware.ts",
+          "tokens_estimated": 392,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/package.json",
+          "tokens_estimated": 123,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/api/auth/[...nextauth]/route.ts",
+          "tokens_estimated": 169,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/middleware.ts",
+          "tokens_estimated": 171,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/middleware.ts",
+          "tokens_estimated": 272,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/middleware.ts",
+          "tokens_estimated": 279,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 4104,
+        "output_tokens_estimated": 722,
+        "reads_count": 5,
+        "writes_count": 3,
+        "repeated_reads_blocked": 2,
+        "anatomy_lookups": 4
       }
     }
   ],

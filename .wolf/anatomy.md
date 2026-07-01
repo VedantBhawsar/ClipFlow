@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-30T04:20:32.435Z
-> Files: 299 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-01T03:49:46.799Z
+> Files: 309 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../tmp/pw-capture/
 
@@ -13,18 +13,18 @@
 
 ## ./
 
-- `.dockerignore` — Repo-root .dockerignore. Applies to every docker build whose context (~144 tok)
+- `.dockerignore` (~136 tok)
 - `.DS_Store` (~1640 tok)
 - `.gitignore` — Git ignore rules (~107 tok)
 - `.npmrc` (~0 tok)
 - `CLAUDE.md` — OpenWolf (~3549 tok)
-- `docker-compose.yml` — Docker Compose services (~1610 tok)
+- `docker-compose.yml` — Docker Compose services (~1816 tok)
 - `neon_backup.sql` — PostgreSQL database dump (~6500 tok)
 - `package.json` — Node.js package manifest (~123 tok)
 - `pnpm-lock.yaml` — pnpm lock file (~100120 tok)
 - `pnpm-workspace.yaml` (~12 tok)
 - `README.md` — Project documentation (~3869 tok)
-- `turbo.json` — Turborepo configuration (~286 tok)
+- `turbo.json` — ", ".next/**", "!.next/cache/**", "!.next/dev/**"] (~489 tok)
 - `z.mjs` — Declares args (~84 tok)
 
 ## .claude/
@@ -55,7 +55,7 @@
 ## apps/api/src/
 
 - `app.ts` — Express app factory. (~1479 tok)
-- `index.ts` — Entrypoint. (~2056 tok)
+- `index.ts` — Entrypoint. (~2004 tok)
 - `server.ts` — HTTP server lifecycle. (~844 tok)
 
 ## apps/api/src/config/
@@ -76,7 +76,7 @@
 - `logger.ts` — Structured logger (pino). The single source of truth for application (~306 tok)
 - `password.ts` — Password hashing helpers. (~264 tok)
 - `prisma.ts` — Prisma client re-export. (~328 tok)
-- `queue.ts` — BullMQ enqueue helpers. (~2058 tok)
+- `queue.ts` — BullMQ enqueue helpers. (~1684 tok)
 - `refresh-token.test.ts` — Declares prismaMock (~2701 tok)
 - `refresh-token.ts` — Refresh-token rotation primitives. (~2161 tok)
 - `response.test.ts` — Unit tests for the centralized response helpers. (~924 tok)
@@ -137,8 +137,8 @@
 - `videos.controller.ts` — Videos controller. (~2936 tok)
 - `videos.routes.ts` — Videos route definitions. (~1283 tok)
 - `videos.schemas.ts` — Zod schemas for the videos module. (~2702 tok)
-- `videos.service.test.ts` — Tests for the videos service. (~6974 tok)
-- `videos.service.ts` — Videos service — owns all DB + S3 + YouTube-publish enqueue logic (~8813 tok)
+- `videos.service.test.ts` — Tests for the videos service. (~6878 tok)
+- `videos.service.ts` — Videos service — owns all DB + S3 + YouTube-publish enqueue logic (~8712 tok)
 - `videos.types.ts` — Module-internal types for the videos module. (~615 tok)
 
 ## apps/api/src/modules/youtube/
@@ -166,7 +166,7 @@
 - `auth.ts` — Full NextAuth (Auth.js v5) configuration. (~3420 tok)
 - `components.json` (~122 tok)
 - `eslint.config.js` — ESLint flat configuration (~41 tok)
-- `middleware.ts` — Edge middleware (Auth.js v5). Exports `NextAuth(authConfig).auth` as a function reference — NOT invoked at module load (Next.js 16 + Auth.js v5 pitfall: eager `auth()` hits the RSC branch and calls `headers()` outside a request scope). (~830 tok)
+- `middleware.ts` — Export `.auth` as a function reference, NOT invoked. (~392 tok)
 - `next-env.d.ts` — / <reference types="next" /> (~71 tok)
 - `next.config.js` — Declares nextConfig (~94 tok)
 - `package.json` — Node.js package manifest (~481 tok)
@@ -211,7 +211,7 @@
 ## apps/web/app/dashboard/published/[id]/
 
 - `cancel-button.tsx` — Cancel action for the video detail page. Calls (~430 tok)
-- `page.tsx` — Same mapping the dashboard's `VideoCard` uses — keep the visual (~3422 tok)
+- `page.tsx` — Same mapping the dashboard's `VideoCard` uses — keep the visual (~3460 tok)
 - `unpublish-button.tsx` — Unpublish action for the video detail page. Calls (~426 tok)
 
 ## apps/web/app/dashboard/settings/
@@ -267,17 +267,6 @@
 
 - `page.tsx` — CallbackContent — uses useSearchParams, useRouter, useEffect (~385 tok)
 
-## apps/web/components/landing/
-
-- `site-header.tsx` — Marketing site header. Logo + three nav links (hidden on mobile) + sign-in / start-free pair. (~940 tok)
-- `hero.tsx` — Asymmetric hero with eyebrow + Fraunces display headline + product card + CTA pair + logline stats strip. (~2400 tok)
-- `hero-product-card.tsx` — Faux product UI in the hero — tilted, glowing card showing "Ready to publish" with a designed thumbnail, schedule, chapter list, and Confirm/Edit buttons. (~2900 tok)
-- `feature-trio.tsx` — Three feature cards (Schedule / Thumbnail / Chapters) each with a small product visual (calendar grid / stacked thumbnails / transcript). (~3600 tok)
-- `how-it-works.tsx` — Three-step timeline (Upload → Review → Confirm) with hairline connectors. (~1700 tok)
-- `creator-voice.tsx` — Single testimonial + 2x2 stats grid + marquee strip of channel handles. (~1700 tok)
-- `cta-band.tsx` — Final conversion card. Ambient radial gradient + primary CTA + sign-in escape. (~980 tok)
-- `site-footer.tsx` — Three-column nav (Product / Resources / Company) + brand block + copyright. Includes a reserved bottom strip so the Next.js dev indicator never overlaps footer content. (~1300 tok)
-
 ## apps/web/components/auth/
 
 - `google-button.tsx` — Label override. Defaults to "Continue with Google" per the design (~713 tok)
@@ -292,6 +281,7 @@
 - `create-video-dialog.tsx` — Optional custom thumbnail. JPEG / PNG only, 2 MB max — matches (~14698 tok)
 - `empty-state.test.tsx` (~328 tok)
 - `empty-state.tsx` — Whether the user has connected a YouTube channel. When `false`, (~607 tok)
+- `processing-substeps.tsx` — Sub-stage breakdown for the "Processing" bucket of the 5-stage (~1804 tok)
 - `published-video-card.tsx` — One row in the `/dashboard/published` library. (~1874 tok)
 - `published-video-list.tsx` — Date-range buckets shown in the Select. Each maps to a `since` ISO (~4280 tok)
 - `sidebar.test.tsx` — mockUseSession (~1377 tok)
@@ -304,13 +294,21 @@
 
 ## apps/web/components/landing/
 
+- `creator-voice.tsx` — Single testimonial + 2x2 stats grid + marquee strip of channel handles. (~1700 tok)
 - `creator-voice.tsx` — Creator voice — a single, strong testimonial centered, with a quiet (~1200 tok)
+- `cta-band.tsx` — Final conversion card. Ambient radial gradient + primary CTA + sign-in escape. (~980 tok)
 - `cta-band.tsx` — CTA band — sits above the footer. Asks the page's last conversion (~663 tok)
+- `feature-trio.tsx` — Three feature cards (Schedule / Thumbnail / Chapters) each with a small product visual (calendar grid / stacked thumbnails / transcript). (~3600 tok)
 - `feature-trio.tsx` — Feature trio — Schedule / Thumbnail / Chapters. (~2164 tok)
+- `hero-product-card.tsx` — Faux product UI in the hero — tilted, glowing card showing "Ready to publish" with a designed thumbnail, schedule, chapter list, and Confirm/Edit buttons. (~2900 tok)
 - `hero-product-card.tsx` — Faux product UI used as the hero visual. (~1980 tok)
+- `hero.tsx` — Asymmetric hero with eyebrow + Fraunces display headline + product card + CTA pair + logline stats strip. (~2400 tok)
 - `hero.tsx` — Hero — asymmetric, two-column on desktop, stacked on mobile. (~1383 tok)
+- `how-it-works.tsx` — Three-step timeline (Upload → Review → Confirm) with hairline connectors. (~1700 tok)
 - `how-it-works.tsx` — How it works — three numbered steps rendered as a horizontal timeline. (~922 tok)
+- `site-footer.tsx` — Three-column nav (Product / Resources / Company) + brand block + copyright. Includes a reserved bottom strip so the Next.js dev indicator never overlaps footer content. (~1300 tok)
 - `site-footer.tsx` — Marketing footer — three nav columns + brand block + bottom line. (~859 tok)
+- `site-header.tsx` — Marketing site header. Logo + three nav links (hidden on mobile) + sign-in / start-free pair. (~940 tok)
 - `site-header.tsx` — Marketing site header. (~484 tok)
 
 ## apps/web/components/onboarding/
@@ -390,8 +388,8 @@
 
 ## apps/worker/
 
-- `.dockerignore` — Files ignored by `docker build` for the worker image. Keep node_modules (~62 tok)
-- `Dockerfile` — Docker container definition (~2169 tok)
+- `.dockerignore` — Build artifacts (~80 tok)
+- `Dockerfile` — Docker container definition (~1163 tok)
 - `eslint.config.mjs` — ESLint flat configuration (~34 tok)
 - `package.json` — Node.js package manifest (~283 tok)
 - `tsconfig.json` — TypeScript configuration (~57 tok)
@@ -400,27 +398,27 @@
 ## apps/worker/src/
 
 - `env.ts` — Worker environment loader. (~504 tok)
-- `index.ts` — Worker entrypoint. (~2342 tok)
-- `startup-recovery.ts` — Worker startup-recovery scan. (~2170 tok)
+- `index.ts` — Worker entrypoint. (~1913 tok)
+- `startup-recovery.ts` — Worker startup-recovery scan. (~2070 tok)
 
 ## apps/worker/src/config/
 
 - `logger.ts` — Pino logger factory for the worker. Mirrors apps/api's logger shape (~209 tok)
-- `queue.ts` — BullMQ queue + worker construction. (~1222 tok)
+- `queue.ts` — BullMQ queue + worker construction. (~1338 tok)
 
 ## apps/worker/src/jobs/
 
-- `video-ingest.test.ts` — Integration tests for the `video-ingest` BullMQ job. (~3220 tok)
-- `video-ingest.ts` — Worker job: extract audio + candidate frames from an uploaded video. (~3210 tok)
+- `video-ingest.test.ts` — Integration test for the video-ingest BullMQ job. (~1919 tok)
+- `video-ingest.ts` — Worker job: extract audio + candidate frames from an uploaded video. (~2860 tok)
 - `youtube-publish.ts` — Worker job: publish a Video row to YouTube. (~1482 tok)
 
 ## apps/worker/src/lib/
 
 - `events.ts` — Worker event publisher. (~572 tok)
-- `ffmpeg-errors.test.ts` — Unit tests for the FFmpeg error classifier. (~1527 tok)
-- `ffmpeg-errors.ts` — Classify FFmpeg errors into permanent (don't retry) vs transient (~1310 tok)
-- `ffmpeg.test.ts` — Unit tests for the FFmpeg wrapper. (~913 tok)
-- `ffmpeg.ts` — FFmpeg wrapper for the `video-ingest` BullMQ job. (~1987 tok)
+- `ffmpeg-errors.test.ts` — Unit tests for FFmpeg error classification. (~1018 tok)
+- `ffmpeg-errors.ts` — Classify FFmpeg errors into permanent vs transient. (~1170 tok)
+- `ffmpeg.test.ts` — Unit tests for FFmpeg arg construction and error classification. (~1490 tok)
+- `ffmpeg.ts` — Thin FFmpeg wrapper for the `video-ingest` BullMQ job. (~1478 tok)
 
 ## docker/postgres/init/
 
@@ -436,17 +434,17 @@
 
 ## packages/config/
 
-- `package.json` — Node.js package manifest (~124 tok)
+- `package.json` — Node.js package manifest (~160 tok)
 - `tsconfig.json` — TypeScript configuration (~70 tok)
 
 ## packages/config/src/
 
-- `index.ts` — Zod schemas: envSchema, publicEnvSchema (~1319 tok)
+- `index.ts` — Zod schemas: envSchema, publicEnvSchema (~1258 tok)
 
 ## packages/crypto/
 
 - `eslint.config.mjs` — ESLint flat configuration (~34 tok)
-- `package.json` — Node.js package manifest (~180 tok)
+- `package.json` — Node.js package manifest (~216 tok)
 - `tsconfig.json` — TypeScript configuration (~57 tok)
 
 ## packages/crypto/scripts/
@@ -459,9 +457,9 @@
 
 ## packages/db/
 
-- `package.json` — Node.js package manifest (~277 tok)
+- `package.json` — Node.js package manifest (~313 tok)
 - `prisma.config.ts` (~89 tok)
-- `schema.prisma` — packages/db/schema.prisma (~3893 tok)
+- `schema.prisma` — packages/db/schema.prisma (~3750 tok)
 - `tsconfig.json` — TypeScript configuration (~75 tok)
 
 ## packages/db/prisma/migrations/
@@ -508,6 +506,10 @@
 
 - `migration.sql` — Add the audio/frame extraction pipeline to the video lifecycle. (~443 tok)
 
+## packages/db/prisma/migrations/20260630000000_add_video_ingest_pipeline/
+
+- `migration.sql` — Add new pipeline statuses to VideoStatus enum (~252 tok)
+
 ## packages/db/src/
 
 - `index.ts` — Exports prisma (~300 tok)
@@ -523,19 +525,19 @@
 ## packages/s3/
 
 - `eslint.config.mjs` — ESLint flat configuration (~34 tok)
-- `package.json` — Node.js package manifest (~198 tok)
+- `package.json` — Node.js package manifest (~234 tok)
 - `tsconfig.json` — TypeScript configuration (~57 tok)
 
 ## packages/s3/src/
 
 - `client.ts` — Exports S3Config, buildS3Config, getS3Client (~577 tok)
 - `index.ts` — Declares S3Config (~103 tok)
-- `operations.ts` — Object operations used by the API (finalize, delete) and the worker (~1120 tok)
+- `operations.ts` — Object operations used by the API (finalize, delete) and the worker (~1037 tok)
 - `presign.ts` — Presigned upload helpers. (~720 tok)
 
 ## packages/types/
 
-- `package.json` — Node.js package manifest (~115 tok)
+- `package.json` — Node.js package manifest (~151 tok)
 - `tsconfig.json` — TypeScript configuration (~64 tok)
 
 ## packages/types/src/
@@ -552,7 +554,7 @@
 ## packages/youtube-upload/
 
 - `eslint.config.mjs` — ESLint flat configuration (~34 tok)
-- `package.json` — Node.js package manifest (~242 tok)
+- `package.json` — Node.js package manifest (~278 tok)
 - `tsconfig.json` — TypeScript configuration (~57 tok)
 - `vitest.config.ts` — Vitest test configuration (~45 tok)
 

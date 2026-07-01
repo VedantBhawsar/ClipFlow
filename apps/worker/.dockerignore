@@ -1,0 +1,23 @@
+# Build artifacts
+dist/
+*.tsbuildinfo
+
+# Local config / secrets
+.env
+.env.local
+.env.*.local
+
+# Test files (they get pulled in by `tsx` at runtime if not excluded)
+**/*.test.ts
+**/__tests__/
+vitest.config.ts
+
+# Editor / OS noise
+.DS_Store
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*

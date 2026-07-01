@@ -17,29 +17,23 @@ export const metadata: Metadata = {
 /**
  * Marketing landing.
  *
- * Editorial-premium aesthetic — Fraunces display serif over Inter Tight
- * body. Asymmetric hero: a real product card (not a screenshot, not an
- * illustration) as the visual anchor; a quiet gradient orb drifting
- * behind it; a hairline grain on top for tactility.
+ * Centered, calm, italic-serif-on-grotesque aesthetic — sans + italic
+ * display serif combination on every headline, generous whitespace,
+ * the hero capped by a vertical gradient bar spectrum.
  *
  * Sections, in order:
- *   1. SiteHeader         — logo + nav + sign-in/start-free
- *   2. Hero               — eyebrow + display headline + product card
- *   3. FeatureTrio        — Schedule / Thumbnail / Chapters
- *   4. HowItWorks         — three-step timeline
- *   5. CreatorVoice       — testimonial + stats + handle marquee
- *   6. CtaBand            — final conversion card
- *   7. SiteFooter         — three-column nav + brand block
+ *   1. SiteHeader  — sans/italic wordmark + horizontal nav + dark CTA
+ *   2. Hero        — avatar pill + display headline + email+button CTA + gradient bars
+ *   3. FeatureTrio — three feature cards with their own product visuals
+ *   4. HowItWorks  — three-step timeline
+ *   5. CreatorVoice — testimonial + stat counters + handle marquee
+ *   6. CtaBand     — final conversion (mirrors the hero CTA)
+ *   7. SiteFooter  — three-column nav + brand block
  */
 export default function LandingPage() {
   return (
     <div className="landing grain relative isolate flex min-h-svh flex-col bg-background text-foreground">
-      {/* Ambient orb — large radial gradient behind the hero. CSS handles
-          the drift; nothing here needs JS. */}
-      <div className="landing-orb absolute inset-0 -z-10" aria-hidden="true" />
-
       <SiteHeader />
-
       <main className="flex-1">
         <Hero />
         <FeatureTrio />

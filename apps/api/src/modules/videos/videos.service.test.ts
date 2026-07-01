@@ -59,7 +59,7 @@ vi.mock("../../lib/cache.js", () => ({
 }));
 
 vi.mock("../../lib/queue.js", () => ({
-  enqueuePublishJob: vi.fn().mockResolvedValue("job-1"),
+  enqueueIngestJob: vi.fn().mockResolvedValue("ingest-job-1"),
 }));
 
 vi.mock("@clipflow/youtube-upload", () => ({
@@ -101,7 +101,7 @@ vi.mock("../../lib/logger.js", () => ({
 import { prisma } from "../../lib/prisma.js";
 import { cache } from "../../lib/cache.js";
 import { headObject, deleteObject, createPresignedPostUrl } from "@clipflow/s3";
-import { enqueuePublishJob } from "../../lib/queue.js";
+import { enqueueIngestJob } from "../../lib/queue.js";
 import { unpublishVideo as unpublishOnYouTube } from "@clipflow/youtube-upload";
 
 const mockFindChannel = vi.mocked(prisma.youTubeChannel.findUnique);
@@ -117,7 +117,7 @@ const mockCacheDel = vi.mocked(cache.del);
 const mockHead = vi.mocked(headObject);
 const mockDeleteObject = vi.mocked(deleteObject);
 const mockPresign = vi.mocked(createPresignedPostUrl);
-const mockEnqueue = vi.mocked(enqueuePublishJob);
+const mockEnqueue = vi.mocked(enqueueIngestJob);
 
 const baseEnv = {
   YOUTUBE_MAX_VIDEO_BYTES: 5 * 1024 * 1024 * 1024,
@@ -206,7 +206,11 @@ type StubVideo = {
   s3KeyOriginal: string;
   s3KeyThumbnail: string | null;
   thumbnailContentType: string | null;
-  status: "UPLOADED" | "READY" | "SCHEDULED" | "PUBLISHING" | "PUBLISHED" | "PUBLISH_FAILED";
+  s3KeyAudio: string | null;
+  s3KeyFramesPrefix: string | null;
+  frameCount: number | null;
+  durationSeconds: number | null;
+  status: "UPLOADED" | "READY" | "EXTRACTING" | "TRANSCRIBING" | "GENERATING" | "READY_FOR_REVIEW" | "SCHEDULED" | "PUBLISHING" | "PUBLISHED" | "PUBLISH_FAILED" | "FAILED";
   failureReason: string | null;
   scheduledPublishAt: Date | null;
   youtubeVideoId: string | null;
@@ -236,6 +240,10 @@ const stubCreatedVideo: StubVideo = {
   s3KeyOriginal: basePending.s3KeyOriginal,
   s3KeyThumbnail: null,
   thumbnailContentType: null,
+  s3KeyAudio: null,
+  s3KeyFramesPrefix: null,
+  frameCount: null,
+  durationSeconds: null,
   status: "UPLOADED",
   failureReason: null,
   scheduledPublishAt: null,
@@ -325,7 +333,7 @@ describe("videos.service", () => {
   });
 
   describe("finalizeUpload", () => {
-    it("happy path: cache hit + S3 HEAD success + row created + enqueue", async () => {
+    it("happy path: cache hit + S3 HEAD success + row created + ingest enqueued", async () => {
       mockCacheGet.mockResolvedValue(JSON.stringify(basePending));
       mockHead.mockResolvedValue({
         contentLength: 1024,
@@ -333,15 +341,19 @@ describe("videos.service", () => {
         etag: "etag",
       });
       mockVideoCreate.mockResolvedValue(stubCreatedVideo);
-      mockVideoUpdate.mockResolvedValue({ ...stubCreatedVideo, status: "READY" });
+      mockVideoUpdate.mockResolvedValue({ ...stubCreatedVideo, status: "EXTRACTING" });
 
       const result = await videosService.finalizeUpload("user-1", "pu_xxx", baseEnv);
 
       expect(mockVideoCreate).toHaveBeenCalledTimes(1);
       expect(mockVideoUpdate).toHaveBeenCalledTimes(1);
+      expect(mockVideoUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ status: "EXTRACTING" }) }),
+      );
       expect(mockEnqueue).toHaveBeenCalledTimes(1);
+      expect(mockEnqueue).toHaveBeenCalledWith(stubCreatedVideo.id, baseEnv);
       expect(mockCacheDel).toHaveBeenCalledWith("pendingUpload:pu_xxx");
-      expect(result.status).toBe("READY");
+      expect(result.status).toBe("EXTRACTING");
     });
 
     it("returns 404 when the cache entry is missing", async () => {
@@ -392,7 +404,10 @@ describe("videos.service", () => {
       expect(mockVideoCreate).not.toHaveBeenCalled();
     });
 
-    it("transitions to SCHEDULED (not READY) and does not enqueue when scheduledPublishAt is in the future", async () => {
+    it("always transitions to EXTRACTING and enqueues ingest, even when scheduledPublishAt is set", async () => {
+      // scheduledPublishAt is preserved on the row for the post-generation
+      // flow to consume — it does NOT short-circuit the EXTRACTING
+      // transition anymore. The publish enqueue moves to the generation-complete hook.
       const futureDate = new Date(Date.now() + 60 * 60 * 1000);
       const futureIso = futureDate.toISOString();
       mockCacheGet.mockResolvedValue(
@@ -402,19 +417,24 @@ describe("videos.service", () => {
         }),
       );
       mockHead.mockResolvedValue({ contentLength: 1024, contentType: "video/mp4", etag: "e" });
-      // The service reads `scheduledPublishAt` off the row Prisma returns
-      // (it's the row that's updated, not the cache). Stub a row whose
-      // `scheduledPublishAt` is in the future so the service picks the
-      // SCHEDULED branch.
       mockVideoCreate.mockResolvedValue({
         ...stubCreatedVideo,
         scheduledPublishAt: futureDate,
       } as never);
-      mockVideoUpdate.mockResolvedValue({ ...stubCreatedVideo, status: "SCHEDULED" } as never);
+      mockVideoUpdate.mockResolvedValue({ ...stubCreatedVideo, status: "EXTRACTING" } as never);
 
       const result = await videosService.finalizeUpload("user-1", "pu_xxx", baseEnv);
-      expect(result.status).toBe("SCHEDULED");
-      expect(mockEnqueue).not.toHaveBeenCalled();
+      expect(result.status).toBe("EXTRACTING");
+      expect(mockEnqueue).toHaveBeenCalledTimes(1);
+      // And the scheduledPublishAt is preserved on the row.
+      expect(mockVideoCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            scheduledPublishAt: futureDate,
+            status: "UPLOADED",
+          }),
+        }),
+      );
     });
   });
 

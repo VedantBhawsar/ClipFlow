@@ -1,0 +1,39 @@
+# Git
+.git
+.gitignore
+
+# Build outputs (each app produces its own)
+**/dist
+**/build
+**/.next
+**/.turbo
+**/.tsbuildinfo
+**/*.tsbuildinfo
+
+# Local env files (injected via docker-compose / runtime env)
+.env
+.env.*
+!.env.example
+
+# Tests (not needed in production images)
+**/*.test.ts
+**/*.test.tsx
+**/__tests__/
+
+# Editor / OS noise
+.DS_Store
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Documentation — not needed at runtime
+README.md
+docs/
+
+# Docker — don't recurse
+Dockerfile
+.dockerignore

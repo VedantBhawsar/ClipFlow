@@ -8,6 +8,7 @@
 #   - Redis 7   (BullMQ queues)
 #   - MinIO     (S3-compatible object storage, dev stand-in for R2)
 #   - minio-init (creates the videos bucket on first boot)
+#   - worker    (apps/worker in its own container — ffmpeg + node)
 #
 # Postgres init scripts (mounted into /docker-entrypoint-initdb.d/) run
 # once, on first boot of an empty data volume, in lexical order:
@@ -18,13 +19,15 @@
 # Usage:
 #   docker compose up -d            # start (imports neon_backup.sql on first boot)
 #   docker compose down -v          # stop + delete volumes (resets state; next up re-imports)
+#   docker compose logs -f worker   # tail worker logs (FFmpeg extraction events)
 #
 # To point the API at the local DB instead of Neon, swap DATABASE_URL in
 # apps/api/.env to:
 #   postgresql://clipflow:clipflow@localhost:5432/clipflow
 #
-# The worker runs OUTSIDE compose (via `pnpm --filter worker dev`) for
-# faster iteration — a Dockerfile + worker service is a follow-up.
+# The worker container uses in-network hostnames (postgres / redis / minio)
+# via the env file at apps/worker/.env.docker. The container does NOT
+# expose a port — it has no inbound traffic.
 
 services:
   postgres:
@@ -103,6 +106,51 @@ services:
         echo 'MinIO bucket ready.'
       "
     restart: "no"
+
+  # The BullMQ worker. Builds from apps/worker/Dockerfile (which installs
+  # ffmpeg in the runtime stage) and uses the in-network hostnames so it
+  # can reach postgres / redis / minio without publishing host ports.
+  #
+  # `env_file` supplies the docker-time env. We mount the docker env file
+  # explicitly rather than relying on apps/worker/.env so local `pnpm dev`
+  # still works without the docker-specific hostnames leaking in.
+  #
+  # `restart: unless-stopped` so a crashed worker (OOM during FFmpeg) is
+  # restarted automatically — important for production-likeness.
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    container_name: clipflow-worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    env_file:
+      - apps/worker/.env.docker
+    environment:
+      # DATABASE_URL / S3_ENDPOINT override .env.docker to use the
+      # compose-network hostnames (postgres:5432 / minio:9000) — the
+      # default in .env.docker already points at those, but we set them
+      # explicitly here as a belt-and-braces.
+      DATABASE_URL: postgresql://clipflow:clipflow@postgres:5432/clipflow
+      # REDIS_URL MUST stay on Redis Cloud (the same broker the API on
+      # the host uses). Do NOT change this to `redis://redis:6379` —
+      # that's the local compose Redis, and pointing the worker there
+      # silently splits BullMQ into two brokers: API enqueues to
+      # Redis Cloud, worker consumes from compose Redis, and every
+      # video-ingest job sits in `clipflow:video-ingest:wait` forever
+      # with the row stuck in EXTRACTING. If we ever want the worker
+      # on compose Redis, switch BOTH apps/api/.env AND the worker
+      # env to redis://localhost:6379 first.
+      REDIS_URL: redis://default:K9M2yCBQajxiF0grmmk8j2nOKaOKV4vF@stelliform-queen-science-80633.db.redis.io:10367
+      S3_ENDPOINT: http://minio:9000
+    restart: unless-stopped
 
 volumes:
   pgdata:

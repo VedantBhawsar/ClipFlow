@@ -63,6 +63,7 @@ const mockEnv: Env = {
   YOUTUBE_CATEGORY_DEFAULT: "22",
   YOUTUBE_MAX_VIDEO_BYTES: 5 * 1024 * 1024 * 1024,
   YOUTUBE_PRESIGNED_POST_TTL: 900,
+  FFMPEG_PATH: "ffmpeg",
 };
 
 const mockUser = {

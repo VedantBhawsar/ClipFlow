@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
-import { Inter_Tight, JetBrains_Mono, Fraunces } from "next/font/google";
+import {
+  Inter_Tight,
+  JetBrains_Mono,
+  Instrument_Serif,
+} from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 
 import { QueryProvider } from "@/components/shared/query-provider";
@@ -23,11 +27,15 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["400", "500"],
 });
 
-const fraunces = Fraunces({
+// Instrument Serif — sculpted italic-leaning display face, used for
+// the marketing landing's hero/section titles. Loads only on pages
+// that reference it via the `--font-instrument-serif` variable.
+const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
-  variable: "--font-fraunces",
+  variable: "--font-instrument-serif",
   display: "swap",
-  weight: "variable",
+  weight: ["400"],
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
@@ -47,13 +55,13 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${interTight.variable} ${jetbrainsMono.variable} ${fraunces.variable}`}
+      className={`${interTight.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable}`}
     >
       <body className="font-sans antialiased">
         <SessionProvider>
           <QueryProvider>
             <ThemeProvider>
-              <NextTopLoader color="#2A5C4D" />
+              <NextTopLoader color="#E8B14A" />
               {children}
               <Toaster />
             </ThemeProvider>

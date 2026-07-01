@@ -56,7 +56,7 @@ import { AppError } from "../../errors/AppError.js";
 import { prisma } from "../../lib/prisma.js";
 import { requireDatabase } from "../../lib/db-guard.js";
 import { cache } from "../../lib/cache.js";
-import { enqueuePublishJob } from "../../lib/queue.js";
+import { enqueueIngestJob } from "../../lib/queue.js";
 import { toVideoDto } from "./videos.types.js";
 import type {
   CreateVideoInput,
@@ -66,6 +66,10 @@ import type {
 
 const ALLOWED_DELETE_STATUSES: ReadonlySet<VideoStatus> = new Set([
   "UPLOADED",
+  "EXTRACTING",
+  "TRANSCRIBING",
+  "GENERATING",
+  "READY_FOR_REVIEW",
   "READY",
   "SCHEDULED",
   "PUBLISH_FAILED",
@@ -444,6 +448,11 @@ export const finalizeUpload = async (
       s3KeyOriginal: pending.s3KeyOriginal,
       s3KeyThumbnail: thumbnailS3Key,
       thumbnailContentType,
+      // Preserve the user's scheduled-publish intent — the post-
+      // generation flow will read this and either enqueue an
+      // immediate publish or schedule one. finalizeUpload itself
+      // never enqueues youtube-publish; that responsibility moves
+      // to the generation-complete hook (transcription slice).
       scheduledPublishAt: pending.metadata.scheduledPublishAt
         ? new Date(pending.metadata.scheduledPublishAt)
         : null,
@@ -451,18 +460,15 @@ export const finalizeUpload = async (
     },
   });
 
-  const scheduledAt = video.scheduledPublishAt;
-  const isScheduled = !!scheduledAt && scheduledAt.getTime() > Date.now();
-  const nextStatus: VideoStatus = isScheduled ? "SCHEDULED" : "READY";
-
+  // Move straight to EXTRACTING and hand off to the ingest queue.
+  // The worker reads the original from S3, extracts audio + frames,
+  // and (in a follow-up slice) eventually enqueues the publish job.
   const updated = await prisma.video.update({
     where: { id: video.id },
-    data: { status: nextStatus },
+    data: { status: "EXTRACTING" },
   });
 
-  if (!isScheduled) {
-    await enqueuePublishJob(video.id, null, env);
-  }
+  await enqueueIngestJob(video.id, env);
 
   await cache.del(`${PENDING_UPLOAD_KEY_PREFIX}${pendingUploadId}`);
 

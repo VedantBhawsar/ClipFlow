@@ -15,5 +15,6 @@ export {
   deleteObject,
   getObjectStream,
   headObject,
+  putObjectFromFile,
   type ObjectHead,
 } from "./operations.js";

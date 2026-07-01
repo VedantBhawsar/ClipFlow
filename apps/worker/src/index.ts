@@ -13,10 +13,11 @@
 import { Redis } from "ioredis";
 import { loadWorkerEnv } from "./env.js";
 import { buildLogger } from "./config/logger.js";
-import { buildPublishQueue } from "./config/queue.js";
+import { buildPublishQueue, buildVideoIngestQueue } from "./config/queue.js";
 import { WorkerEventPublisher } from "./lib/events.js";
 import {
   recoverMissedScheduledJobs,
+  recoverOrphanedIngestJobs,
   recoverOrphanedPublishingJobs,
 } from "./startup-recovery.js";
 import { prisma } from "@clipflow/db";
@@ -153,33 +154,47 @@ const main = async (): Promise<void> => {
     process.exit(1);
   }
 
-  const { queue, worker } = buildPublishQueue(
+  // Build both queues — they share the same Redis connection.
+  const { queue: publishQueue, worker: publishWorker } = buildPublishQueue(
+    redisConnection!,
+    env,
+    logger,
+    eventPublisher ?? undefined,
+  );
+  const { queue: ingestQueue, worker: ingestWorker } = buildVideoIngestQueue(
     redisConnection!,
     env,
     logger,
     eventPublisher ?? undefined,
   );
 
-  // First pass: reconcile any rows orphaned in PUBLISHING by a previous
-  // worker crash. Doing this BEFORE the READY/SCHEDULED pass means a
+  // Pass 1: reconcile any rows orphaned in PUBLISHING by a previous
+  // worker crash. Doing this BEFORE the ingest pass means a
   // crashed-mid-upload row gets reset to READY and re-enqueued in the
   // same boot instead of waiting for the next failure tick.
   const orphans = await recoverOrphanedPublishingJobs(logger);
 
-  // Second pass: re-enqueue READY/SCHEDULED rows whose publish time has
+  // Pass 2: reconcile any rows orphaned in EXTRACTING. If s3KeyAudio
+  // is set the worker finished but the DB write was lost — advance to
+  // TRANSCRIBING. Otherwise reset to UPLOADED and re-enqueue.
+  const ingestOrphans = await recoverOrphanedIngestJobs(ingestQueue, logger);
+
+  // Pass 3: re-enqueue READY/SCHEDULED rows whose publish time has
   // come and gone.
-  const recovered = await recoverMissedScheduledJobs(queue, logger);
+  const recovered = await recoverMissedScheduledJobs(publishQueue, logger);
 
   logger.info(
-    { orphans, recovered },
+    { orphans, ingestOrphans, recovered },
     "Startup recovery complete",
   );
 
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, "Shutdown signal received; draining…");
     try {
-      await worker.close();
-      await queue.close();
+      await publishWorker.close();
+      await ingestWorker.close();
+      await publishQueue.close();
+      await ingestQueue.close();
       redisConnection!.disconnect();
       await eventPublisher?.dispose();
       await prisma.$disconnect();

@@ -217,3 +217,131 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+
+## Session: 2026-06-30 17:27
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-30 17:27
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-30 17:27
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:30 | Created apps/worker/src/lib/ffmpeg.ts | — | ~1482 |
+| 17:30 | Created apps/worker/src/lib/ffmpeg-errors.ts | — | ~1170 |
+| 17:31 | Created apps/worker/src/lib/ffmpeg.test.ts | — | ~1490 |
+| 17:31 | Created apps/worker/src/lib/ffmpeg-errors.test.ts | — | ~1018 |
+| 17:31 | Edited packages/s3/src/operations.ts | added 2 import(s) | ~100 |
+| 17:31 | Edited packages/s3/src/operations.ts | modified async() | ~277 |
+| 17:32 | Edited packages/s3/src/index.ts | 6→7 lines | ~36 |
+| 17:32 | Edited packages/config/src/index.ts | 3→7 lines | ~79 |
+| 17:32 | Edited packages/db/schema.prisma | expanded (+12 lines) | ~315 |
+| 17:33 | Edited packages/db/schema.prisma | expanded (+13 lines) | ~213 |
+| 17:33 | Created packages/db/prisma/migrations/20260630000000_add_video_ingest_pipeline/migration.sql | — | ~252 |
+| 17:34 | Created apps/worker/src/jobs/video-ingest.ts | — | ~2860 |
+| 17:34 | Edited apps/worker/src/config/queue.ts | added error handling | ~1452 |
+| 17:35 | Edited apps/worker/src/config/queue.ts | added 1 import(s) | ~130 |
+| 17:35 | Edited apps/worker/src/config/queue.ts | removed 13 lines | ~27 |
+| 17:35 | Edited apps/worker/src/startup-recovery.ts | expanded (+10 lines) | ~549 |
+| 17:35 | Edited apps/worker/src/startup-recovery.ts | modified async() | ~40 |
+| 17:36 | Edited apps/worker/src/startup-recovery.ts | added 2 condition(s) | ~644 |
+| 17:36 | Edited apps/worker/src/index.ts | 6→7 lines | ~76 |
+| 17:36 | Edited apps/worker/src/index.ts | modified async() | ~517 |
+| 17:37 | Edited apps/api/src/lib/queue.ts | added 8 condition(s) | ~1684 |
+| 17:37 | Edited apps/api/src/index.ts | inline fix | ~26 |
+| 17:37 | Edited apps/api/src/index.ts | expanded (+12 lines) | ~301 |
+| 17:37 | Edited apps/api/src/modules/videos/videos.service.ts | inline fix | ~16 |
+| 17:37 | Edited apps/api/src/modules/videos/videos.service.ts | 6→10 lines | ~58 |
+| 17:38 | Edited apps/api/src/modules/videos/videos.service.ts | modified Date() | ~562 |
+| 17:38 | Edited apps/api/src/modules/videos/videos.service.test.ts | 3→3 lines | ~31 |
+| 17:38 | Edited apps/api/src/modules/videos/videos.service.test.ts | inline fix | ~16 |
+| 17:38 | Edited apps/api/src/modules/videos/videos.service.test.ts | inline fix | ~14 |
+| 17:38 | Edited apps/api/src/modules/videos/videos.service.test.ts | 18→22 lines | ~301 |
+| 17:39 | Edited apps/api/src/modules/videos/videos.service.test.ts | expanded (+8 lines) | ~420 |
+| 17:39 | Edited apps/api/src/modules/auth/auth.service.test.ts | 3→4 lines | ~33 |
+| 17:39 | Created apps/worker/src/jobs/video-ingest.test.ts | — | ~1911 |
+| 17:40 | Edited apps/worker/package.json | 7→9 lines | ~68 |
+| 17:40 | Edited apps/worker/package.json | 8→9 lines | ~72 |
+| 17:40 | Created apps/worker/vitest.config.ts | — | ~45 |
+| 17:41 | Edited apps/worker/src/jobs/video-ingest.test.ts | 2→2 lines | ~29 |
+| 17:41 | Edited apps/worker/src/jobs/video-ingest.test.ts | 5→5 lines | ~58 |
+| 17:41 | Edited apps/worker/src/jobs/video-ingest.test.ts | 4→4 lines | ~45 |
+| 17:41 | Edited apps/worker/src/jobs/video-ingest.test.ts | 4→4 lines | ~45 |
+| 17:42 | Edited apps/api/src/modules/videos/videos.service.test.ts | 29→33 lines | ~281 |
+| 17:42 | Edited apps/api/src/modules/videos/videos.service.test.ts | 4→8 lines | ~61 |
+| 17:43 | Edited apps/worker/src/lib/ffmpeg.ts | 3→3 lines | ~35 |
+| 17:43 | Edited apps/worker/src/lib/ffmpeg.ts | 3→3 lines | ~27 |
+| 17:43 | Edited apps/worker/src/lib/ffmpeg.ts | modified async() | ~30 |
+
+## Session: 2026-06-30 21:12
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-30 21:12
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:17 | Created apps/worker/Dockerfile | — | ~1022 |
+| 21:18 | Created apps/worker/.dockerignore | — | ~80 |
+| 21:18 | Created .dockerignore | — | ~136 |
+| 21:18 | Edited docker-compose.yml | 27→30 lines | ~440 |
+| 21:18 | Edited docker-compose.yml | expanded (+35 lines) | ~575 |
+
+## Session: 2026-06-30 21:21
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-30 21:26
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:29 | Edited apps/worker/Dockerfile | expanded (+8 lines) | ~291 |
+
+## Session: 2026-06-30 21:33
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-06-30 21:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:37 | Edited docker-compose.yml | expanded (+10 lines) | ~318 |
+| 09:55 | Reapplied broker-split warning to docker-compose.yml worker service REDIS_URL line. User had restructured to use apps/worker/.env.docker env_file + explicit env overrides; preserved their structure and reattached the "do not change to redis://redis:6379" comment to prevent regression. | docker-compose.yml, .wolf/cerebrum.md, .wolf/memory.md | Comment + Do-Not-Repeat entry restored | ~1.6k |
+| 21:39 | Session end: 1 writes across 1 files (docker-compose.yml) | 2 reads | ~2134 tok |
+| 21:41 | Session end: 1 writes across 1 files (docker-compose.yml) | 3 reads | ~3297 tok |
+
+## Session: 2026-07-01 08:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 08:32 | Edited packages/config/package.json | 8→13 lines | ~80 |
+| 08:32 | Edited packages/db/package.json | 12→17 lines | ~180 |
+| 08:32 | Edited packages/s3/package.json | 9→14 lines | ~92 |
+| 08:32 | Edited packages/crypto/package.json | 10→15 lines | ~105 |
+| 08:32 | Edited packages/types/package.json | 9→14 lines | ~94 |
+| 08:32 | Edited packages/youtube-upload/package.json | 11→16 lines | ~107 |
+| 08:32 | Edited turbo.json | 9→9 lines | ~76 |
+| 08:32 | Edited turbo.json | 3→4 lines | ~25 |
+
+## Session: 2026-07-01 08:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:02 | Edited apps/web/middleware.ts | modified reference() | ~171 |
+| 09:02 | Edited apps/web/middleware.ts | modified reference() | ~272 |
+| 09:03 | Edited apps/web/middleware.ts | added 1 import(s) | ~279 |
+| 09:05 | Fixed Next.js 16 + Auth.js v5 middleware runtime crash: `headers` was called outside a request scope. Cause: `export default NextAuth(authConfig).auth()` invoked the auth handler at module-evaluation time, which dispatches into code that calls `next/headers`'s `headers()`. Fix: export `.auth` as a function reference + cast to `NextMiddleware` to suppress TS2742. check-types + lint clean. | apps/web/middleware.ts, .wolf/cerebrum.md, .wolf/buglog.json | web typecheck + lint green | ~1900 |
+| 09:07 | Session end: 1 write to apps/web/middleware.ts + cerebrum + buglog + memory | 5 reads (anatomy, cerebrum, buglog, package.json, auth.config.ts, auth.ts, middleware.ts, route.ts) | ~2100 tok |
+| 09:09 | Session end: 3 writes across 1 files (middleware.ts) | 5 reads | ~4826 tok |
+| 09:18 | Created apps/web/components/dashboard/processing-substeps.tsx | — | ~1804 |
+| 09:18 | Edited apps/web/app/dashboard/published/[id]/page.tsx | added 1 import(s) | ~78 |
+| 09:18 | Edited apps/web/app/dashboard/published/[id]/page.tsx | 2→3 lines | ~43 |
+| 09:19 | Edited apps/web/components/dashboard/processing-substeps.tsx | 21→21 lines | ~152 |

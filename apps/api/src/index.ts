@@ -18,7 +18,7 @@ import { buildLogger } from "./lib/logger.js";
 import { createApp } from "./app.js";
 import { startServer } from "./server.js";
 import { disposeCache, getCacheBackend, verifyCache } from "./lib/cache.js";
-import { closePublishQueue, verifyPublishQueue } from "./lib/queue.js";
+import { closePublishQueue, verifyIngestQueue, verifyPublishQueue } from "./lib/queue.js";
 import { prisma, setDatabaseAvailable } from "./lib/prisma.js";
 import { connectEventBus, eventBus } from "./lib/events.js";
 import type { Logger } from "./lib/logger.js";
@@ -123,15 +123,27 @@ const main = async (): Promise<void> => {
   // Queue (BullMQ → Redis). Optional in dev (returns "not-configured"),
   // required in production — we surface a soft ✗ rather than crash so the
   // API can still serve read-only routes; enqueue jobs will 503 at runtime.
-  const queueResult = await verifyPublishQueue(env);
+  // Both queues share the same Redis connection; reported as two named rows.
+  const publishQueueResult = await verifyPublishQueue(env);
   checks.push({
-    name: "Queue (BullMQ)",
-    ok: queueResult.ok,
-    detail: queueResult.ok
-      ? `ready in ${queueResult.latencyMs}ms`
-      : queueResult.error === "not-configured"
+    name: "Queue publish (BullMQ)",
+    ok: publishQueueResult.ok,
+    detail: publishQueueResult.ok
+      ? `ready in ${publishQueueResult.latencyMs}ms`
+      : publishQueueResult.error === "not-configured"
         ? "skipped — REDIS_URL unset"
-        : `FAILED — ${queueResult.error}`,
+        : `FAILED — ${publishQueueResult.error}`,
+  });
+
+  const ingestQueueResult = await verifyIngestQueue(env);
+  checks.push({
+    name: "Queue ingest  (BullMQ)",
+    ok: ingestQueueResult.ok,
+    detail: ingestQueueResult.ok
+      ? `ready in ${ingestQueueResult.latencyMs}ms`
+      : ingestQueueResult.error === "not-configured"
+        ? "skipped — REDIS_URL unset"
+        : `FAILED — ${ingestQueueResult.error}`,
   });
 
   logger.info(

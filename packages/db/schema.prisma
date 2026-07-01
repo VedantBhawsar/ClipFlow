@@ -278,14 +278,23 @@ model YouTubeChannel {
 
 // ---------- Video ----------
 
-/// Lifecycle states for an uploaded video. Six values for the
-/// upload-publish slice; the transcript / thumbnail / chapter slice
-/// extends this enum via a follow-up migration.
+/// Lifecycle states for an uploaded video. Eleven values covering the
+/// upload → extract → transcribe → generate → review → publish pipeline.
 enum VideoStatus {
   /// Row exists, no bytes in S3 yet (or upload in progress).
   UPLOADED
-  /// Bytes in S3, metadata accepted, ready to publish.
+  /// Bytes in S3, metadata accepted; preserved for back-compat with
+  /// existing rows. The new flow bypasses READY entirely until
+  /// ingest + transcribe + generate complete.
   READY
+  /// Worker has started the audio/frame extraction pass.
+  EXTRACTING
+  /// Extraction complete; audio queued for transcription.
+  TRANSCRIBING
+  /// Transcription complete; thumbnail/chapter generation in progress.
+  GENERATING
+  /// Generation complete; awaiting creator review.
+  READY_FOR_REVIEW
   /// `scheduledPublishAt` is in the future; BullMQ will pick it up later.
   SCHEDULED
   /// Worker has started the YouTube videos.insert call.
@@ -294,6 +303,9 @@ enum VideoStatus {
   PUBLISHED
   /// Retries exhausted; see `failureReason` for the last error.
   PUBLISH_FAILED
+  /// Extraction, transcription, or generation failed permanently;
+  /// see `failureReason` for the error detail.
+  FAILED
 }
 
 /// One row per uploaded video. Created in `UPLOADED` status when the
@@ -352,6 +364,19 @@ model Video {
   /// finalize so a bad object never reaches the YouTube API.
   s3KeyThumbnail     String?
   thumbnailContentType String?
+
+  /// Key to the extracted MP3 audio. Used as input to the transcription
+  /// pipeline. Null until the video-ingest worker completes extraction.
+  s3KeyAudio         String?
+  /// S3 key prefix under which extracted candidate frames live
+  /// (`videos/{id}/frames/frame_NNN.jpg`). Together with `frameCount`
+  /// this fully describes the thumbnail-source candidate set.
+  s3KeyFramesPrefix  String?
+  /// Number of extracted candidate frames. Null until extraction completes.
+  frameCount         Int?
+  /// Probed duration in seconds from the extracted audio. Used by the
+  /// dashboard and (later) by the publish path to check against YouTube limits.
+  durationSeconds     Int?
 
   status          VideoStatus   @default(UPLOADED)
   failureReason   String?
