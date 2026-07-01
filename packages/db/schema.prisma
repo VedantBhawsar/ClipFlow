@@ -378,6 +378,35 @@ model Video {
   /// dashboard and (later) by the publish path to check against YouTube limits.
   durationSeconds     Int?
 
+  /// S3 key of the AssemblyAI transcript JSON (full word-level timings +
+  /// auto-chapters + sentiment). Null until the transcription worker
+  /// completes. Kept on S3 (not inline JSONB) because the transcript can
+  /// be hundreds of KB for a long video and is only fetched by the
+  /// generate worker + review screen, never on the dashboard list.
+  transcriptS3Key     String?
+  /// ISO 639-1 language code returned by AssemblyAI's `language_detection`.
+  /// Null until the transcription worker completes. Logged on the row so
+  /// the dashboard can show a "(transcript: en)" hint without re-fetching.
+  transcriptLanguage  String?
+  /// Millisecond-precision audio duration from AssemblyAI. Null until
+  /// the transcription worker completes. Strictly more precise than
+  /// `durationSeconds` (FFprobe seconds) — used to align LLM-picked
+  /// highlight timestamps against the transcript without rounding error.
+  transcriptDurationMs Int?
+  /// S3 prefix under which the LLM-picked highlight frames live
+  /// (`videos/{id}/highlights/frame_NN.jpg`). Null until the generate
+  /// worker completes. Together with `highlightsCount` this fully
+  /// describes the topic-aligned cover candidates.
+  highlightsS3Prefix  String?
+  /// Number of LLM-selected highlight frames (capped at 5 in v1; tier
+  /// caps re-enter when Imagen lands). Null until generation completes.
+  highlightsCount     Int?
+  /// LLM-emitted chapter list, validated against YouTube's chapter
+  /// rules server-side (first timestamp = 0, min 3, min 10s apart, max
+  /// 100 chars/title). Stored as JSONB so the publish path can read it
+  /// without re-fetching from S3. Null until generation completes.
+  chaptersJson        Json?
+
   status          VideoStatus   @default(UPLOADED)
   failureReason   String?
 

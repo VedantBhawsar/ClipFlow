@@ -18,7 +18,13 @@ import { buildLogger } from "./lib/logger.js";
 import { createApp } from "./app.js";
 import { startServer } from "./server.js";
 import { disposeCache, getCacheBackend, verifyCache } from "./lib/cache.js";
-import { closePublishQueue, verifyIngestQueue, verifyPublishQueue } from "./lib/queue.js";
+import {
+  closePublishQueue,
+  verifyIngestQueue,
+  verifyPublishQueue,
+  verifyTranscriptionQueue,
+  verifyGenerateQueue,
+} from "./lib/queue.js";
 import { prisma, setDatabaseAvailable } from "./lib/prisma.js";
 import { connectEventBus, eventBus } from "./lib/events.js";
 import type { Logger } from "./lib/logger.js";
@@ -144,6 +150,28 @@ const main = async (): Promise<void> => {
       : ingestQueueResult.error === "not-configured"
         ? "skipped — REDIS_URL unset"
         : `FAILED — ${ingestQueueResult.error}`,
+  });
+
+  const transcriptionQueueResult = await verifyTranscriptionQueue(env);
+  checks.push({
+    name: "Queue trans.  (BullMQ)",
+    ok: transcriptionQueueResult.ok,
+    detail: transcriptionQueueResult.ok
+      ? `ready in ${transcriptionQueueResult.latencyMs}ms`
+      : transcriptionQueueResult.error === "not-configured"
+        ? "skipped — REDIS_URL unset"
+        : `FAILED — ${transcriptionQueueResult.error}`,
+  });
+
+  const generateQueueResult = await verifyGenerateQueue(env);
+  checks.push({
+    name: "Queue generate (BullMQ)",
+    ok: generateQueueResult.ok,
+    detail: generateQueueResult.ok
+      ? `ready in ${generateQueueResult.latencyMs}ms`
+      : generateQueueResult.error === "not-configured"
+        ? "skipped — REDIS_URL unset"
+        : `FAILED — ${generateQueueResult.error}`,
   });
 
   logger.info(

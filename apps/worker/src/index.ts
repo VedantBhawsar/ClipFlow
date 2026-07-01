@@ -13,12 +13,19 @@
 import { Redis } from "ioredis";
 import { loadWorkerEnv } from "./env.js";
 import { buildLogger } from "./config/logger.js";
-import { buildPublishQueue, buildVideoIngestQueue } from "./config/queue.js";
+import {
+  buildGenerateQueue,
+  buildPublishQueue,
+  buildTranscriptionQueue,
+  buildVideoIngestQueue,
+} from "./config/queue.js";
 import { WorkerEventPublisher } from "./lib/events.js";
 import {
   recoverMissedScheduledJobs,
+  recoverOrphanedGenerateJobs,
   recoverOrphanedIngestJobs,
   recoverOrphanedPublishingJobs,
+  recoverOrphanedTranscriptionJobs,
 } from "./startup-recovery.js";
 import { prisma } from "@clipflow/db";
 
@@ -154,18 +161,55 @@ const main = async (): Promise<void> => {
     process.exit(1);
   }
 
-  // Build both queues — they share the same Redis connection.
+  // Build all four queues — they share the same Redis connection.
+  //
+  // Order matters:
+  //   - generate queue is built BEFORE transcription so we can hand
+  //     the transcription worker a closure that enqueues into the
+  //     generate queue (transcription's tail enqueues the generate
+  //     job after flipping the row to GENERATING).
+  //   - transcription queue is built BEFORE ingest for the same
+  //     reason — ingest's tail enqueues the transcription job.
   const { queue: publishQueue, worker: publishWorker } = buildPublishQueue(
     redisConnection!,
     env,
     logger,
     eventPublisher ?? undefined,
   );
+  const { queue: generateQueue, worker: generateWorker } = buildGenerateQueue(
+    redisConnection!,
+    env,
+    logger,
+    eventPublisher ?? undefined,
+  );
+  const enqueueGenerate = async (videoId: string): Promise<void> => {
+    await generateQueue.add(
+      "generate",
+      { videoId },
+      { jobId: `generate-${videoId}` },
+    );
+  };
+  const { queue: transcriptionQueue, worker: transcriptionWorker } =
+    buildTranscriptionQueue(
+      redisConnection!,
+      env,
+      logger,
+      eventPublisher ?? undefined,
+      enqueueGenerate,
+    );
+  const enqueueTranscription = async (videoId: string): Promise<void> => {
+    await transcriptionQueue.add(
+      "transcription",
+      { videoId },
+      { jobId: `transcribe-${videoId}` },
+    );
+  };
   const { queue: ingestQueue, worker: ingestWorker } = buildVideoIngestQueue(
     redisConnection!,
     env,
     logger,
     eventPublisher ?? undefined,
+    enqueueTranscription,
   );
 
   // Pass 1: reconcile any rows orphaned in PUBLISHING by a previous
@@ -179,12 +223,38 @@ const main = async (): Promise<void> => {
   // TRANSCRIBING. Otherwise reset to UPLOADED and re-enqueue.
   const ingestOrphans = await recoverOrphanedIngestJobs(ingestQueue, logger);
 
-  // Pass 3: re-enqueue READY/SCHEDULED rows whose publish time has
+  // Pass 3: reconcile any rows orphaned in TRANSCRIBING. If
+  // transcriptS3Key is set the transcription finished but the DB
+  // write to GENERATING was lost — advance. Otherwise re-enqueue the
+  // transcription job (the job itself checks for audio presence and
+  // fails permanent if missing).
+  const transcriptionOrphans = await recoverOrphanedTranscriptionJobs(
+    transcriptionQueue,
+    logger,
+  );
+
+  // Pass 4: reconcile any rows orphaned in GENERATING. If chaptersJson
+  // is set the generate run finished but the READY_FOR_REVIEW write
+  // was lost — advance. Otherwise re-enqueue the generate job (the
+  // job itself checks for transcript presence and fails permanent if
+  // missing).
+  const generateOrphans = await recoverOrphanedGenerateJobs(
+    generateQueue,
+    logger,
+  );
+
+  // Pass 5: re-enqueue READY/SCHEDULED rows whose publish time has
   // come and gone.
   const recovered = await recoverMissedScheduledJobs(publishQueue, logger);
 
   logger.info(
-    { orphans, ingestOrphans, recovered },
+    {
+      orphans,
+      ingestOrphans,
+      transcriptionOrphans,
+      generateOrphans,
+      recovered,
+    },
     "Startup recovery complete",
   );
 
@@ -193,8 +263,12 @@ const main = async (): Promise<void> => {
     try {
       await publishWorker.close();
       await ingestWorker.close();
+      await transcriptionWorker.close();
+      await generateWorker.close();
       await publishQueue.close();
       await ingestQueue.close();
+      await transcriptionQueue.close();
+      await generateQueue.close();
       redisConnection!.disconnect();
       await eventPublisher?.dispose();
       await prisma.$disconnect();

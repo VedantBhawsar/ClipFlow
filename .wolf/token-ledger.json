@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-06-26T04:13:47.972Z",
   "lifetime": {
-    "total_tokens_estimated": 278877,
-    "total_reads": 140,
-    "total_writes": 62,
-    "total_sessions": 30,
-    "anatomy_hits": 105,
-    "anatomy_misses": 4,
-    "repeated_reads_blocked": 11,
-    "estimated_savings_vs_bare_cli": 39817
+    "total_tokens_estimated": 488001,
+    "total_reads": 213,
+    "total_writes": 146,
+    "total_sessions": 38,
+    "anatomy_hits": 161,
+    "anatomy_misses": 11,
+    "repeated_reads_blocked": 24,
+    "estimated_savings_vs_bare_cli": 91645
   },
   "sessions": [
     {
@@ -1430,6 +1430,949 @@
         "writes_count": 2,
         "repeated_reads_blocked": 0,
         "anatomy_lookups": 11
+      }
+    },
+    {
+      "id": "session-2026-07-01-1756",
+      "started": "2026-07-01T12:26:00.756Z",
+      "ended": "2026-07-01T13:13:21.275Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/video-ingest.ts",
+          "tokens_estimated": 2860,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/ffmpeg.ts",
+          "tokens_estimated": 1478,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/db/schema.prisma",
+          "tokens_estimated": 3750,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/docs/TechSpec.md",
+          "tokens_estimated": 3221,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/types/src/index.ts",
+          "tokens_estimated": 5398,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/config/queue.ts",
+          "tokens_estimated": 1338,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/lib/queue.ts",
+          "tokens_estimated": 1684,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/lib/events.ts",
+          "tokens_estimated": 1658,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/.claude/plans/zazzy-plotting-peacock.md",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/.claude/plans/topic-shaping-summit.md",
+          "tokens_estimated": 4922,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/.claude/plans/topic-shaping-summit.md",
+          "tokens_estimated": 368,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 21387,
+        "output_tokens_estimated": 5290,
+        "reads_count": 9,
+        "writes_count": 2,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 7
+      }
+    },
+    {
+      "id": "session-2026-07-01-1756",
+      "started": "2026-07-01T12:26:00.756Z",
+      "ended": "2026-07-01T13:28:59.119Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/video-ingest.ts",
+          "tokens_estimated": 2860,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/ffmpeg.ts",
+          "tokens_estimated": 1478,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/db/schema.prisma",
+          "tokens_estimated": 3750,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/docs/TechSpec.md",
+          "tokens_estimated": 3221,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/types/src/index.ts",
+          "tokens_estimated": 5398,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/config/queue.ts",
+          "tokens_estimated": 1338,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/lib/queue.ts",
+          "tokens_estimated": 1684,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/lib/events.ts",
+          "tokens_estimated": 1658,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/.claude/plans/zazzy-plotting-peacock.md",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/db/prisma/migrations/20260629000000_add_video_ingest_pipeline/migration.sql",
+          "tokens_estimated": 443,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/db/prisma/migrations/20260630000000_add_video_ingest_pipeline/migration.sql",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/db/prisma/migrations/20260626000000_add_video_thumbnail/migration.sql",
+          "tokens_estimated": 167,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.test.ts",
+          "tokens_estimated": 6878,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/config/src/index.ts",
+          "tokens_estimated": 1258,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/env.ts",
+          "tokens_estimated": 504,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/package.json",
+          "tokens_estimated": 123,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/node_modules/.pnpm/assemblyai@4.35.0/node_modules/assemblyai/dist/services/index.d.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/node_modules/.pnpm/assemblyai@4.35.0/node_modules/assemblyai/dist/types/services/index.d.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/node_modules/.pnpm/assemblyai@4.35.0/node_modules/assemblyai/dist/types/transcripts/index.d.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/ffmpeg-errors.ts",
+          "tokens_estimated": 1170,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai.ts",
+          "tokens_estimated": 2286,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/node_modules/.pnpm/assemblyai@4.35.0/node_modules/assemblyai/dist/types/openapi.generated.d.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/ffmpeg.test.ts",
+          "tokens_estimated": 1490,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/auth/auth.service.test.ts",
+          "tokens_estimated": 2518,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/.claude/plans/topic-shaping-summit.md",
+          "tokens_estimated": 4922,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/.claude/plans/topic-shaping-summit.md",
+          "tokens_estimated": 368,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/db/schema.prisma",
+          "tokens_estimated": 686,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/db/prisma/migrations/20260701000000_add_video_transcript_highlights/migration.sql",
+          "tokens_estimated": 449,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.test.ts",
+          "tokens_estimated": 295,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.test.ts",
+          "tokens_estimated": 64,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.test.ts",
+          "tokens_estimated": 47,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.test.ts",
+          "tokens_estimated": 62,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/config/src/index.ts",
+          "tokens_estimated": 536,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai-errors.ts",
+          "tokens_estimated": 1320,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai.ts",
+          "tokens_estimated": 2262,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai.ts",
+          "tokens_estimated": 260,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai.ts",
+          "tokens_estimated": 238,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai.ts",
+          "tokens_estimated": 51,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai.ts",
+          "tokens_estimated": 174,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai.ts",
+          "tokens_estimated": 144,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai-errors.test.ts",
+          "tokens_estimated": 1169,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai.ts",
+          "tokens_estimated": 467,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai.ts",
+          "tokens_estimated": 279,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai.test.ts",
+          "tokens_estimated": 1571,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai-errors.test.ts",
+          "tokens_estimated": 116,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai.test.ts",
+          "tokens_estimated": 220,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai.test.ts",
+          "tokens_estimated": 55,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai.test.ts",
+          "tokens_estimated": 124,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai.ts",
+          "tokens_estimated": 50,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/auth/auth.service.test.ts",
+          "tokens_estimated": 113,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 38224,
+        "output_tokens_estimated": 16042,
+        "reads_count": 24,
+        "writes_count": 26,
+        "repeated_reads_blocked": 6,
+        "anatomy_lookups": 17
+      }
+    },
+    {
+      "id": "session-2026-07-01-1923",
+      "started": "2026-07-01T13:53:45.175Z",
+      "ended": "2026-07-01T14:10:32.580Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/.claude/plans/topic-shaping-summit.md",
+          "tokens_estimated": 4346,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/config/queue.ts",
+          "tokens_estimated": 1338,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/video-ingest.ts",
+          "tokens_estimated": 2860,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/index.ts",
+          "tokens_estimated": 1913,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/env.ts",
+          "tokens_estimated": 504,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai.ts",
+          "tokens_estimated": 2283,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/startup-recovery.ts",
+          "tokens_estimated": 2070,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/s3/src/operations.ts",
+          "tokens_estimated": 1037,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts",
+          "tokens_estimated": 8712,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/video-ingest.test.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai-errors.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/events.ts",
+          "tokens_estimated": 572,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/index.ts",
+          "tokens_estimated": 2004,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/transcription.ts",
+          "tokens_estimated": 3842,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/config/queue.ts",
+          "tokens_estimated": 537,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/config/queue.ts",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/config/queue.ts",
+          "tokens_estimated": 640,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/index.ts",
+          "tokens_estimated": 110,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/index.ts",
+          "tokens_estimated": 719,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/startup-recovery.ts",
+          "tokens_estimated": 767,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/startup-recovery.ts",
+          "tokens_estimated": 801,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/video-ingest.ts",
+          "tokens_estimated": 802,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/video-ingest.ts",
+          "tokens_estimated": 494,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/config/queue.ts",
+          "tokens_estimated": 369,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/index.ts",
+          "tokens_estimated": 282,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/lib/queue.ts",
+          "tokens_estimated": 1393,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/lib/queue.ts",
+          "tokens_estimated": 798,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/index.ts",
+          "tokens_estimated": 36,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/index.ts",
+          "tokens_estimated": 226,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/transcription.test.ts",
+          "tokens_estimated": 3563,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/transcription.test.ts",
+          "tokens_estimated": 21,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/transcription.test.ts",
+          "tokens_estimated": 193,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 27639,
+        "output_tokens_estimated": 15637,
+        "reads_count": 13,
+        "writes_count": 19,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 10
+      }
+    },
+    {
+      "id": "session-2026-07-01-1923",
+      "started": "2026-07-01T13:53:45.175Z",
+      "ended": "2026-07-01T14:24:03.801Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/.claude/plans/topic-shaping-summit.md",
+          "tokens_estimated": 4346,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/config/queue.ts",
+          "tokens_estimated": 1338,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/video-ingest.ts",
+          "tokens_estimated": 2860,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/index.ts",
+          "tokens_estimated": 1913,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/env.ts",
+          "tokens_estimated": 504,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai.ts",
+          "tokens_estimated": 2283,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/startup-recovery.ts",
+          "tokens_estimated": 2070,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/s3/src/operations.ts",
+          "tokens_estimated": 1037,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts",
+          "tokens_estimated": 8712,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/video-ingest.test.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai-errors.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/events.ts",
+          "tokens_estimated": 572,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/index.ts",
+          "tokens_estimated": 2004,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/transcription.ts",
+          "tokens_estimated": 3842,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/config/queue.ts",
+          "tokens_estimated": 537,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/config/queue.ts",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/config/queue.ts",
+          "tokens_estimated": 640,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/index.ts",
+          "tokens_estimated": 110,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/index.ts",
+          "tokens_estimated": 719,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/startup-recovery.ts",
+          "tokens_estimated": 767,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/startup-recovery.ts",
+          "tokens_estimated": 801,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/video-ingest.ts",
+          "tokens_estimated": 802,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/video-ingest.ts",
+          "tokens_estimated": 494,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/config/queue.ts",
+          "tokens_estimated": 369,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/index.ts",
+          "tokens_estimated": 282,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/lib/queue.ts",
+          "tokens_estimated": 1393,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/lib/queue.ts",
+          "tokens_estimated": 798,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/index.ts",
+          "tokens_estimated": 36,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/index.ts",
+          "tokens_estimated": 226,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/transcription.test.ts",
+          "tokens_estimated": 3563,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/transcription.test.ts",
+          "tokens_estimated": 21,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/transcription.test.ts",
+          "tokens_estimated": 193,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 27639,
+        "output_tokens_estimated": 15637,
+        "reads_count": 13,
+        "writes_count": 19,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 10
+      }
+    },
+    {
+      "id": "session-2026-07-01-2104",
+      "started": "2026-07-01T15:34:35.712Z",
+      "ended": "2026-07-01T15:44:52.947Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/package.json",
+          "tokens_estimated": 123,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/vitest.config.ts",
+          "tokens_estimated": 45,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/transcription.test.ts",
+          "tokens_estimated": 3678,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/generate.ts",
+          "tokens_estimated": 3850,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/llm-client.ts",
+          "tokens_estimated": 1842,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/llm-errors.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/schemas.ts",
+          "tokens_estimated": 1100,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/validate-with-retry.ts",
+          "tokens_estimated": 1092,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/index.ts",
+          "tokens_estimated": 250,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/prompts/select-highlights.ts",
+          "tokens_estimated": 1633,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai.ts",
+          "tokens_estimated": 2283,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/config/src/index.ts",
+          "tokens_estimated": 1986,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/llm-errors.test.ts",
+          "tokens_estimated": 1872,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/auth/auth.service.test.ts",
+          "tokens_estimated": 2623,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/llm-errors.test.ts",
+          "tokens_estimated": 1800,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/schemas.test.ts",
+          "tokens_estimated": 2186,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/validate-with-retry.test.ts",
+          "tokens_estimated": 1650,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/llm-client.test.ts",
+          "tokens_estimated": 2570,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/generate.test.ts",
+          "tokens_estimated": 5509,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/package.json",
+          "tokens_estimated": 19,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/generate.test.ts",
+          "tokens_estimated": 70,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/generate.test.ts",
+          "tokens_estimated": 86,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/llm-errors.test.ts",
+          "tokens_estimated": 223,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/index.ts",
+          "tokens_estimated": 331,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/generate.ts",
+          "tokens_estimated": 188,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/llm-errors.test.ts",
+          "tokens_estimated": 97,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/llm-errors.test.ts",
+          "tokens_estimated": 2018,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/transcription.test.ts",
+          "tokens_estimated": 80,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/generate.ts",
+          "tokens_estimated": 32,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/dashboard-content.tsx",
+          "tokens_estimated": 318,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/auth/auth.service.test.ts",
+          "tokens_estimated": 111,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/.claude/projects/-Users-vedant-Documents-projects-ClipFlow/new-bugs.json",
+          "tokens_estimated": 1964,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 22377,
+        "output_tokens_estimated": 19252,
+        "reads_count": 14,
+        "writes_count": 18,
+        "repeated_reads_blocked": 7,
+        "anatomy_lookups": 12
       }
     }
   ],

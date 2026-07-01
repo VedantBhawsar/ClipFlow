@@ -1,88 +1,12 @@
 {
-  "session_id": "session-2026-07-01-0942",
-  "started": "2026-07-01T04:12:56.351Z",
-  "files_read": {
-    "/Users/vedant/Documents/projects/ClipFlow/README.md": {
-      "count": 1,
-      "tokens": 3869,
-      "first_read": "2026-07-01T04:13:35.176Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/docs/PRD.md": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-07-01T04:13:39.054Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/docs/TechSpec.md": {
-      "count": 1,
-      "tokens": 3221,
-      "first_read": "2026-07-01T04:13:39.058Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/docs/AppFlow.md": {
-      "count": 1,
-      "tokens": 3137,
-      "first_read": "2026-07-01T04:13:41.614Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/docs/Schema.md": {
-      "count": 1,
-      "tokens": 4312,
-      "first_read": "2026-07-01T04:13:41.623Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/.claude/plans/zazzy-plotting-peacock.md": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-07-01T04:13:44.986Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/docs/Design.md": {
-      "count": 1,
-      "tokens": 2626,
-      "first_read": "2026-07-01T04:13:45.000Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/video-ingest.ts": {
-      "count": 1,
-      "tokens": 2860,
-      "first_read": "2026-07-01T04:14:28.382Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/packages/db/schema.prisma": {
-      "count": 1,
-      "tokens": 3750,
-      "first_read": "2026-07-01T04:14:41.289Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/middleware.ts": {
-      "count": 1,
-      "tokens": 392,
-      "first_read": "2026-07-01T04:14:53.756Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/auth.config.ts": {
-      "count": 1,
-      "tokens": 1671,
-      "first_read": "2026-07-01T04:14:58.963Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/auth.ts": {
-      "count": 1,
-      "tokens": 3420,
-      "first_read": "2026-07-01T04:14:58.965Z"
-    }
-  },
-  "files_written": [
-    {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/README.md",
-      "action": "create",
-      "tokens": 8004,
-      "at": "2026-07-01T04:28:43.932Z"
-    },
-    {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/README.md",
-      "action": "edit",
-      "tokens": 1262,
-      "at": "2026-07-01T04:38:51.961Z"
-    }
-  ],
-  "edit_counts": {
-    "README.md": 2
-  },
-  "anatomy_hits": 11,
-  "anatomy_misses": 1,
+  "session_id": "session-2026-07-01-2136",
+  "started": "2026-07-01T16:06:44.437Z",
+  "files_read": {},
+  "files_written": [],
+  "edit_counts": {},
+  "anatomy_hits": 0,
+  "anatomy_misses": 0,
   "repeated_reads_warned": 0,
   "cerebrum_warnings": 0,
-  "stop_count": 2
+  "stop_count": 0
 }

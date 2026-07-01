@@ -2,19 +2,22 @@
  * BullMQ enqueue helpers.
  *
  * The API only enqueues — it never consumes. The worker (apps/worker)
- * is the sole consumer of both the `youtube-publish` and `video-ingest`
- * queues.
+ * is the sole consumer of all four queues: `youtube-publish`,
+ * `video-ingest`, `transcription`, and `generate`.
  *
- * Both queues share the same Redis connection (`cachedConnection`) so
- * we don't double up on sockets. If REDIS_URL is missing (dev
- * fallback), `getPublishQueue()` / `getIngestQueue()` return null and
- * the corresponding `enqueueXxxJob` throws QUEUE_UNAVAILABLE so the
- * caller can surface that to the user.
+ * All four queues share the same Redis connection
+ * (`cachedConnection`) so we don't double up on sockets. If REDIS_URL
+ * is missing (dev fallback), `getPublishQueue()` /
+ * `getIngestQueue()` / `getTranscriptionQueue()` /
+ * `getGenerateQueue()` return null and the corresponding
+ * `enqueueXxxJob` throws QUEUE_UNAVAILABLE so the caller can surface
+ * that to the user.
  *
- * `verifyPublishQueue()` and `verifyIngestQueue()` are the boot-time
- * PINGs. They build the connection (if needed) and confirm Redis is
- * reachable, so a bad REDIS_URL shows up in the startup banner
- * instead of as a 503 on the first request.
+ * `verifyPublishQueue()` / `verifyIngestQueue()` /
+ * `verifyTranscriptionQueue()` / `verifyGenerateQueue()` are the
+ * boot-time PINGs. They all hit the same shared Redis connection, so
+ * a bad REDIS_URL shows up in the startup banner instead of as a 503
+ * on the first request.
  */
 import { Queue } from "bullmq";
 import { Redis, type Redis as RedisType } from "ioredis";
@@ -23,10 +26,14 @@ import { AppError } from "../errors/AppError.js";
 
 export const YOUTUBE_PUBLISH_QUEUE = "youtube-publish";
 export const VIDEO_INGEST_QUEUE = "video-ingest";
+export const TRANSCRIPTION_QUEUE = "transcription";
+export const GENERATE_QUEUE = "generate";
 
 let cachedConnection: RedisType | null = null;
 let cachedPublishQueue: Queue | null = null;
 let cachedIngestQueue: Queue | null = null;
+let cachedTranscriptionQueue: Queue | null = null;
+let cachedGenerateQueue: Queue | null = null;
 
 /**
  * Build (or return) the shared Redis connection. Idempotent — first
@@ -80,6 +87,38 @@ export const getIngestQueue = (env: Env): Queue | null => {
 };
 
 /**
+ * Get (or build) the singleton transcription queue. Shares the same
+ * Redis connection as the publish + ingest queues.
+ */
+export const getTranscriptionQueue = (env: Env): Queue | null => {
+  if (!env.REDIS_URL) return null;
+  if (cachedTranscriptionQueue) return cachedTranscriptionQueue;
+  const conn = getConnection(env);
+  if (!conn) return null;
+  cachedTranscriptionQueue = new Queue(TRANSCRIPTION_QUEUE, {
+    connection: conn,
+    prefix: env.BULLMQ_PREFIX,
+  });
+  return cachedTranscriptionQueue;
+};
+
+/**
+ * Get (or build) the singleton generate queue. Shares the same Redis
+ * connection as the publish / ingest / transcription queues.
+ */
+export const getGenerateQueue = (env: Env): Queue | null => {
+  if (!env.REDIS_URL) return null;
+  if (cachedGenerateQueue) return cachedGenerateQueue;
+  const conn = getConnection(env);
+  if (!conn) return null;
+  cachedGenerateQueue = new Queue(GENERATE_QUEUE, {
+    connection: conn,
+    prefix: env.BULLMQ_PREFIX,
+  });
+  return cachedGenerateQueue;
+};
+
+/**
  * Boot-time reachability check for the BullMQ backing Redis. PINGs
  * the shared connection. Safe to call before any queue usage.
  */
@@ -117,6 +156,12 @@ export const verifyPublishQueue = (env: Env) => verifyConnection(env);
 /** Boot-time reachability check for the ingest queue (shared Redis PING). */
 export const verifyIngestQueue = (env: Env) => verifyConnection(env);
 
+/** Boot-time reachability check for the transcription queue (shared Redis PING). */
+export const verifyTranscriptionQueue = (env: Env) => verifyConnection(env);
+
+/** Boot-time reachability check for the generate queue (shared Redis PING). */
+export const verifyGenerateQueue = (env: Env) => verifyConnection(env);
+
 /**
  * Enqueue a `youtube-publish` job for a Video. Uses a deterministic
  * `jobId` so re-enqueuing the same video (e.g. on a finalize retry)
@@ -153,6 +198,17 @@ export const enqueuePublishJob = async (
  * Enqueue a `video-ingest` job for a Video. Uses a deterministic
  * `jobId` (`ingest-${videoId}`) so re-enqueues dedupe — the
  * startup-recovery pass also uses this same id prefix.
+ *
+ * Note: the API does NOT directly enqueue the follow-up
+ * `transcription` job. The `video-ingest` worker enqueues it at the
+ * end of its own handler (see `apps/worker/src/jobs/video-ingest.ts`)
+ * — that ordering guarantees `s3KeyAudio` is set before transcription
+ * starts, so the transcription job can fail-fast with
+ * `[AAI_AUDIO_MISSING]` instead of polling.
+ *
+ * This helper still exists in case a future flow needs to re-enqueue
+ * the ingest job without going through the video-create path
+ * (e.g. admin retry from a FAILED state).
  */
 export const enqueueIngestJob = async (
   videoId: string,
@@ -174,8 +230,70 @@ export const enqueueIngestJob = async (
 };
 
 /**
- * Close both queues and the shared Redis connection on graceful
+ * Enqueue a `transcription` job for a Video. Uses a deterministic
+ * `jobId` (`transcribe-${videoId}`) so re-enqueues dedupe — the
+ * startup-recovery pass and the `video-ingest` worker's tail enqueue
+ * both use this same id prefix.
+ *
+ * In the normal flow, the `video-ingest` worker calls this. This
+ * helper is exported so admin-style re-enqueue paths (e.g. retry from
+ * FAILED) can also fire it without going through ingest.
+ */
+export const enqueueTranscriptionJob = async (
+  videoId: string,
+  env: Env,
+): Promise<void> => {
+  const queue = getTranscriptionQueue(env);
+  if (!queue) {
+    throw new AppError(
+      503,
+      "QUEUE_UNAVAILABLE",
+      "REDIS_URL is not configured; cannot enqueue transcription jobs.",
+    );
+  }
+  await queue.add(
+    "transcription",
+    { videoId },
+    { jobId: `transcribe-${videoId}` },
+  );
+};
+
+/**
+ * Enqueue a `generate` job for a Video. Uses a deterministic
+ * `jobId` (`generate-${videoId}`) so re-enqueues dedupe — the
+ * startup-recovery pass and the `transcription` worker's tail enqueue
+ * both use this same id prefix.
+ *
+ * In the normal flow, the `transcription` worker calls this. This
+ * helper is exported so admin-style re-enqueue paths (e.g. retry from
+ * FAILED) can also fire it without going through transcription.
+ */
+export const enqueueGenerateJob = async (
+  videoId: string,
+  env: Env,
+): Promise<void> => {
+  const queue = getGenerateQueue(env);
+  if (!queue) {
+    throw new AppError(
+      503,
+      "QUEUE_UNAVAILABLE",
+      "REDIS_URL is not configured; cannot enqueue generate jobs.",
+    );
+  }
+  await queue.add(
+    "generate",
+    { videoId },
+    { jobId: `generate-${videoId}` },
+  );
+};
+
+/**
+ * Close all queues and the shared Redis connection on graceful
  * shutdown. Order: close queues before disconnecting the connection.
+ *
+ * Misnomer warning: the name says "closePublishQueue" but it closes
+ * every queue we own. Kept the name to avoid changing every caller
+ * in the same PR that adds the transcription queue.
  */
 export const closePublishQueue = async (): Promise<void> => {
   if (cachedPublishQueue) {
@@ -185,6 +303,14 @@ export const closePublishQueue = async (): Promise<void> => {
   if (cachedIngestQueue) {
     await cachedIngestQueue.close();
     cachedIngestQueue = null;
+  }
+  if (cachedTranscriptionQueue) {
+    await cachedTranscriptionQueue.close();
+    cachedTranscriptionQueue = null;
+  }
+  if (cachedGenerateQueue) {
+    await cachedGenerateQueue.close();
+    cachedGenerateQueue = null;
   }
   if (cachedConnection) {
     cachedConnection.disconnect();

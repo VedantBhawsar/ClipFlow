@@ -64,6 +64,17 @@ const mockEnv: Env = {
   YOUTUBE_MAX_VIDEO_BYTES: 5 * 1024 * 1024 * 1024,
   YOUTUBE_PRESIGNED_POST_TTL: 900,
   FFMPEG_PATH: "ffmpeg",
+  // v1.5 pipeline slice — not exercised by auth tests but the typed
+  // `Env` requires them to be present (or undefined for optional fields).
+  ASSEMBLYAI_API_KEY: undefined,
+  LLM_PROVIDER: "claude",
+  ANTHROPIC_API_KEY: undefined,
+  OPENAI_API_KEY: undefined,
+  NVIDIA_API_KEY: undefined,
+  NVIDIA_BASE_URL: "https://integrate.api.nvidia.com/v1",
+  LLM_MODEL: "claude-3-5-haiku-latest",
+  TRANSCRIBE_POLL_MS: 2000,
+  TRANSCRIBE_TIMEOUT_MS: 15 * 60_000,
 };
 
 const mockUser = {

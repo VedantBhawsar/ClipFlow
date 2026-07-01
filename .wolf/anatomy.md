@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-01T04:38:51.953Z
-> Files: 309 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-01T16:02:03.281Z
+> Files: 330 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../tmp/pw-capture/
 
@@ -10,6 +10,10 @@
 ## ../../../.claude/plans/
 
 - `zazzy-plotting-peacock.md` — Audio + Frame Extraction (`video-ingest` queue) (~3360 tok)
+
+## ../../../.claude/projects/-Users-vedant-Documents-projects-ClipFlow/
+
+- `new-bugs.json` — Declares undefined (~1964 tok)
 
 ## ./
 
@@ -31,6 +35,10 @@
 
 - `settings.json` (~441 tok)
 - `settings.local.json` (~263 tok)
+
+## .claude/plans/
+
+- `topic-shaping-summit.md` — Plan: Topic-aware highlight selection for ClipFlow's ingest pipeline (~4346 tok)
 
 ## .claude/rules/
 
@@ -55,7 +63,7 @@
 ## apps/api/src/
 
 - `app.ts` — Express app factory. (~1479 tok)
-- `index.ts` — Entrypoint. (~2004 tok)
+- `index.ts` — Entrypoint. (~2252 tok)
 - `server.ts` — HTTP server lifecycle. (~844 tok)
 
 ## apps/api/src/config/
@@ -76,7 +84,7 @@
 - `logger.ts` — Structured logger (pino). The single source of truth for application (~306 tok)
 - `password.ts` — Password hashing helpers. (~264 tok)
 - `prisma.ts` — Prisma client re-export. (~328 tok)
-- `queue.ts` — BullMQ enqueue helpers. (~1684 tok)
+- `queue.ts` — BullMQ enqueue helpers. (~2912 tok)
 - `refresh-token.test.ts` — Declares prismaMock (~2701 tok)
 - `refresh-token.ts` — Refresh-token rotation primitives. (~2161 tok)
 - `response.test.ts` — Unit tests for the centralized response helpers. (~924 tok)
@@ -98,7 +106,7 @@
 - `auth.routes.ts` — Auth route definitions. (~532 tok)
 - `auth.schemas.test.ts` — Declares result (~1693 tok)
 - `auth.schemas.ts` — Zod schemas for auth routes. (~717 tok)
-- `auth.service.test.ts` — Declares mockEnv (~2518 tok)
+- `auth.service.test.ts` — Declares mockEnv (~2648 tok)
 - `auth.service.ts` — Auth service. (~2107 tok)
 - `auth.types.ts` — Auth-module-specific type helpers. (~87 tok)
 
@@ -137,7 +145,7 @@
 - `videos.controller.ts` — Videos controller. (~2936 tok)
 - `videos.routes.ts` — Videos route definitions. (~1283 tok)
 - `videos.schemas.ts` — Zod schemas for the videos module. (~2702 tok)
-- `videos.service.test.ts` — Tests for the videos service. (~6878 tok)
+- `videos.service.test.ts` — Tests for the videos service. (~7116 tok)
 - `videos.service.ts` — Videos service — owns all DB + S3 + YouTube-publish enqueue logic (~8712 tok)
 - `videos.types.ts` — Module-internal types for the videos module. (~615 tok)
 
@@ -200,7 +208,7 @@
 
 ## apps/web/app/dashboard/
 
-- `dashboard-content.tsx` — Dashboard home (client component). (~1675 tok)
+- `dashboard-content.tsx` — Dashboard home (client component). (~2411 tok)
 - `layout.tsx` — Dashboard chrome. The sidebar is rendered server-side and the (~314 tok)
 - `page.tsx` — Dashboard route entry. Stays a server component so we can export (~190 tok)
 
@@ -391,25 +399,29 @@
 - `.dockerignore` — Build artifacts (~80 tok)
 - `Dockerfile` — Docker container definition (~1163 tok)
 - `eslint.config.mjs` — ESLint flat configuration (~34 tok)
-- `package.json` — Node.js package manifest (~283 tok)
+- `package.json` — Node.js package manifest (~311 tok)
 - `tsconfig.json` — TypeScript configuration (~57 tok)
 - `vitest.config.ts` — /*.test.ts"], (~45 tok)
 
 ## apps/worker/src/
 
 - `env.ts` — Worker environment loader. (~504 tok)
-- `index.ts` — Worker entrypoint. (~1913 tok)
-- `startup-recovery.ts` — Worker startup-recovery scan. (~2070 tok)
+- `index.ts` — Worker entrypoint. (~2586 tok)
+- `startup-recovery.ts` — Worker startup-recovery scan. (~4006 tok)
 
 ## apps/worker/src/config/
 
 - `logger.ts` — Pino logger factory for the worker. Mirrors apps/api's logger shape (~209 tok)
-- `queue.ts` — BullMQ queue + worker construction. (~1338 tok)
+- `queue.ts` — BullMQ queue + worker construction. (~2976 tok)
 
 ## apps/worker/src/jobs/
 
+- `generate.test.ts` — Unit tests for the `generate` BullMQ job. (~5508 tok)
+- `generate.ts` — Worker job: LLM-driven chapter + summary generation. (~3836 tok)
+- `transcription.test.ts` — Unit tests for the `transcription` BullMQ job. (~3704 tok)
+- `transcription.ts` — Worker job: transcribe an extracted audio file with AssemblyAI. (~4301 tok)
 - `video-ingest.test.ts` — Integration test for the video-ingest BullMQ job. (~1919 tok)
-- `video-ingest.ts` — Worker job: extract audio + candidate frames from an uploaded video. (~2860 tok)
+- `video-ingest.ts` — Worker job: extract audio + candidate frames from an uploaded video. (~3446 tok)
 - `youtube-publish.ts` — Worker job: publish a Video row to YouTube. (~1482 tok)
 
 ## apps/worker/src/lib/
@@ -419,6 +431,28 @@
 - `ffmpeg-errors.ts` — Classify FFmpeg errors into permanent vs transient. (~1170 tok)
 - `ffmpeg.test.ts` — Unit tests for FFmpeg arg construction and error classification. (~1490 tok)
 - `ffmpeg.ts` — Thin FFmpeg wrapper for the `video-ingest` BullMQ job. (~1478 tok)
+
+## apps/worker/src/lib/llm/
+
+- `index.ts` — Public surface of the LLM library. (~331 tok)
+- `llm-client.test.ts` — Unit tests for `OpenAICompatLlmClient`. (~2570 tok)
+- `llm-client.ts` — LLM client — OpenAI-compatible. (~1842 tok)
+- `llm-errors.test.ts` — Unit tests for `classifyLlmError`. (~2018 tok)
+- `schemas.test.ts` — Unit tests for `LlmOutputSchema` + `parseLlmOutput`. (~2186 tok)
+- `schemas.ts` — Zod schemas for the `generate` job's LLM output. (~1100 tok)
+- `validate-with-retry.test.ts` — Unit tests for `validateWithRetry`. (~1650 tok)
+- `validate-with-retry.ts` — `validateWithRetry` — turn the LLM's "I tried, here is something (~1092 tok)
+
+## apps/worker/src/lib/llm/prompts/
+
+- `select-highlights.ts` — `select-highlights` prompt — single joint LLM call that produces (~1633 tok)
+
+## apps/worker/src/lib/transcription/
+
+- `assemblyai-errors.test.ts` — Unit tests for AssemblyAI error classification. (~1154 tok)
+- `assemblyai-errors.ts` — Classify AssemblyAI errors into permanent vs transient. (~1320 tok)
+- `assemblyai.test.ts` — Unit tests for the AssemblyAI wrapper. (~1674 tok)
+- `assemblyai.ts` — Thin AssemblyAI wrapper for the `transcription` BullMQ job. (~2283 tok)
 
 ## docker/postgres/init/
 
@@ -439,7 +473,7 @@
 
 ## packages/config/src/
 
-- `index.ts` — Zod schemas: envSchema, publicEnvSchema (~1258 tok)
+- `index.ts` — Zod schemas: envSchema, publicEnvSchema (~1986 tok)
 
 ## packages/crypto/
 
@@ -459,7 +493,7 @@
 
 - `package.json` — Node.js package manifest (~313 tok)
 - `prisma.config.ts` (~89 tok)
-- `schema.prisma` — packages/db/schema.prisma (~3750 tok)
+- `schema.prisma` — packages/db/schema.prisma (~4208 tok)
 - `tsconfig.json` — TypeScript configuration (~75 tok)
 
 ## packages/db/prisma/migrations/
@@ -509,6 +543,10 @@
 ## packages/db/prisma/migrations/20260630000000_add_video_ingest_pipeline/
 
 - `migration.sql` — Add new pipeline statuses to VideoStatus enum (~252 tok)
+
+## packages/db/prisma/migrations/20260701000000_add_video_transcript_highlights/
+
+- `migration.sql` — Add transcript + LLM-driven highlight artefacts to the videos table. (~419 tok)
 
 ## packages/db/src/
 
@@ -566,3 +604,7 @@
 - `token-refresh.ts` — Token refresh for a stored YouTube connection. (~945 tok)
 - `youtube-api.test.ts` — Unit tests for the internal-license → YouTube-API license translator. (~559 tok)
 - `youtube-api.ts` — YouTube Data API v3 — two-step resumable upload for videos.insert (~3839 tok)
+
+## scripts/
+
+- `check-videos.ts` — Declares main (~358 tok)

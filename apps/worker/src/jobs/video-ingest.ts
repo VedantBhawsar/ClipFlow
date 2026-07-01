@@ -10,7 +10,8 @@
  *   6. Upload the audio + frames back to S3.
  *   7. Update the Video row with s3KeyAudio / s3KeyFramesPrefix /
  *      frameCount / durationSeconds / status = TRANSCRIBING.
- *   8. Publish SSE STATUS_UPDATE.
+ *   8. Enqueue the `transcription` job (step 9 of the slice plan).
+ *   9. Publish SSE STATUS_UPDATE.
  *
  * Failure handling:
  *   - Permanent FFmpeg failures (corrupt input, binary missing) →
@@ -19,9 +20,16 @@
  *   - Transient failures (S3 5xx, out-of-disk) → rethrow so BullMQ's
  *     exponential backoff retries (3 attempts, 60s base delay).
  *
- * The next slice replaces step 7's TRANSCRIBING with an enqueue of the
- * transcription queue. For now we leave the row at TRANSCRIBING with no
- * consumer — explicitly out-of-scope per the slice plan.
+ * Why the ingest worker enqueues its own follow-up rather than the
+ * API doing it: with concurrency=1 on the ingest queue, a video's
+ * transcription job can only start AFTER its ingest job completes.
+ * The API enqueuing both at finalize time would either (a) require
+ * the transcription job to poll-wait for `s3KeyAudio` to be set
+ * (ugly), or (b) risk the transcription job firing before audio
+ * exists and failing permanent. The worker-side enqueue avoids both:
+ * the audio key is always set when we enqueue, and the deterministic
+ * jobId (`transcribe-${videoId}`) dedupes against any stale recovery
+ * re-enqueue.
  */
 import type { Job } from "bullmq";
 import type { Env } from "@clipflow/config";
@@ -51,6 +59,13 @@ export interface ProcessContext {
   env: Env;
   logger: Logger;
   events?: EventPublisher;
+  /**
+   * Enqueue a follow-up `transcription` job for the given video.
+   * Set by the worker at boot after the transcription queue is
+   * constructed. Optional so unit tests that exercise only the
+   * extract path can pass a no-op / vi.fn() mock.
+   */
+  enqueueTranscription?: (videoId: string) => Promise<void>;
 }
 
 const TMP_PREFIX = join(tmpdir(), "clipflow-extract-");
@@ -309,6 +324,40 @@ export const processVideoIngestJob = async (
         status: "TRANSCRIBING",
         timestamp: nowIso(),
       });
+    }
+
+    // ---- 6. Enqueue the transcription follow-up ----
+    //
+    // Done AFTER the DB update so a crash between enqueue and DB
+    // update doesn't leave a stranded job (the job would have nothing
+    // to transcribe). The deterministic jobId (`transcribe-${id}`)
+    // dedupes against any stale recovery re-enqueue.
+    if (ctx.enqueueTranscription) {
+      try {
+        await ctx.enqueueTranscription(videoId);
+        ctx.logger.info(
+          { videoId },
+          "Enqueued transcription follow-up job",
+        );
+      } catch (enqueueErr) {
+        // If the enqueue itself fails (Redis blip), rethrow so
+        // BullMQ retries the whole ingest job. The next attempt
+        // will short-circuit on the s3KeyAudio idempotency check
+        // and re-enqueue the transcription.
+        ctx.logger.error(
+          {
+            videoId,
+            err: enqueueErr instanceof Error ? enqueueErr.message : String(enqueueErr),
+          },
+          "Failed to enqueue transcription follow-up; rethrowing for retry",
+        );
+        throw enqueueErr;
+      }
+    } else {
+      ctx.logger.info(
+        { videoId },
+        "transcription enqueue not wired — leaving row at TRANSCRIBING for next slice",
+      );
     }
 
     ctx.logger.info(

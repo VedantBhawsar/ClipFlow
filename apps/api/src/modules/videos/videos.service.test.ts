@@ -8,6 +8,7 @@
  * is the sole path that writes a `Video` row.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { Prisma } from "@prisma/client";
 import * as videosService from "./videos.service.js";
 
 vi.mock("@clipflow/s3", () => ({
@@ -210,6 +211,17 @@ type StubVideo = {
   s3KeyFramesPrefix: string | null;
   frameCount: number | null;
   durationSeconds: number | null;
+  /// Transcript + highlight artefacts added by the v1.5 pipeline slice.
+  /// All nullable — populated by the `transcription` and `generate` workers
+  /// (not yet built). Tests that don't exercise those stages leave them null.
+  transcriptS3Key: string | null;
+  transcriptLanguage: string | null;
+  transcriptDurationMs: number | null;
+  highlightsS3Prefix: string | null;
+  highlightsCount: number | null;
+  /// `chaptersJson` is Prisma's `Json?` type, which narrows to `Prisma.JsonValue | null`
+  /// in the generated client. Tests pass `null` until the v1.5 generate worker lands.
+  chaptersJson: Prisma.JsonValue | null;
   status: "UPLOADED" | "READY" | "EXTRACTING" | "TRANSCRIBING" | "GENERATING" | "READY_FOR_REVIEW" | "SCHEDULED" | "PUBLISHING" | "PUBLISHED" | "PUBLISH_FAILED" | "FAILED";
   failureReason: string | null;
   scheduledPublishAt: Date | null;
@@ -244,6 +256,12 @@ const stubCreatedVideo: StubVideo = {
   s3KeyFramesPrefix: null,
   frameCount: null,
   durationSeconds: null,
+  transcriptS3Key: null,
+  transcriptLanguage: null,
+  transcriptDurationMs: null,
+  highlightsS3Prefix: null,
+  highlightsCount: null,
+  chaptersJson: null,
   status: "UPLOADED",
   failureReason: null,
   scheduledPublishAt: null,

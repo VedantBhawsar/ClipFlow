@@ -12,7 +12,7 @@ import { useVideos } from "@/hooks/use-videos";
 import { useVideoSSE } from "@/hooks/use-video-sse";
 import { useYouTubeConnection } from "@/hooks/use-youtube-connection";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 /**
  * Dashboard home (client component).
@@ -36,6 +36,12 @@ import { useEffect } from "react";
  *    updates for video processing. When a STATUS_UPDATE event arrives
  *    the TanStack Query cache is invalidated so the video list
  *    re-fetches with the latest data.
+ *  - Safety-net polling: if the SSE silently fails (Redis blip,
+ *    dropped EventSource reconnection, channel-prefix drift between
+ *    worker + API), a 15 s polling refetch keeps the dashboard honest
+ *    while any non-final-status videos are visible. The polling
+ *    stops the moment no in-progress videos remain, so it's free in
+ *    the steady state.
  *
  * Before the bundle-split refactor this component called
  * `useUserBundle()` to get profile + user + YouTube connection in a
@@ -45,22 +51,80 @@ import { useEffect } from "react";
  * the components that actually need it — `useYouTubeConnection()`
  * here and the same hook in the sidebar.
  */
+
+/**
+ * Statuses where the pipeline is still in motion. Any of these count
+ * as "an in-progress video exists" for the purposes of the polling
+ * fallback — if at least one row matches, we keep refetching so a
+ * status flip (transcription → generating → ready-for-review) never
+ * gets stranded by a failed SSE event.
+ */
+const IN_FLIGHT_STATUSES = new Set([
+  "UPLOADED",
+  "READY",
+  "EXTRACTING",
+  "TRANSCRIBING",
+  "GENERATING",
+  "READY_FOR_REVIEW",
+  "SCHEDULED",
+  "PUBLISHING",
+  "PUBLISH_FAILED",
+  "FAILED",
+]);
+
+/** Poll cadence for the safety-net refetch. 15 s feels "live" without
+ *  hammering the server; this is the fallback that only kicks in when
+ *  SSE is broken (the normal path triggers refetches via SSE events). */
+const SAFETY_REFETCH_MS = 15_000;
+
 export function DashboardContent() {
   const { data: session } = useSession();
   const qc = useQueryClient();
   const videosQuery = useVideos({ status: "NOT_PUBLISHED" });
   const { data: youtubeConnection } = useYouTubeConnection();
-  const videos = videosQuery.data?.videos ?? [];
+  // Memoize so the `hasInFlightVideo` derivation's dep array stays
+  // stable across renders — otherwise the safety-net interval below
+  // would tear down + recreate every render.
+  const videos = useMemo(
+    () => videosQuery.data?.videos ?? [],
+    [videosQuery.data?.videos],
+  );
   const hasUnpublishedVideos = videosQuery.isSuccess && videos.length > 0;
   const sse = useVideoSSE(undefined, { enabled: hasUnpublishedVideos });
 
-  // Invalidate video list when a STATUS_UPDATE arrives via SSE
+  // Open SSE as soon as the user has any unpublished videos — even if
+  // they're already past the active stages (e.g. SCHEDULED). The
+  // original implementation gated on `hasUnpublishedVideos` too, so
+  // the race surface here is the same: SSE reopens when the first
+  // fetch returns a non-empty list. The new piece is the safety-net
+  // polling below, which catches any STATUS_UPDATE that races past
+  // the SSE re-enable.
+  const hasInFlightVideo = useMemo(
+    () => videos.some((v) => IN_FLIGHT_STATUSES.has(v.status)),
+    [videos],
+  );
+
+  // Invalidate video list when a STATUS_UPDATE arrives via SSE.
   useEffect(() => {
     const last = sse.events.at(-1);
     if (last?.type === "STATUS_UPDATE") {
       void qc.invalidateQueries({ queryKey: ["videos", "list"] });
     }
   }, [sse.events, qc]);
+
+  // Safety-net polling: while any video is still in flight, refetch
+  // the list every SAFETY_REFETCH_MS so a missed SSE event can't leave
+  // the dashboard stuck on "Transcribing" after the worker already
+  // advanced it to GENERATING / READY_FOR_REVIEW. The interval clears
+  // the moment no in-flight rows remain — the common case once a
+  // video reaches PUBLISHED.
+  useEffect(() => {
+    if (!hasInFlightVideo) return;
+    const timer = setInterval(() => {
+      void qc.invalidateQueries({ queryKey: ["videos", "list"] });
+    }, SAFETY_REFETCH_MS);
+    return () => clearInterval(timer);
+  }, [hasInFlightVideo, qc]);
 
   const sessionUser = session?.user ?? null;
   const displayName =

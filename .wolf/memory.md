@@ -356,3 +356,161 @@
 | 10:08 | Edited README.md | expanded (+25 lines) | ~1178 |
 | 10:08 | Converted the "Sequence diagram (target end state)" from `flowchart TD` to a proper mermaid `sequenceDiagram` with lifelines + phase backgrounds (rect) + par/alt blocks. Added init directive to bump fontSize to 18px and lift message/actor margins. Diagram now renders tall and reads as a sequence diagram instead of a flowchart. | README.md | green — mermaid syntax validates locally (lint of syntax only) | ~3.5k |
 | 10:09 | Session end: 2 writes across 1 files (README.md) | 12 reads | ~38524 tok |
+
+## Session: 2026-07-01 17:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:01 | Created .claude/plans/topic-shaping-summit.md | — | ~4594 |
+| 18:05 | Delivered topic-aware highlight pipeline plan + my thoughts (pros/cons/risk register/open questions) to the user; user requested details, not implementation yet | .claude/plans/topic-shaping-summit.md, .wolf/memory.md | awaiting direction on open questions | ~1k |
+| 18:43 | Edited .claude/plans/topic-shaping-summit.md | 18→19 lines | ~344 |
+| 18:43 | Session end: 2 writes across 1 files (topic-shaping-summit.md) | 9 reads | ~26677 tok |
+| 18:45 | Edited packages/db/schema.prisma | expanded (+51 lines, 6 nullable cols) | ~600 |
+| 18:46 | Created packages/db/prisma/migrations/20260701000000_add_video_transcript_highlights/migration.sql | — | ~419 |
+| 18:46 | Edited apps/api/src/modules/videos/videos.service.test.ts | StubVideo +6 nullable fields | ~250 |
+| 18:48 | Edited packages/config/src/index.ts | expanded (+30 lines, 7 env vars) | ~340 |
+| 18:53 | Created apps/worker/src/lib/transcription/assemblyai-errors.ts | — | ~1320 |
+| 18:53 | Created apps/worker/src/lib/transcription/assemblyai.ts | — | ~2283 |
+| 18:55 | Created apps/worker/src/lib/transcription/assemblyai-errors.test.ts | — | ~1154 |
+| 18:55 | Created apps/worker/src/lib/transcription/assemblyai.test.ts | — | ~1674 |
+| 18:55 | Edited apps/api/src/modules/auth/auth.service.test.ts | mockEnv +7 v1.5 env fields | ~180 |
+| 19:00 | Steps 1-3 of topic-aware-highlight pipeline shipped: (1) schema+6 nullable cols+migration+StubVideo patch, (2) 7 env vars in @clipflow/config, (3) AssemblyAI wrapper+error class+25 unit tests; assemblyai dep installed; pre-existing 4 lint warn + 7 test failures (ffmpeg/video-ingest) confirmed unrelated; pnpm check-types 9/9, api 147/147 tests pass, worker transcription lib 25/25 tests pass. | 6 files | green | ~8.5k |
+| 18:45 | Edited packages/db/schema.prisma | expanded (+29 lines) | ~640 |
+| 18:45 | Created packages/db/prisma/migrations/20260701000000_add_video_transcript_highlights/migration.sql | — | ~419 |
+| 18:46 | Edited apps/api/src/modules/videos/videos.service.test.ts | expanded (+13 lines) | ~295 |
+| 18:46 | Edited apps/api/src/modules/videos/videos.service.test.ts | expanded (+6 lines) | ~64 |
+| 18:46 | Edited apps/api/src/modules/videos/videos.service.test.ts | added 1 import(s) | ~47 |
+| 18:46 | Edited apps/api/src/modules/videos/videos.service.test.ts | 5→3 lines | ~62 |
+| 18:47 | Edited packages/config/src/index.ts | expanded (+29 lines) | ~536 |
+| 18:49 | Created apps/worker/src/lib/transcription/assemblyai-errors.ts | — | ~1320 |
+| 18:50 | Created apps/worker/src/lib/transcription/assemblyai.ts | — | ~2262 |
+| 18:50 | Edited apps/worker/src/lib/transcription/assemblyai.ts | 27→27 lines | ~260 |
+| 18:51 | Edited apps/worker/src/lib/transcription/assemblyai.ts | 28→31 lines | ~238 |
+| 18:52 | Edited apps/worker/src/lib/transcription/assemblyai.ts | added 1 import(s) | ~51 |
+| 18:52 | Edited apps/worker/src/lib/transcription/assemblyai.ts | reduced (-26 lines) | ~174 |
+| 18:52 | Edited apps/worker/src/lib/transcription/assemblyai.ts | added nullish coalescing | ~144 |
+| 18:53 | Created apps/worker/src/lib/transcription/assemblyai-errors.test.ts | — | ~1169 |
+| 18:53 | Edited apps/worker/src/lib/transcription/assemblyai.ts | 27→30 lines | ~467 |
+| 18:53 | Edited apps/worker/src/lib/transcription/assemblyai.ts | expanded (+6 lines) | ~279 |
+| 18:54 | Created apps/worker/src/lib/transcription/assemblyai.test.ts | — | ~1571 |
+| 18:54 | Edited apps/worker/src/lib/transcription/assemblyai-errors.test.ts | modified for() | ~116 |
+| 18:55 | Edited apps/worker/src/lib/transcription/assemblyai.test.ts | expanded (+7 lines) | ~220 |
+| 18:55 | Edited apps/worker/src/lib/transcription/assemblyai.test.ts | 6→6 lines | ~55 |
+| 18:55 | Edited apps/worker/src/lib/transcription/assemblyai.test.ts | 14→15 lines | ~124 |
+| 18:56 | Edited apps/worker/src/lib/transcription/assemblyai.ts | 5→4 lines | ~50 |
+| 18:57 | Edited apps/api/src/modules/auth/auth.service.test.ts | expanded (+9 lines) | ~113 |
+| 18:58 | Session end: 26 writes across 10 files (topic-shaping-summit.md, schema.prisma, migration.sql, videos.service.test.ts, index.ts) | 24 reads | ~54266 tok |
+
+## Session: 2026-07-01 19:23
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:31 | Created apps/worker/src/jobs/transcription.ts | — | ~3842 |
+| 19:31 | Edited apps/worker/src/config/queue.ts | expanded (+14 lines) | ~537 |
+| 19:32 | Edited apps/worker/src/config/queue.ts | 2→3 lines | ~44 |
+| 19:32 | Edited apps/worker/src/config/queue.ts | added error handling | ~640 |
+| 19:32 | Edited apps/worker/src/index.ts | 8→13 lines | ~110 |
+| 19:32 | Edited apps/worker/src/index.ts | modified async() | ~719 |
+| 19:32 | Edited apps/worker/src/startup-recovery.ts | expanded (+13 lines) | ~767 |
+| 19:32 | Edited apps/worker/src/startup-recovery.ts | added 2 condition(s) | ~801 |
+| 19:33 | Edited apps/worker/src/jobs/video-ingest.ts | expanded (+15 lines) | ~802 |
+| 19:33 | Edited apps/worker/src/jobs/video-ingest.ts | added error handling | ~494 |
+| 19:33 | Edited apps/worker/src/config/queue.ts | expanded (+11 lines) | ~369 |
+| 19:33 | Edited apps/worker/src/index.ts | modified async() | ~282 |
+| 19:34 | Edited apps/api/src/lib/queue.ts | added 3 condition(s) | ~1393 |
+| 19:34 | Edited apps/api/src/lib/queue.ts | added 2 condition(s) | ~798 |
+| 19:34 | Edited apps/api/src/index.ts | 1→6 lines | ~36 |
+| 19:34 | Edited apps/api/src/index.ts | expanded (+11 lines) | ~226 |
+| 19:35 | Created apps/worker/src/jobs/transcription.test.ts | — | ~3563 |
+| 19:35 | Edited apps/worker/src/jobs/transcription.test.ts | inline fix | ~21 |
+| 19:36 | Edited apps/worker/src/jobs/transcription.test.ts | expanded (+14 lines) | ~193 |
+
+## Session: 2026-07-01 19:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:37 | Built transcription job + queue wiring end-to-end: jobs/transcription.ts + queue wiring + worker enqueue + startup-recovery + tests. 7/7 transcription tests pass; full API 147/147; worker 60/66 (6 pre-existing ffmpeg failures match buglog 035-039); 0 new lint warnings. Step 4 complete. | worker jobs + queue + startup-recovery + tests + API queue + API index | green | ~11500 |
+| 19:40 | Session end: 19 writes across 6 files (transcription.ts, queue.ts, index.ts, startup-recovery.ts, video-ingest.ts) | 13 reads | ~43276 tok |
+| 19:54 | Session end: 19 writes across 6 files (transcription.ts, queue.ts, index.ts, startup-recovery.ts, video-ingest.ts) | 13 reads | ~43276 tok |
+
+## Session: 2026-07-01 19:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-01 20:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-01 20:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:56 | Edited packages/config/src/index.ts | expanded (+19 lines) | ~439 |
+| 20:57 | Created apps/worker/src/lib/llm/llm-client.ts | — | ~1842 |
+| 20:58 | Created apps/llm/llm-errors.ts | — | ~1511 |
+| 20:58 | Created apps/worker/src/lib/llm/prompts/select-highlights.ts | — | ~1633 |
+| 20:58 | Created apps/worker/src/lib/llm/schemas.ts | — | ~1100 |
+| 20:59 | Created apps/worker/src/lib/llm/validate-with-retry.ts | — | ~1092 |
+| 20:59 | Created apps/worker/src/lib/llm/index.ts | — | ~250 |
+| 21:00 | Created apps/worker/src/jobs/generate.ts | — | ~3775 |
+| 21:00 | Edited apps/worker/src/config/queue.ts | expanded (+10 lines) | ~375 |
+| 21:00 | Edited apps/worker/src/config/queue.ts | added 1 condition(s) | ~1994 |
+| 21:00 | Edited apps/worker/src/jobs/transcription.ts | expanded (+7 lines) | ~133 |
+| 21:00 | Edited apps/worker/src/jobs/transcription.ts | added 1 condition(s) | ~506 |
+| 21:01 | Edited apps/worker/src/startup-recovery.ts | expanded (+13 lines) | ~971 |
+| 21:01 | Edited apps/worker/src/startup-recovery.ts | added 2 condition(s) | ~806 |
+| 21:01 | Edited apps/worker/src/index.ts | 16→18 lines | ~158 |
+| 21:01 | Edited apps/worker/src/index.ts | modified async() | ~1155 |
+| 21:02 | Edited apps/api/src/lib/queue.ts | 32→36 lines | ~431 |
+| 21:02 | Edited apps/api/src/lib/queue.ts | added 3 condition(s) | ~290 |
+| 21:02 | Edited apps/api/src/lib/queue.ts | 8→11 lines | ~176 |
+| 21:02 | Edited apps/api/src/lib/queue.ts | added 2 condition(s) | ~744 |
+| 21:02 | Edited apps/api/src/index.ts | 3→4 lines | ~27 |
+| 21:02 | Edited apps/api/src/index.ts | expanded (+11 lines) | ~231 |
+| 21:03 | Edited apps/web/app/dashboard/dashboard-content.tsx | CSS: polling, same, polling | ~2342 |
+
+## Session: 2026-07-01 21:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:05 | Created apps/worker/src/lib/llm/llm-errors.test.ts | — | ~1800 |
+| 21:05 | Created apps/worker/src/lib/llm/schemas.test.ts | — | ~2186 |
+| 21:06 | Created apps/worker/src/lib/llm/validate-with-retry.test.ts | — | ~1650 |
+| 21:06 | Created apps/worker/src/lib/llm/llm-client.test.ts | — | ~2570 |
+| 21:07 | Created apps/worker/src/jobs/generate.test.ts | — | ~5509 |
+| 21:07 | Edited apps/worker/package.json | 2→3 lines | ~19 |
+| 21:07 | Edited apps/worker/src/jobs/generate.test.ts | 5→5 lines | ~70 |
+| 21:07 | Edited apps/worker/src/jobs/generate.test.ts | 7→7 lines | ~86 |
+| 21:07 | Edited apps/worker/src/lib/llm/llm-errors.test.ts | expanded (+6 lines) | ~223 |
+| 21:08 | Edited apps/worker/src/lib/llm/index.ts | 30→34 lines | ~331 |
+| 21:09 | Edited apps/worker/src/jobs/generate.ts | 11→15 lines | ~188 |
+| 21:09 | Edited apps/worker/src/lib/llm/llm-errors.test.ts | 11→8 lines | ~97 |
+| 21:09 | Created apps/worker/src/lib/llm/llm-errors.test.ts | — | ~2018 |
+| 21:09 | Edited apps/worker/src/jobs/transcription.test.ts | 5→7 lines | ~80 |
+| 21:10 | Edited apps/worker/src/jobs/generate.ts | 4→3 lines | ~32 |
+| 21:10 | Edited apps/web/app/dashboard/dashboard-content.tsx | expanded (+6 lines) | ~318 |
+| 21:10 | Edited apps/api/src/modules/auth/auth.service.test.ts | 7→9 lines | ~111 |
+
+## Session: 2026-07-01 21:12
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:12 | Edited .wolf/anatomy.md | dropped apps/llm/ section (stale leftover from earlier path typo) | ~-22 |
+| 21:12 | Removed apps/llm/ directory (stale leftover from path typo) | rmdir | ~0 |
+| 21:12 | Verified lint/typecheck/test pipeline | web/api/worker all clean (LLM/generate suites added) | ~0 |
+| 21:12 | Created ../../../.claude/projects/-Users-vedant-Documents-projects-ClipFlow/new-bugs.json | — | ~1964 |
+| 21:14 | Session end: 18 writes across 12 files (llm-errors.test.ts, schemas.test.ts, validate-with-retry.test.ts, llm-client.test.ts, generate.test.ts) | 14 reads | ~41629 tok |
+
+## Session: 2026-07-01 21:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:31 | Created scripts/check-videos.ts | — | ~311 |
+| 21:32 | Created scripts/check-videos.ts | — | ~358 |
+
+## Session: 2026-07-01 21:36
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
