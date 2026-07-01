@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-01T04:28:43.924Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-01T04:38:51.953Z
 > Files: 309 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../tmp/pw-capture/
@@ -23,7 +23,7 @@
 - `package.json` — Node.js package manifest (~123 tok)
 - `pnpm-lock.yaml` — pnpm lock file (~100120 tok)
 - `pnpm-workspace.yaml` (~12 tok)
-- `README.md` — Project documentation (~7003 tok)
+- `README.md` — Project documentation (~7104 tok)
 - `turbo.json` — ", ".next/**", "!.next/cache/**", "!.next/dev/**"] (~489 tok)
 - `z.mjs` — Declares args (~84 tok)
 

@@ -130,76 +130,101 @@ The end-to-end pipeline the system is designed to run. Today, the first four sta
 ### Sequence diagram (target end state)
 
 ```mermaid
-flowchart TD
-    %% ─────────────── ACTORS ───────────────
-    Browser(["🌐 Browser<br/>(apps/web)"])
-    API["🟦 apps/api<br/>videos.controller.ts<br/>videos.service.ts"]
-    DB[("🗄️ PostgreSQL<br/>Video row<br/>(Prisma)")]
-    S3[("🪣 S3 / R2<br/>videos/&lt;userId&gt;/&lt;vid&gt;/...")]
-    QIngest["🟨 BullMQ<br/>video-ingest"]
-    QTx["🟨 BullMQ<br/>transcription"]
-    QGen["🟨 BullMQ<br/>chapters + thumbnails"]
-    QPub["🟨 BullMQ<br/>youtube-publish"]
-    Worker["🟩 apps/worker"]
-    YT["📺 YouTube Data API v3<br/>videos.insert (resumable)"]
-    AAI["🗣️ AssemblyAI<br/>(next slice)"]
-    LLM["🧠 LLM (next slice)"]
-    IMG["🖼️ Imagen (next slice)"]
+%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '18px', 'fontFamily': 'Inter, system-ui, sans-serif'}, 'sequence': {'messageMargin': 50, 'noteMargin': 15, 'actorMargin': 60, 'diagramMarginX': 30, 'diagramMarginY': 30, 'actorFontSize': 16, 'noteFontSize': 15, 'messageFontSize': 15, 'wrap': true, 'wrapPadding': 20, 'mirrorActors': false}}}%%
+sequenceDiagram
+    autonumber
+    actor Browser as 🌐 Browser<br/>(apps/web)
+    participant API as 🟦 apps/api<br/>(videos.controller.ts)
+    participant DB as 🗄️ PostgreSQL
+    participant S3 as 🪣 S3 / R2
+    participant Q as 🟨 BullMQ
+    participant Worker as 🟩 apps/worker
+    participant AAI as 🗣️ AssemblyAI<br/>(next slice)
+    participant LLM as 🧠 LLM<br/>(next slice)
+    participant IMG as 🖼️ Imagen<br/>(next slice)
+    participant YT as 📺 YouTube Data API v3
 
-    %% ─────────────── UPLOAD PHASE (shipped) ───────────────
-    Browser -- "1 · POST /api/videos" --> API
-    API -- "2 · INSERT Video (status=UPLOADED)" --> DB
-    API -- "3 · mint presigned POST + optional thumbnail POST" --> S3
-    API -- "4 · return postUrl + fields" --> Browser
-    Browser -- "5 · PUT directly to S3 (with progress)" --> S3
+    rect rgb(220, 252, 231)
+        Note over Browser, S3: UPLOAD PHASE (shipped)
+        Browser->>API: POST /api/videos (title, metadata,<br/>optional thumbnail, contentType, size)
+        API->>DB: INSERT Video (status=UPLOADED)
+        API->>S3: mint presigned POST<br/>(+ optional thumbnail POST)
+        API-->>Browser: return postUrl + fields
+        Browser->>S3: PUT directly with progress
+    end
 
-    %% ─────────────── FINALIZE + ENQUEUE INGEST (shipped) ───────────────
-    Browser -- "6 · POST /api/videos/:id/finalize" --> API
-    API -- "7 · HEAD object on S3" --> S3
-    API -- "8 · UPDATE Video<br/>status = EXTRACTING<br/>fileSizeBytes = real size" --> DB
-    API -- "9 · enqueueIngestJob()<br/>jobId = ingest-&lt;videoId&gt;" --> QIngest
+    rect rgb(254, 249, 195)
+        Note over Browser, Q: FINALIZE + ENQUEUE INGEST (shipped)
+        Browser->>API: POST /api/videos/:id/finalize
+        API->>S3: HEAD object
+        S3-->>API: contentLength, contentType
+        API->>DB: UPDATE Video → status=EXTRACTING<br/>fileSizeBytes = real size
+        API->>Q: enqueueIngestJob(jobId=ingest-<videoId>)
+    end
 
-    %% ─────────────── INGEST (shipped) ───────────────
-    Worker -- "10 · pull ingest job" --> QIngest
-    Worker -- "11 · download original → FFmpeg<br/>audio + candidate frames" --> S3
-    Worker -- "12 · upload audio + frames to S3" --> S3
-    Worker -- "13 · UPDATE Video<br/>status = TRANSCRIBING<br/>+ s3KeyAudio / s3KeyFramesPrefix" --> DB
-    Worker -. "13b · publish SSE PROGRESS + STATUS_UPDATE" .-> Browser
+    rect rgb(219, 234, 254)
+        Note over Worker, Browser: INGEST (shipped) — FFmpeg
+        Worker->>Q: pull video-ingest job
+        Worker->>S3: download original → temp file
+        Worker->>S3: upload audio.mp3 + frames/*
+        Worker->>DB: UPDATE → TRANSCRIBING<br/>+ s3KeyAudio / s3KeyFramesPrefix
+        Worker-->>Browser: SSE PROGRESS + STATUS_UPDATE
+    end
 
-    %% ─────────────── TRANSCRIPTION (next slice) ───────────────
-    Worker -- "14 · enqueue transcription job" --> QTx
-    Worker -- "15 · pull transcription job" --> QTx
-    Worker -- "16 · stream audio → AssemblyAI" --> AAI
-    Worker -- "17 · write Transcript row<br/>(fullText + wordTimestamps)" --> DB
-    Worker -- "18 · enqueue chapters + thumbnails in parallel" --> QGen
-    Worker -- "19 · UPDATE Video status = GENERATING" --> DB
+    rect rgb(243, 232, 255)
+        Note over Worker, IMG: AI PROCESSING (next slice)
+        Worker->>Q: enqueue transcription
+        Worker->>Q: pull transcription job
+        Worker->>AAI: stream audio → AssemblyAI
+        AAI-->>Worker: word-level timestamps + text
+        Worker->>DB: write Transcript row (fullText + wordTimestamps)
+        Worker->>Q: enqueue chapters + thumbnails
+        Worker->>DB: UPDATE Video → status=GENERATING
 
-    %% ─────────────── CHAPTERS + THUMBNAILS (next slice) ───────────────
-    Worker -- "20 · chapters job: LLM over transcript" --> LLM
-    Worker -- "21 · thumbnails job: Imagen + sharp composite" --> IMG
-    Worker -- "22 · write Chapter rows (validated against YT rules)" --> DB
-    Worker -- "23 · write Thumbnail rows + upload to S3" --> DB
-    Worker -- "24 · UPDATE Video status = READY_FOR_REVIEW" --> DB
+        par Chapters — LLM
+            Worker->>Q: pull chapters job
+            Worker->>LLM: LLM over transcript (structured JSON)
+            LLM-->>Worker: [{ timestamp, title }, ...]
+            Worker->>DB: write Chapter rows (validated against YT rules)
+        and Thumbnails — Imagen + sharp
+            Worker->>Q: pull thumbnails job
+            Worker->>IMG: Imagen generation per tier
+            IMG-->>Worker: candidate images
+            Worker->>S3: upload thumbnails/*
+            Worker->>DB: write Thumbnail rows
+        end
 
-    %% ─────────────── REVIEW + APPROVAL (next slice) ───────────────
-    Browser -- "25 · open Video Detail · GET /api/videos/:id<br/>(chapters + thumbnails)" --> API
-    Browser -- "26 · edit chapters, pick thumbnail,<br/>PATCH /api/videos/:id" --> API
-    API -- "27 · UPDATE Video.selectedThumbnailId<br/>+ replace Chapter rows" --> DB
-    Browser -- "28 · Approve & Schedule<br/>PATCH scheduledPublishAt" --> API
-    API -- "29 · UPDATE Video status = SCHEDULED" --> DB
-    API -- "30 · enqueuePublishJob(jobId = publish-&lt;videoId&gt;<br/>delay = until scheduledPublishAt)" --> QPub
+        Worker->>DB: UPDATE Video → status=READY_FOR_REVIEW
+    end
 
-    %% ─────────────── PUBLISH (shipped) ───────────────
-    Worker -- "31 · startup-recovery scan<br/>+ pull delayed job" --> QPub
-    Worker -- "32 · load Video + YouTubeChannel<br/>mark PUBLISHING" --> DB
-    Worker -- "33 · startResumableUploadSession(metadata)" --> YT
-    Worker -- "34 · getObjectStream(key)" --> S3
-    Worker -- "35 · uploadVideoBytes(sessionUrl, body, contentLength)" --> YT
+    rect rgb(254, 226, 226)
+        Note over Browser, Q: REVIEW + APPROVAL (next slice)
+        Browser->>API: GET /api/videos/:id<br/>(chapters + thumbnails)
+        Browser->>Browser: edit chapters, pick thumbnail
+        Browser->>API: PATCH /api/videos/:id<br/>(chapters[], selectedThumbnailId)
+        API->>DB: UPDATE Video
+        Browser->>API: Approve & Schedule<br/>(PATCH scheduledPublishAt)
+        API->>DB: UPDATE Video → status=SCHEDULED
+        API->>Q: enqueuePublishJob(jobId=publish-<videoId>,<br/>delay = until scheduledPublishAt)
+    end
 
-    %% ─────────────── TERMINAL STATES (shipped) ───────────────
-    Worker -- "36a · success → status = PUBLISHED<br/>+ youtubeVideoId + publishedAt" --> DB
-    Worker -. "36b · PermanentPublishError<br/>→ status = PUBLISH_FAILED" .-> DB
-    Worker -. "36c · TransientPublishError<br/>→ BullMQ backoff retry" .-> QPub
+    rect rgb(220, 252, 231)
+        Note over Worker, YT: PUBLISH (shipped) — Resumable upload
+        Worker->>Q: startup-recovery scan / delayed job
+        Worker->>DB: load Video + YouTubeChannel<br/>mark status=PUBLISHING
+        Worker->>YT: startResumableUploadSession(metadata)
+        YT-->>Worker: sessionUrl
+        Worker->>S3: getObjectStream(original key)
+        Worker->>YT: uploadVideoBytes(sessionUrl, body, contentLength)
+
+        alt success
+            Worker->>DB: UPDATE → status=PUBLISHED<br/>+ youtubeVideoId + publishedAt
+        else PermanentPublishError
+            Worker->>DB: UPDATE → status=PUBLISH_FAILED
+        else TransientPublishError
+            Worker->>Q: throw → BullMQ backoff retry
+        end
+    end
 ```
 
 ### State machine (target end state)

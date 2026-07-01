@@ -353,3 +353,6 @@
 | 09:58 | Created README.md | — | ~7470 |
 | 09:58 | Rewrote README.md to match current shipped state + add a "Next slice: AI processing pipeline" section (transcription → chapters + thumbnails → review screen; TRANSCRIBING → GENERATING → READY_FOR_REVIEW). Added a "Pipeline status" summary table so shipped-vs-coming is obvious at a glance. Updated sequence diagram + state machine to the target end state (transcription/chapters/thumbnails jobs shown in their final shape). | README.md | green — gitignored diff would still parse cleanly | ~5.2k |
 | 09:58 | Session end: 1 writes across 1 files (README.md) | 12 reads | ~37262 tok |
+| 10:08 | Edited README.md | expanded (+25 lines) | ~1178 |
+| 10:08 | Converted the "Sequence diagram (target end state)" from `flowchart TD` to a proper mermaid `sequenceDiagram` with lifelines + phase backgrounds (rect) + par/alt blocks. Added init directive to bump fontSize to 18px and lift message/actor margins. Diagram now renders tall and reads as a sequence diagram instead of a flowchart. | README.md | green — mermaid syntax validates locally (lint of syntax only) | ~3.5k |
+| 10:09 | Session end: 2 writes across 1 files (README.md) | 12 reads | ~38524 tok |
