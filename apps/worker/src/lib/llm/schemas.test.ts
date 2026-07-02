@@ -142,15 +142,6 @@ describe("LlmOutputSchema", () => {
       }
     });
 
-    it("rejects more than 12 chapters", () => {
-      const chapters = Array.from({ length: 13 }, (_, i) => ({
-        startMs: i * 11_000,
-        title: `Ch ${i + 1}`,
-      }));
-      const result = LlmOutputSchema.safeParse({ summary: "ok", chapters });
-      expect(result.success).toBe(false);
-    });
-
     it("rejects when first chapter is not at 0 ms", () => {
       const result = LlmOutputSchema.safeParse({
         summary: "ok",
@@ -181,6 +172,25 @@ describe("LlmOutputSchema", () => {
       }
     });
 
+    it("rejects when last chapter startMs exceeds video duration", () => {
+      const bad = JSON.stringify({
+        summary: "ok",
+        chapters: [
+          { startMs: 0, title: "A" },
+          { startMs: 12_000, title: "B" },
+          { startMs: 50_000, title: "C" },
+        ],
+      });
+      let caught: unknown;
+      try {
+        parseLlmOutput(bad, 40_000);
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).toBeInstanceOf(LlmParseError);
+      expect((caught as LlmParseError).message).toContain("video duration");
+    });
+
     it("accepts exactly 10 000 ms gap", () => {
       const result = LlmOutputSchema.safeParse({
         summary: "ok",
@@ -197,7 +207,7 @@ describe("LlmOutputSchema", () => {
 
 describe("parseLlmOutput", () => {
   it("parses a valid JSON string into the typed shape", () => {
-    const out = parseLlmOutput(JSON.stringify(validOutput));
+    const out = parseLlmOutput(JSON.stringify(validOutput), 120_000);
     expect(out.summary).toBe(validOutput.summary);
     expect(out.chapters).toEqual(validOutput.chapters);
   });
@@ -205,7 +215,7 @@ describe("parseLlmOutput", () => {
   it("throws LlmParseError on invalid JSON", () => {
     let caught: unknown;
     try {
-      parseLlmOutput("this is not json {");
+      parseLlmOutput("this is not json {", 120_000);
     } catch (err) {
       caught = err;
     }
@@ -218,7 +228,7 @@ describe("parseLlmOutput", () => {
     const bad = JSON.stringify({ summary: "ok" /* missing chapters */ });
     let caught: unknown;
     try {
-      parseLlmOutput(bad);
+      parseLlmOutput(bad, 120_000);
     } catch (err) {
       caught = err;
     }
@@ -238,7 +248,7 @@ describe("parseLlmOutput", () => {
     });
     let caught: unknown;
     try {
-      parseLlmOutput(bad);
+      parseLlmOutput(bad, 120_000);
     } catch (err) {
       caught = err;
     }

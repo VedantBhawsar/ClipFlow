@@ -1,7 +1,7 @@
 /**
  * Module-internal types for the videos module.
  */
-import type { Video } from "@clipflow/types";
+import type { ChaptersJson, Video } from "@clipflow/types";
 
 /**
  * Map a Prisma Video row to the wire DTO.
@@ -34,6 +34,9 @@ export const toVideoDto = (v: {
   s3KeyOriginal: string;
   s3KeyThumbnail?: string | null;
   thumbnailContentType?: string | null;
+  durationSeconds?: number | null;
+  s3KeyAudio?: string | null;
+  chaptersJson?: unknown;
   failureReason: string | null;
   scheduledPublishAt: Date | null;
   youtubeVideoId: string | null;
@@ -60,6 +63,9 @@ export const toVideoDto = (v: {
   s3KeyOriginal: v.s3KeyOriginal,
   s3KeyThumbnail: v.s3KeyThumbnail ?? null,
   thumbnailContentType: v.thumbnailContentType ?? null,
+  durationSeconds: v.durationSeconds ?? null,
+  s3KeyAudio: v.s3KeyAudio ?? null,
+  chaptersJson: parseChaptersJson(v.chaptersJson),
   failureReason: v.failureReason,
   scheduledPublishAt: v.scheduledPublishAt?.toISOString() ?? null,
   youtubeVideoId: v.youtubeVideoId,
@@ -67,3 +73,25 @@ export const toVideoDto = (v: {
   updatedAt: v.updatedAt.toISOString(),
   publishedAt: v.publishedAt?.toISOString() ?? null,
 });
+
+/**
+ * Parse the raw `chaptersJson` from Prisma (which comes as
+ * `JsonValue` — `null` or a JSON object) into the typed
+ * `ChaptersJson | null` the DTO expects. Returns `null` for
+ * anything that isn't a valid shape so the frontend never sees
+ * a broken object.
+ */
+const parseChaptersJson = (raw: unknown): ChaptersJson | null => {
+  if (!raw || typeof raw !== "object") return null;
+  const obj = raw as Record<string, unknown>;
+  if (typeof obj.summary !== "string") return null;
+  if (!Array.isArray(obj.chapters)) return null;
+  const chapters = obj.chapters.filter(
+    (c: unknown): c is { startMs: number; title: string } =>
+      typeof c === "object" &&
+      c !== null &&
+      typeof (c as Record<string, unknown>).startMs === "number" &&
+      typeof (c as Record<string, unknown>).title === "string",
+  );
+  return { summary: obj.summary, chapters };
+};

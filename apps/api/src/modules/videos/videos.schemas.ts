@@ -287,3 +287,114 @@ export const listPublishedVideosQuerySchema = z.object({
 export type ListPublishedVideosQuery = z.infer<
   typeof listPublishedVideosQuerySchema
 >;
+
+// ---- Video metadata update (PATCH /api/videos/:id) ----
+//
+// Used by the in-place editor on the review screen. All fields are
+// optional — the service merges on top of the existing row, so the
+// client can patch one field at a time.
+//
+// Bounds mirror `createVideoSchema`'s rules (YouTube enforces these
+// limits server-side on videos.insert, so we reject locally before the
+// publish path) plus the chapter invariants the LLM uses on initial
+// generation. Anything that survives this schema can publish cleanly.
+
+/**
+ * A single chapter — the same shape the LLM produces. Kept as a named
+ * schema so both `chaptersSummarySchema` and the LLM-side validation
+ * can reference one definition.
+ */
+const updateChapterSchema = z.object({
+  startMs: z
+    .number()
+    .int("Chapter startMs must be an integer.")
+    .min(0, "Chapter startMs must be non-negative."),
+  title: z
+    .string()
+    .trim()
+    .min(1, "Chapter title is required.")
+    .max(100, "Chapter title must be at most 100 characters."),
+});
+
+/**
+ * The `chapters + summary` payload the editor sends. Mirrors the
+ * invariants `LlmOutputSchema` enforces on the worker side so a
+ * user-edited chapter list will still publish cleanly to YouTube.
+ */
+const chaptersSummarySchema = z
+  .object({
+    summary: z
+      .string()
+      .trim()
+      .max(280, "Summary must be at most 280 characters."),
+    chapters: z
+      .array(updateChapterSchema)
+      .min(3, "YouTube requires at least 3 chapters.")
+      .max(12, "YouTube allows at most 12 chapters."),
+  })
+  .refine(
+    (o) => o.chapters[0]?.startMs === 0,
+    "First chapter must start at 0 ms.",
+  )
+  .refine(
+    (o) => {
+      for (let i = 1; i < o.chapters.length; i++) {
+        const prev = o.chapters[i - 1]!.startMs;
+        const curr = o.chapters[i]!.startMs;
+        if (curr - prev < 10_000) return false;
+      }
+      return true;
+    },
+    "Consecutive chapters must be at least 10 seconds apart.",
+  );
+
+/**
+ * Body for `PATCH /api/videos/:id`. Partial — every field optional.
+ * The service builds the prisma update payload from the keys that
+ * actually appeared in the request body, so omitting a field is a
+ * no-op (the existing value is preserved).
+ *
+ * Note: `title` is required to be present on create but optional here
+ * — a creator who already wrote a title at create time shouldn't be
+ * forced to re-send it when they only want to tweak a chapter.
+ */
+export const updateVideoSchema = z
+  .object({
+    title: titleSchema.optional(),
+    description: z
+      .string()
+      .max(5000, "Description must be at most 5000 characters.")
+      .nullable()
+      .optional(),
+    tags: tagsSchema.optional(),
+    summary: z
+      .string()
+      .trim()
+      .max(280, "Summary must be at most 280 characters.")
+      .optional(),
+    chapters: z
+      .array(updateChapterSchema)
+      .min(3, "YouTube requires at least 3 chapters.")
+      .max(12, "YouTube allows at most 12 chapters.")
+      .optional(),
+  })
+  .refine(
+    (data) => {
+      // If both summary and chapters are present, also check the
+      // combined invariants (first=0, 10s gap). When only one is
+      // provided, the corresponding single-field schema above already
+      // validated it.
+      if (data.summary === undefined || data.chapters === undefined) return true;
+      const combined = chaptersSummarySchema.safeParse({
+        summary: data.summary,
+        chapters: data.chapters,
+      });
+      return combined.success;
+    },
+    {
+      message:
+        "Chapters must start at 0 ms and be at least 10 seconds apart.",
+    },
+  );
+
+export type UpdateVideoInput = z.infer<typeof updateVideoSchema>;

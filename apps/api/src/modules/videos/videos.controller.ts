@@ -27,6 +27,7 @@ import type {
   CreateVideoInput,
   ListPublishedVideosQuery,
   ListVideosQuery,
+  UpdateVideoInput,
 } from "./videos.schemas.js";
 import "../auth/auth.types.js";
 
@@ -197,6 +198,48 @@ export const getVideoController = async (
   }
   const result = await videosService.getVideo(userId, id);
   sendOk(res, result, "Video retrieved.");
+};
+
+/**
+ * PATCH /api/videos/:id
+ *
+ * In-place update of the video metadata + chapters during the review
+ * window. Service enforces `status === READY_FOR_REVIEW`; anything else
+ * gets a 409 `NOT_EDITABLE` from the central error middleware.
+ */
+export const updateVideoController = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  const userId = requireUser(req);
+  const id = (req.params as { id?: string }).id;
+  if (!id) {
+    throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
+  }
+  const input = req.body as UpdateVideoInput;
+  const result = await videosService.updateVideo(userId, id, input);
+  sendOk(res, result, "Video updated.");
+};
+
+/**
+ * GET /api/videos/:id/playback-url
+ *
+ * Returns a short-lived presigned S3 GET URL for streaming the
+ * original video in the browser. The frontend uses this as the
+ * `src` of a `<video>` element.
+ */
+export const getPlaybackUrlController = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  const userId = requireUser(req);
+  const env = requireEnv(req);
+  const id = (req.params as { id?: string }).id;
+  if (!id) {
+    throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
+  }
+  const result = await videosService.getPlaybackUrl(userId, id, env);
+  sendOk(res, result, "Playback URL minted.");
 };
 
 /**

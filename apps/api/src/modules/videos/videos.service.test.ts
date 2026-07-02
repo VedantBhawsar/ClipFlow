@@ -690,4 +690,92 @@ describe("videos.service", () => {
       expect(mockVideoFindUniqueOrThrow).not.toHaveBeenCalled();
     });
   });
+
+  describe("updateVideo (PATCH /api/videos/:id)", () => {
+    const reviewRow: StubVideo = {
+      ...stubCreatedVideo,
+      status: "READY_FOR_REVIEW",
+      durationSeconds: 600,
+      chaptersJson: {
+        summary: "Original summary",
+        chapters: [
+          { startMs: 0, title: "Intro" },
+          { startMs: 30_000, title: "Topic A" },
+          { startMs: 60_000, title: "Outro" },
+        ],
+      } as unknown as Prisma.JsonValue,
+    };
+
+    beforeEach(() => {
+      mockVideoFindUnique.mockResolvedValue(reviewRow);
+      mockVideoUpdate.mockResolvedValue({
+        ...reviewRow,
+        // Return value of the update — slightly mutated by each test
+        // via the spread in the test body.
+      } as never);
+    });
+
+    it("rejects updates when status is not READY_FOR_REVIEW", async () => {
+      mockVideoFindUnique.mockResolvedValue({
+        ...reviewRow,
+        status: "SCHEDULED",
+      });
+      await expect(
+        videosService.updateVideo("user-1", reviewRow.id, { title: "x" }),
+      ).rejects.toMatchObject({ code: "NOT_EDITABLE", statusCode: 409 });
+      expect(mockVideoUpdate).not.toHaveBeenCalled();
+    });
+
+    it("rejects updates when the video belongs to another user", async () => {
+      mockVideoFindUnique.mockResolvedValue({
+        ...reviewRow,
+        userId: "another-user",
+      });
+      await expect(
+        videosService.updateVideo("user-1", reviewRow.id, { title: "x" }),
+      ).rejects.toMatchObject({ code: "VIDEO_NOT_FOUND", statusCode: 404 });
+      expect(mockVideoUpdate).not.toHaveBeenCalled();
+    });
+
+    it("rejects updates when the video doesn't exist", async () => {
+      mockVideoFindUnique.mockResolvedValue(null);
+      await expect(
+        videosService.updateVideo("user-1", "missing", { title: "x" }),
+      ).rejects.toMatchObject({ code: "VIDEO_NOT_FOUND", statusCode: 404 });
+    });
+
+    it("merges only the fields that were provided (partial update)", async () => {
+      await videosService.updateVideo("user-1", reviewRow.id, {
+        description: "New description",
+      });
+      expect(mockVideoUpdate).toHaveBeenCalledWith({
+        where: { id: reviewRow.id },
+        data: { description: "New description" },
+      });
+    });
+
+    it("rewrites chaptersJson when summary OR chapters changes", async () => {
+      await videosService.updateVideo("user-1", reviewRow.id, {
+        summary: "Edited summary",
+      });
+      const call = mockVideoUpdate.mock.calls.at(-1)?.[0];
+      expect(call?.data.chaptersJson).toMatchObject({
+        summary: "Edited summary",
+        chapters: expect.any(Array),
+      });
+      // The existing chapters list is preserved when only `summary` is sent —
+      // otherwise a partial save would clobber the LLM counterpart.
+      expect((call?.data.chaptersJson as { chapters: unknown[] }).chapters.length).toBe(3);
+    });
+
+    it("passes explicit null through for description-clearing", async () => {
+      await videosService.updateVideo("user-1", reviewRow.id, {
+        description: null,
+      });
+      expect(mockVideoUpdate).toHaveBeenCalledWith({
+        where: { id: reviewRow.id },
+        data: { description: null },
+      });
+    });
+  });
 });

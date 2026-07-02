@@ -13,8 +13,10 @@
  *   GET    /api/videos/stream                  → SSE: user's video events
  *   GET    /api/videos/:id/stream              → SSE: single video events
  *   GET    /api/videos/:id                     → committed: read
+ *   PATCH  /api/videos/:id                     → committed: update (READY_FOR_REVIEW only)
  *   DELETE /api/videos/:id                     → committed: cancel
  *   POST   /api/videos/:id/unpublish           → committed: unpublish
+ *   GET    /api/videos/:id/playback-url        → committed: presigned GET URL
  *
  * The pending/committed split is enforced by separate zod schemas
  * (see `./videos.schemas.ts`) so a request to `/api/videos/vid_xxx/finalize`
@@ -34,6 +36,7 @@ import {
   createVideoController,
   deleteVideoController,
   finalizeVideoController,
+  getPlaybackUrlController,
   getUploadUrlController,
   getVideoController,
   listPublishedVideosController,
@@ -41,12 +44,14 @@ import {
   streamUserVideosController,
   streamVideoController,
   unpublishVideoController,
+  updateVideoController,
 } from "./videos.controller.js";
 import {
   createVideoSchema,
   listPublishedVideosQuerySchema,
   listVideosQuerySchema,
   pendingUploadIdParamsSchema,
+  updateVideoSchema,
   videoIdParamsSchema,
 } from "./videos.schemas.js";
 import "../auth/auth.types.js";
@@ -129,10 +134,24 @@ export const buildVideosRouter = (env: Env): Router => {
   );
 
   router.get(
+    "/:id/playback-url",
+    auth,
+    validate({ params: videoIdParamsSchema }),
+    getPlaybackUrlController,
+  );
+
+  router.get(
     "/:id",
     auth,
     validate({ params: videoIdParamsSchema }),
     getVideoController,
+  );
+
+  router.patch(
+    "/:id",
+    auth,
+    validate({ params: videoIdParamsSchema, body: updateVideoSchema }),
+    updateVideoController,
   );
 
   router.delete(

@@ -9,6 +9,8 @@ import {
 } from "@/components/dashboard/status-timeline";
 import { ProcessingSubSteps } from "@/components/dashboard/processing-substeps";
 import { VideoDetailLiveProgress } from "@/components/dashboard/video-detail-live-progress";
+import { VideoMetadataEditor } from "@/components/dashboard/video-metadata-editor";
+import { VideoReviewPanel } from "@/components/review/video-review-panel";
 import { UnpublishButton } from "@/app/dashboard/published/[id]/unpublish-button";
 import { CancelButton } from "@/app/dashboard/published/[id]/cancel-button";
 import { Badge } from "@/components/ui/badge";
@@ -91,6 +93,8 @@ export default async function VideoDetailPage({ params }: PageProps) {
   let video: Video | null = null;
   try {
     video = await fetchVideo(token, id);
+
+    console.log("video", video.chaptersJson)
   } catch (err) {
     if (err instanceof ServerApiError && err.status === 404) {
       notFound();
@@ -166,6 +170,14 @@ export default async function VideoDetailPage({ params }: PageProps) {
         ) : null}
       </section>
 
+      {video.status === "READY_FOR_REVIEW" && video.chaptersJson ? (
+        <VideoReviewPanel
+          videoId={video.id}
+          chaptersJson={video.chaptersJson}
+          durationSeconds={video.durationSeconds}
+        />
+      ) : null}
+
       <section
         aria-labelledby="thumbnail-heading"
         className="rounded-xl border border-border bg-card p-4"
@@ -204,29 +216,45 @@ export default async function VideoDetailPage({ params }: PageProps) {
         >
           Details
         </h2>
+        {video.status === "READY_FOR_REVIEW" ? (
+          <div className="mb-6">
+            <VideoMetadataEditor
+              video={{
+                id: video.id,
+                title: video.title,
+                description: video.description,
+                tags: video.tags,
+              }}
+            />
+          </div>
+        ) : null}
         <dl className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
-          <DetailRow label="Description">
-            {video.description ? (
-              <p className="whitespace-pre-wrap text-foreground/90">
-                {video.description}
-              </p>
-            ) : (
-              <EmptyValue />
-            )}
-          </DetailRow>
-          <DetailRow label="Tags">
-            {video.tags.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">
-                {video.tags.map((t) => (
-                  <Badge key={t} variant="secondary">
-                    {t}
-                  </Badge>
-                ))}
-              </div>
-            ) : (
-              <EmptyValue />
-            )}
-          </DetailRow>
+          {video.status !== "READY_FOR_REVIEW" ? (
+            <>
+              <DetailRow label="Description">
+                {video.description ? (
+                  <p className="whitespace-pre-wrap text-foreground/90">
+                    {video.description}
+                  </p>
+                ) : (
+                  <EmptyValue />
+                )}
+              </DetailRow>
+              <DetailRow label="Tags">
+                {video.tags.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {video.tags.map((t) => (
+                      <Badge key={t} variant="secondary">
+                        {t}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyValue />
+                )}
+              </DetailRow>
+            </>
+          ) : null}
           <DetailRow label="Category">
             <span className="font-mono text-xs">{video.categoryId}</span>
           </DetailRow>

@@ -58,6 +58,7 @@ describe("validateWithRetry", () => {
       client,
       request: baseRequest,
       maxAttempts: 3,
+      durationMs: 120_000,
     });
 
     expect(result.output.summary).toBe("ok summary");
@@ -79,6 +80,7 @@ describe("validateWithRetry", () => {
       client,
       request: baseRequest,
       maxAttempts: 3,
+      durationMs: 120_000,
     });
 
     expect(result.attempts).toBe(2);
@@ -105,6 +107,7 @@ describe("validateWithRetry", () => {
       client,
       request: baseRequest,
       maxAttempts: 3,
+      durationMs: 120_000,
     });
 
     expect(result.attempts).toBe(2);
@@ -120,7 +123,7 @@ describe("validateWithRetry", () => {
     ]);
 
     await expect(
-      validateWithRetry({ client, request: baseRequest, maxAttempts: 3 }),
+      validateWithRetry({ client, request: baseRequest, maxAttempts: 3, durationMs: 120_000 }),
     ).rejects.toThrow(/\[LLM_BAD_OUTPUT\].*after 3 attempts/);
 
     // All three attempts made; lastRawText carries the final bad text
@@ -139,7 +142,7 @@ describe("validateWithRetry", () => {
     } as unknown as OpenAICompatLlmClient;
 
     await expect(
-      validateWithRetry({ client, request: baseRequest, maxAttempts: 3 }),
+      validateWithRetry({ client, request: baseRequest, maxAttempts: 3, durationMs: 120_000 }),
     ).rejects.toThrow("network down");
   });
 
@@ -151,7 +154,7 @@ describe("validateWithRetry", () => {
     ]);
 
     await expect(
-      validateWithRetry({ client, request: baseRequest }),
+      validateWithRetry({ client, request: baseRequest, durationMs: 120_000 }),
     ).rejects.toThrow(/3 attempts/);
 
     expect(calls).toHaveLength(3);
@@ -165,7 +168,7 @@ describe("validateWithRetry", () => {
     ]);
 
     try {
-      await validateWithRetry({ client, request: baseRequest, maxAttempts: 3 });
+      await validateWithRetry({ client, request: baseRequest, maxAttempts: 3, durationMs: 120_000 });
     } catch {
       // expected
     }

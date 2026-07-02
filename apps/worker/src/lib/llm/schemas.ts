@@ -33,9 +33,18 @@ const chapterSchema = z.object({
 });
 
 /**
- * The full LLM output shape. Validated with strict types — anything
- * off-contract becomes a validation error that `validateWithRetry`
- * turns into a re-prompt.
+ * Max allowed video duration for validation purposes (24 hours).
+ * The schema needs an absolute cap because `.max()` requires a
+ * static value; the per-video `durationMs` bound is enforced
+ * via a `.refine()` below.
+ */
+const MAX_DURATION_MS = 86_400_000;
+
+/**
+ * Base LLM output schema — validates shape, YouTube rules, and
+ * static constraints. The duration-bound refinement is applied
+ * at parse time in `parseLlmOutput` since it depends on the
+ * specific video's length.
  */
 export const LlmOutputSchema = z
   .object({
@@ -44,8 +53,7 @@ export const LlmOutputSchema = z
       .max(280, "Summary must be at most 280 characters"),
     chapters: z
       .array(chapterSchema)
-      .min(3, "Need at least 3 chapters (YouTube requirement)")
-      .max(12, "Too many chapters — cap at 12"),
+      .min(3, "Need at least 3 chapters (YouTube requirement)"),
   })
   .refine(
     (o) => o.chapters[0]?.startMs === 0,
@@ -71,12 +79,12 @@ export type LlmOutput = z.infer<typeof LlmOutputSchema>;
  *
  * Two layers:
  *   1. JSON.parse — text → object.
- *   2. LlmOutputSchema.safeParse — shape + business rules.
+ *   2. LlmOutputSchema refined with `durationMs` — shape + business rules.
  *
  * Both errors are surfaced as the same thrown value so the retry
  * helper can build a single re-prompt message.
  */
-export const parseLlmOutput = (text: string): LlmOutput => {
+export const parseLlmOutput = (text: string, durationMs: number): LlmOutput => {
   let json: unknown;
   try {
     json = JSON.parse(text);
@@ -84,7 +92,14 @@ export const parseLlmOutput = (text: string): LlmOutput => {
     const detail = err instanceof Error ? err.message : String(err);
     throw new LlmParseError(`Response was not valid JSON: ${detail}`, text);
   }
-  const result = LlmOutputSchema.safeParse(json);
+  const schema = LlmOutputSchema.refine(
+    (o) => {
+      const last = o.chapters.at(-1);
+      return last ? last.startMs < durationMs : true;
+    },
+    `Last chapter startMs must be less than video duration (${durationMs} ms)`,
+  );
+  const result = schema.safeParse(json);
   if (!result.success) {
     // We carry the raw text + zod issues so the retry helper can
     // include a specific complaint in the re-prompt.

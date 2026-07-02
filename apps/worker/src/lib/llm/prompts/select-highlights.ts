@@ -85,8 +85,9 @@ OUTPUT CONTRACT (strict — your response will be parsed as JSON):
 
 YOUTUBE CHAPTER RULES (your output is rejected if any of these fail):
 - chapters[0].startMs MUST be exactly 0.
-- chapters.length MUST be between 3 and 12.
+- chapters.length MUST be at least 3.
 - The minimum gap between consecutive chapter startMs values is 10 000 ms (10 seconds).
+- The last chapter's startMs MUST be less than the video duration (${durationMs} ms).
 - Each chapter title MUST be ≤ 100 characters.
 - Every chapter title must be in language code "${languageCode}" to match the spoken language.
 

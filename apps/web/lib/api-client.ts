@@ -42,6 +42,7 @@ import type {
   SettingsResponse,
   UpdatePreferencesRequest,
   UpdateProfileRequest,
+  UpdateVideoRequest,
   UploadUrlResponse,
   UserPreferences,
   UserProfile,
@@ -199,6 +200,14 @@ export interface ApiClient {
     params?: ListPublishedVideosParams,
   ): Promise<PaginatedVideos>;
   getVideo(id: string): Promise<Video>;
+  /**
+   * In-place update of a video's metadata + chapters during the review
+   * window. Server enforces `status === READY_FOR_REVIEW`; any other
+   * status returns 409 `NOT_EDITABLE`. All fields are optional —
+   * omitted fields are preserved on the row.
+   */
+  updateVideo(id: string, body: UpdateVideoRequest): Promise<Video>;
+  getPlaybackUrl(id: string): Promise<{ url: string }>;
   deleteVideo(id: string): Promise<void>;
   unpublishVideo(id: string): Promise<Video>;
 }
@@ -358,6 +367,12 @@ export function createApiClient(accessToken: string | null): ApiClient {
     },
     getVideo(id) {
       return request("GET", `/api/videos/${id}`);
+    },
+    updateVideo(id, body) {
+      return request("PATCH", `/api/videos/${id}`, body);
+    },
+    getPlaybackUrl(id) {
+      return request("GET", `/api/videos/${id}/playback-url`);
     },
     deleteVideo(id) {
       return request<void>("DELETE", `/api/videos/${id}`);

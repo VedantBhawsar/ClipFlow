@@ -338,6 +338,7 @@ export const processGenerateJob = async (
           jsonMode: true,
         },
         maxAttempts: 3,
+        durationMs: transcript.durationMs,
       });
     } catch (err) {
       const classified = classifyLlmError(err);

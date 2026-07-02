@@ -45,6 +45,7 @@ import type {
 } from "@clipflow/types";
 import {
   buildS3Config,
+  createPresignedGetUrl,
   createPresignedPostUrl,
   deleteObject,
   getS3Client,
@@ -62,6 +63,7 @@ import type {
   CreateVideoInput,
   ListPublishedVideosQuery,
   ListVideosQuery,
+  UpdateVideoInput,
 } from "./videos.schemas.js";
 
 const ALLOWED_DELETE_STATUSES: ReadonlySet<VideoStatus> = new Set([
@@ -712,6 +714,109 @@ export const getVideo = async (userId: string, videoId: string): Promise<Video> 
   requireDatabase();
   const video = await loadVideoForOwner(userId, videoId);
   return toVideoDto(video);
+};
+
+/**
+ * Get a short-lived presigned S3 GET URL for streaming the original
+ * video in the browser. Used by the review page's video player.
+ *
+ * The URL expires after 15 minutes (the default TTL for presigned
+ * GETs). The browser re-fetches via the endpoint if the URL expires.
+ *
+ * Returns `null` for rows that have no S3 key (shouldn't happen for
+ * committed videos, but guards against edge cases gracefully).
+ */
+export const getPlaybackUrl = async (
+  userId: string,
+  videoId: string,
+  env: Env,
+): Promise<{ url: string }> => {
+  requireDatabase();
+  const video = await loadVideoForOwner(userId, videoId);
+  if (!video.s3KeyOriginal) {
+    throw new AppError(404, "VIDEO_NOT_FOUND", "Video source not found.");
+  }
+  const s3Config = buildS3Config(env);
+  const client = getS3Client(s3Config);
+  const url = await createPresignedGetUrl(
+    client,
+    s3Config,
+    video.s3KeyOriginal,
+    900,
+    // Let the browser handle whatever content type S3 returns — we
+    // don't override it so the <video> element can do its own MIME
+    // sniffing.
+  );
+  return { url };
+};
+
+/**
+ * In-place update for video metadata + chapters during the review
+ * window. Used by the editor on `/dashboard/videos/:id` while the row
+ * is in `READY_FOR_REVIEW`.
+ *
+ * The endpoint is intentionally narrow:
+ *
+ *  - Only `READY_FOR_REVIEW` is editable. Anything before that
+ *    (EXTRACTING / TRANSCRIBING / GENERATING) means the AI is still
+ *    running; anything after (SCHEDULED / PUBLISHING / PUBLISHED /
+ *    PUBLISH_FAILED / FAILED) means we'd have to either sync to
+ *    YouTube (out of scope for v1) or race the publish job.
+ *  - All fields optional, partial-merge semantics. The client picks
+ *    which fields to change per save (so it can wire per-section save
+ *    buttons in the UI without re-sending the whole shape).
+ *  - The strict chapter invariants are enforced by `updateVideoSchema`
+ *    at the edge, so by the time we reach this function the shape is
+ *    already valid. We don't re-validate the chapter math here.
+ *
+ * The `chaptersJson` cast at the prisma boundary matches bug-084 —
+ * Prisma's `InputJsonValue` requires an explicit index signature that
+ * the typed `ChaptersJson` interface doesn't carry. Runtime
+ * serialization is identical; the cast is purely nominal.
+ */
+export const updateVideo = async (
+  userId: string,
+  videoId: string,
+  input: UpdateVideoInput,
+): Promise<Video> => {
+  requireDatabase();
+
+  const existing = await loadVideoForOwner(userId, videoId);
+
+  if (existing.status !== "READY_FOR_REVIEW") {
+    throw new AppError(
+      409,
+      "NOT_EDITABLE",
+      "Video can only be edited while in READY_FOR_REVIEW.",
+    );
+  }
+
+  // Build the prisma update payload from the keys that actually
+  // appeared in the request. We deliberately check `in input` rather
+  // than `input.foo !== undefined` so that explicit `null` (clearing
+  // the description) survives the merge — matches `useUpdateProfile`
+  // semantics on the onboarding slice.
+  const data: Record<string, unknown> = {};
+  if ("title" in input) data.title = input.title;
+  if ("description" in input) data.description = input.description;
+  if ("tags" in input) data.tags = input.tags;
+
+  // summary + chapters must travel together through `chaptersJson`. If
+  // either key is present, we (re)build the full object — otherwise
+  // a partial save would clobber the LLM-generated counterpart.
+  if ("summary" in input || "chapters" in input) {
+    const current = (existing.chaptersJson as { summary?: string; chapters?: unknown[] } | null) ?? null;
+    const summary = "summary" in input ? input.summary : current?.summary ?? "";
+    const chapters = "chapters" in input ? input.chapters : current?.chapters ?? [];
+    data.chaptersJson = { summary, chapters } as unknown as object;
+  }
+
+  const updated = await prisma.video.update({
+    where: { id: existing.id },
+    data,
+  });
+
+  return toVideoDto(updated);
 };
 
 /**

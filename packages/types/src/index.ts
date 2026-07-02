@@ -455,6 +455,35 @@ export interface CreateVideoRequest {
 }
 
 /**
+ * Body for `PATCH /api/videos/:id`. Used by the in-place editor on the
+ * review screen to fix up AI-generated metadata and chapters before
+ * publishing. All fields optional — the service merges on top of the
+ * existing row.
+ *
+ * The API enforces the same shape + YouTube-rule invariants that the
+ * LLM uses on initial generation (first startMs=0, ≥10 s gap, ≤100 char
+ * chapter titles, ≥3 chapters, etc.) so anything that publishes through
+ * this endpoint satisfies YouTube's chapter marker requirements.
+ *
+ * Editing is only allowed when the row is in `READY_FOR_REVIEW`. After
+ * the user schedules or publishes, the editor surface disappears and
+ * the API rejects PATCHes with 409 `NOT_EDITABLE`.
+ */
+export interface UpdateVideoRequest {
+  title?: string;
+  description?: string | null;
+  tags?: string[];
+  /** Replaces the LLM-generated summary. ≤280 chars. */
+  summary?: string;
+  /**
+   * Replaces the LLM-generated chapter list. Must satisfy the YouTube
+   * invariants — first chapter starts at 0 ms, consecutive chapters are
+   * ≥10 s apart, titles ≤100 chars, between 3 and 12 chapters.
+   */
+  chapters?: { startMs: number; title: string }[];
+}
+
+/**
  * Response from `POST /api/videos`. The browser uses `postUrl` + `fields`
  * to submit the file via multipart/form-data.
  *
@@ -580,12 +609,28 @@ export interface Video {
   s3KeyThumbnail: string | null;
   /** Original content type of the uploaded thumbnail. */
   thumbnailContentType: string | null;
+  /** Probed video duration in seconds (set by EXTRACTING worker). */
+  durationSeconds: number | null;
+  /** S3 key for the extracted audio (set by EXTRACTING worker). */
+  s3KeyAudio: string | null;
+  /** LLM-generated chapters + summary (set by GENERATING worker). */
+  chaptersJson: ChaptersJson | null;
   failureReason: string | null;
   scheduledPublishAt: string | null;
   youtubeVideoId: string | null;
   createdAt: string;
   updatedAt: string;
   publishedAt: string | null;
+}
+
+/**
+ * LLM-generated chapters and summary. Persisted as `chaptersJson` on
+ * the Video row. The publish path reads `chapters` to write YouTube
+ * chapter markers and `summary` to seed the description.
+ */
+export interface ChaptersJson {
+  summary: string;
+  chapters: { startMs: number; title: string }[];
 }
 
 // ---------- SSE event types ----------

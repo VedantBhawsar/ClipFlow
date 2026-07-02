@@ -8,6 +8,7 @@ export {
 } from "./client.js";
 export {
   createPresignedPostUrl,
+  createPresignedGetUrl,
   type PresignedPost,
   type CreatePresignedPostInput,
 } from "./presign.js";

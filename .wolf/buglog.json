@@ -1385,6 +1385,88 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-01T21:12:00.000Z"
+    },
+    {
+      "id": "bug-086",
+      "timestamp": "2026-07-02T03:25:16.215Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/api/src/modules/videos/videos.schemas.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T03:25:16.215Z"
+    },
+    {
+      "id": "bug-087",
+      "timestamp": "2026-07-02T03:25:47.385Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/api/src/modules/videos/videos.service.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T03:25:47.385Z"
+    },
+    {
+      "id": "bug-088",
+      "timestamp": "2026-07-02T03:26:52.699Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/api/src/modules/videos/videos.service.test.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T03:26:52.699Z"
+    },
+    {
+      "id": "bug-089",
+      "timestamp": "2026-07-02T03:34:03.054Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/web/components/review/chapters-review.test.tsx",
+      "root_cause": "13 lines replaced/restructured",
+      "fix": "Rewrote 20→12 lines (13 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T03:34:03.054Z"
+    },
+    {
+      "id": "bug-090",
+      "timestamp": "2026-07-02T03:37:33.140Z",
+      "error_message": "PATCH /api/videos/:id payload of { summary } alone must NOT clear existing chapters; explicit null description must clear it (not preserve it).",
+      "file": "apps/api/src/modules/videos/videos.service.ts",
+      "root_cause": "Partial-merge filter was checking input.key !== undefined, which conflates absent keys with explicit null — so a null description was ignored and the old text remained. Same risk applied to chaptersJson: a save with only summary would write { summary, chapters: undefined } and clobber existing chapters.",
+      "fix": "Switched to `key in input` so explicit null survives the merge (matches useUpdateProfile convention). Re-derive chaptersJson from existing.chaptersJson ?? { summary: \"\", chapters: [] } so absent chapters preserves prior values. Tested in videos.service.test.ts describe(updateVideo).",
+      "tags": [
+        "partial-update",
+        "patch",
+        "ready-for-review",
+        "merge-semantics",
+        "convention"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T03:37:33.141Z"
     }
   ]
 }

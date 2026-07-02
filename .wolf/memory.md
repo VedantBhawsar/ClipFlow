@@ -514,3 +514,68 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+
+## Session: 2026-07-02 08:43
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 08:50 | Created ../../../.claude/plans/quirky-giggling-blanket.md | — | ~2247 |
+| 08:54 | Edited packages/types/src/index.ts | expanded (+29 lines) | ~429 |
+| 08:55 | Edited apps/api/src/modules/videos/videos.schemas.ts | added optional chaining | ~1071 |
+| 08:55 | Edited apps/api/src/modules/videos/videos.service.ts | 5→6 lines | ~38 |
+| 08:55 | Edited apps/api/src/modules/videos/videos.service.ts | added optional chaining | ~897 |
+| 08:55 | Edited apps/api/src/modules/videos/videos.controller.ts | 5→6 lines | ~38 |
+| 08:56 | Edited apps/api/src/modules/videos/videos.controller.ts | added 1 condition(s) | ~301 |
+| 08:56 | Edited apps/api/src/modules/videos/videos.routes.ts | 21→23 lines | ~168 |
+| 08:56 | Edited apps/api/src/modules/videos/videos.routes.ts | 4→5 lines | ~107 |
+| 08:56 | Edited apps/api/src/modules/videos/videos.routes.ts | expanded (+7 lines) | ~72 |
+| 08:56 | Edited apps/api/src/modules/videos/videos.service.test.ts | added optional chaining | ~1011 |
+| 08:58 | Edited apps/web/lib/api-client.ts | 2→3 lines | ~21 |
+| 08:58 | Edited apps/web/lib/api-client.ts | modified getVideo() | ~148 |
+| 08:58 | Edited apps/web/lib/api-client.ts | modified getVideo() | ~74 |
+| 08:59 | Edited apps/web/hooks/use-videos.ts | 8→9 lines | ~53 |
+| 08:59 | Edited apps/web/hooks/use-videos.ts | modified useUnpublishVideo() | ~390 |
+| 09:00 | Created apps/web/components/review/chapters-review.tsx | — | ~4529 |
+| 09:01 | Created apps/web/components/review/video-review-panel.tsx | — | ~1654 |
+| 09:01 | Created apps/web/components/dashboard/video-metadata-editor.tsx | — | ~2833 |
+| 09:02 | Edited apps/web/app/dashboard/published/[id]/page.tsx | added 1 import(s) | ~124 |
+| 09:02 | Edited apps/web/app/dashboard/published/[id]/page.tsx | expanded (+16 lines) | ~489 |
+| 09:02 | Created apps/web/components/review/chapters-review.test.tsx | — | ~1573 |
+| 09:03 | Created apps/web/components/dashboard/video-metadata-editor.test.tsx | — | ~1916 |
+| 09:03 | Created apps/web/components/review/chapters-review.test.tsx | — | ~1784 |
+| 09:04 | Edited apps/web/components/review/chapters-review.test.tsx | reduced (-8 lines) | ~193 |
+
+## Session: 2026-07-02 09:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+| 09:08 | Added UpdateVideoRequest type | packages/types/src/index.ts | exported new DTO | ~120 |
+| 09:09 | Built packages/types | packages/types | dist emitted | ~10 |
+| 09:09 | Added updateVideoSchema | apps/api/src/modules/videos/videos.schemas.ts | new schema + superRefine | ~480 |
+| 09:10 | Added updateVideo service | apps/api/src/modules/videos/videos.service.ts | partial-merge PATCH | ~920 |
+| 09:10 | Wired updateVideoController + route | apps/api/src/modules/videos/videos.{controller,routes}.ts | PATCH /api/videos/:id | ~120 |
+| 09:11 | Added 6 service tests | apps/api/src/modules/videos/videos.service.test.ts | 153/153 api tests pass | ~1100 |
+| 09:12 | Added updateVideo to api-client | apps/web/lib/api-client.ts | method + impl | ~85 |
+| 09:12 | Added useUpdateVideo hook | apps/web/hooks/use-videos.ts | mutation + invalidation | ~140 |
+| 09:13 | Refactored chapters-review controlled | apps/web/components/review/chapters-review.tsx | add/delete/useTime/sort | ~990 |
+| 09:14 | Added Save/Discard to review panel | apps/web/components/review/video-review-panel.tsx | mutation + toast + refresh | ~510 |
+| 09:15 | Created metadata editor component | apps/web/components/dashboard/video-metadata-editor.tsx | title/desc/tags per-section save | ~1850 |
+| 09:16 | Wired editor into detail page | apps/web/app/dashboard/published/[id]/page.tsx | conditional render | ~210 |
+| 09:17 | Created chapter review tests | apps/web/components/review/chapters-review.test.tsx | 12/12 pass via stateful harness | ~1430 |
+| 09:18 | Created metadata editor tests | apps/web/components/dashboard/video-metadata-editor.test.tsx | 12/12 pass | ~1640 |
+| 09:19 | Verified monorepo typecheck + lint + tests | api/web/worker | 246 tests pass, typecheck/lint clean (excl. pre-existing worker warnings) | ~80 |
+
+## Session End: 2026-07-02 ~09:25 — In-place edit slice complete
+
+Summary of work delivered: full-stack in-place editing of `Video.title/description/tags/summary/chapters` when `status === READY_FOR_REVIEW`. Backend: new `PATCH /api/videos/:id` with strict YouTube-rule mirroring (`first.startMs===0`, `≥10s gap`, `≤12 chapters`, `≤100 char titles`, `≥3 chapters`, `≤280 char summary`), 409 `NOT_EDITABLE` for any other status, partial-merge semantics preserving explicit `null`. Frontend: new `useUpdateVideo` mutation, refactored `chapters-review.tsx` to controlled component supporting add/delete/use-current-time, new `VideoMetadataEditor` for title/description/tags with per-section dirty + save, conditional wiring into the RSC detail page. Tests: 153 API + 93 Web all green; typecheck + lint clean.
+
+**Bugs logged this session:** bug-086 (`updateVideo` partial-merge clarity rule).
+
+**Cerebrum entries added:**
+- Partial-update `'key' in input` pattern
+- `summary + chapters` travel together in single JSON write
+- Controlled-component tests need stateful harness, not bare mock
+- Server-rendered detail pages need `router.refresh()` after mutation
+
+Next slice candidates (deferred): retry endpoint (`POST /api/videos/:id/retry`), reorder chapters with drag-handle, in-line chapter timestamp edit (currently requires "Use current time" only).

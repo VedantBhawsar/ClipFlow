@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-01T16:02:03.281Z
-> Files: 330 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-02T03:34:03.045Z
+> Files: 336 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../tmp/pw-capture/
 
@@ -9,6 +9,7 @@
 
 ## ../../../.claude/plans/
 
+- `quirky-giggling-blanket.md` — Plan: In-place editing for video metadata + chapters (~2106 tok)
 - `zazzy-plotting-peacock.md` — Audio + Frame Extraction (`video-ingest` queue) (~3360 tok)
 
 ## ../../../.claude/projects/-Users-vedant-Documents-projects-ClipFlow/
@@ -142,11 +143,11 @@
 
 ## apps/api/src/modules/videos/
 
-- `videos.controller.ts` — Videos controller. (~2936 tok)
-- `videos.routes.ts` — Videos route definitions. (~1283 tok)
-- `videos.schemas.ts` — Zod schemas for the videos module. (~2702 tok)
-- `videos.service.test.ts` — Tests for the videos service. (~7116 tok)
-- `videos.service.ts` — Videos service — owns all DB + S3 + YouTube-publish enqueue logic (~8712 tok)
+- `videos.controller.ts` — Videos controller. (~3317 tok)
+- `videos.routes.ts` — Videos route definitions. (~1431 tok)
+- `videos.schemas.ts` — Zod schemas for the videos module. (~3747 tok)
+- `videos.service.test.ts` — Tests for the videos service. (~8030 tok)
+- `videos.service.ts` — Videos service — owns all DB + S3 + YouTube-publish enqueue logic (~9852 tok)
 - `videos.types.ts` — Module-internal types for the videos module. (~615 tok)
 
 ## apps/api/src/modules/youtube/
@@ -219,7 +220,7 @@
 ## apps/web/app/dashboard/published/[id]/
 
 - `cancel-button.tsx` — Cancel action for the video detail page. Calls (~430 tok)
-- `page.tsx` — Same mapping the dashboard's `VideoCard` uses — keep the visual (~3460 tok)
+- `page.tsx` — Renders VideoMetadataEditor above Details when status === READY_FOR_REVIEW (~3960 tok)
 - `unpublish-button.tsx` — Unpublish action for the video detail page. Calls (~426 tok)
 
 ## apps/web/app/dashboard/settings/
@@ -298,6 +299,8 @@
 - `video-card.tsx` — Latest SSE events for real-time progress display (~2406 tok)
 - `video-detail-live-progress.tsx` — VideoDetailLiveProgress — uses useEffect (~828 tok)
 - `video-list.tsx` — The already-fetched videos to render. In the SSR dashboard flow (~1238 tok)
+- `video-metadata-editor.test.tsx` — Tests for `<VideoMetadataEditor>` — the in-place title/description/tags (~1916 tok)
+- `video-metadata-editor.tsx` — In-place editor for the user-supplied metadata on the review screen (~2833 tok)
 - `youtube-connect-card.tsx` — Persistent channel-connection card. Per Design.md, channel-connection (~2614 tok)
 
 ## apps/web/components/landing/
@@ -328,6 +331,17 @@
 - `question-frequency.tsx` — Step 3 — upload frequency. Four single-select cards stacked vertically (~888 tok)
 - `question-goal.tsx` — Step 4 — primary goal. Four single-select cards. Drives which feature (~912 tok)
 - `question-niche.tsx` — One-line description shown under the label on the card. (~1064 tok)
+
+## apps/web/components/dashboard/
+
+- `video-metadata-editor.tsx` — In-place title/description/tags editor for the review screen. Per-section dirty state + Save. Calls useUpdateVideo + router.refresh. (~3550 tok)
+- `video-metadata-editor.test.tsx` — Tests for the in-place title/description/tags editor. (~4300 tok)
+
+## apps/web/components/review/
+
+- `chapters-review.test.tsx` — Tests for the controlled `<ChaptersReview>` component. (~1689 tok)
+- `chapters-review.tsx` — Fired whenever the user mutates the chapter list or summary. (~4529 tok)
+- `video-review-panel.tsx` — Review screen for the AI-generated chapter list + summary. Owned by (~1654 tok)
 
 ## apps/web/components/settings/
 
@@ -377,12 +391,12 @@
 - `use-update-preferences.ts` — Partial update of the authenticated user's preferences. The server (~330 tok)
 - `use-update-profile.ts` — Update the authenticated user's profile. Two flavors: (~474 tok)
 - `use-video-sse.ts` — Subscribe to SSE events for video processing. (~847 tok)
-- `use-videos.ts` — TanStack Query hooks + an XHR-based upload helper for the (~2711 tok)
+- `use-videos.ts` — TanStack Query hooks + an XHR-based upload helper for the (~3004 tok)
 - `use-youtube-connection.ts` — Narrow YouTube-connection read for /settings/connected. The (~203 tok)
 
 ## apps/web/lib/
 
-- `api-client.ts` — Typed API surface for talking to the Express backend. (~3714 tok)
+- `api-client.ts` — Typed API surface for talking to the Express backend. (~3886 tok)
 - `auth-guard.test.tsx` — mockReplace (~700 tok)
 - `auth-guard.tsx` — Where to send unauthenticated users. Defaults to /signin. (~521 tok)
 - `env.ts` — Centralized access to NEXT_PUBLIC_* env vars. (~184 tok)
@@ -580,7 +594,7 @@
 
 ## packages/types/src/
 
-- `index.ts` — ---------- Enums (mirror Prisma enums in packages/db) ---------- (~5398 tok)
+- `index.ts` — ---------- Enums (mirror Prisma enums in packages/db) ---------- (~5910 tok)
 
 ## packages/typescript-config/
 

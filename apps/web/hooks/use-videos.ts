@@ -21,6 +21,7 @@ import type {
   ListPublishedVideosParams,
   ListVideosParams,
   PaginatedVideos,
+  UpdateVideoRequest,
   Video,
 } from "@clipflow/types";
 
@@ -164,6 +165,30 @@ export function useUnpublishVideo() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["videos", "published"] });
       void qc.invalidateQueries({ queryKey: ["videos", "list"] });
+    },
+  });
+}
+
+/**
+ * In-place editor save. PATCHes the video row with the fields the user
+ * changed in the review screen. On success we invalidate every cache
+ * slot that could show the row — list, published, and the single-video
+ * detail — so any open view re-fetches.
+ *
+ * The hook is intentionally narrow: it accepts the full
+ * `UpdateVideoRequest` payload (the service does the partial-merge),
+ * so a per-section Save button in the editor can call this with
+ * whichever subset of fields that section owns.
+ */
+export function useUpdateVideo() {
+  const api = useApi();
+  const qc = useQueryClient();
+  return useMutation<Video, Error, { id: string; body: UpdateVideoRequest }>({
+    mutationFn: ({ id, body }) => api.updateVideo(id, body),
+    onSuccess: (video) => {
+      void qc.invalidateQueries({ queryKey: ["videos", "list"] });
+      void qc.invalidateQueries({ queryKey: ["videos", "published"] });
+      void qc.invalidateQueries({ queryKey: queryKeys.videos.detail(video.id) });
     },
   });
 }

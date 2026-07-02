@@ -1,21 +1,17 @@
 /**
- * Presigned upload helpers.
+ * Presigned helpers — both upload (POST) and download (GET).
  *
- * Uses `@aws-sdk/s3-presigned-post` (multipart/form-data) for browser
- * uploads so we can attach a `content-length-range` policy and
- * hard-cap the upload at `YOUTUBE_MAX_VIDEO_BYTES`. PUT-style presigned
- * URLs cannot encode range policies the same way, so we route the
- * browser through POST-style URLs.
+ * Upload: uses `@aws-sdk/s3-presigned-post` (multipart/form-data) so
+ * we can attach a `content-length-range` policy and hard-cap the
+ * upload at `YOUTUBE_MAX_VIDEO_BYTES`.
  *
- * The browser:
- *   1. Calls `POST /api/videos` to get `{ id, postUrl, fields }`.
- *   2. Submits a multipart/form-data POST to `postUrl` with `fields`
- *      followed by the `file` part. The browser sets Content-Length on
- *      the multipart body; S3/MinIO rejects if it's outside the range.
- *   3. Calls `POST /api/videos/:id/finalize` once the upload completes.
+ * Download: uses `@aws-sdk/s3-request-presigner` to mint short-lived
+ * GET URLs so the browser can stream video / audio directly from S3.
+ * The API never proxies bytes.
  */
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
-import type { S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { GetObjectCommand, type S3Client } from "@aws-sdk/client-s3";
 import type { S3Config } from "./client.js";
 
 /**
@@ -72,4 +68,35 @@ export const createPresignedPostUrl = async (
     postUrl: url,
     contentLengthMaxBytes: input.contentLengthMaxBytes,
   };
+};
+
+/**
+ * Mint a short-lived presigned GET URL for reading an S3 object
+ * directly from the browser. Used by the video detail page to stream
+ * the original file for preview / review.
+ *
+ * The URL expires after `expiresInSeconds` (default 900 s = 15 min).
+ * The browser can use it as the `src` of a `<video>` element.
+ *
+ * @param client S3 client (from `getS3Client`).
+ * @param config S3 config.
+ * @param key    Object key to read.
+ * @param expiresInSeconds  TTL in seconds (default 900).
+ * @param responseContentType  Optional Content-Type override (e.g. for
+ *   serving the original video with a browser-friendly MIME type).
+ * @returns  Presigned GET URL string.
+ */
+export const createPresignedGetUrl = async (
+  client: S3Client,
+  config: S3Config,
+  key: string,
+  expiresInSeconds = 900,
+  responseContentType?: string,
+): Promise<string> => {
+  const command = new GetObjectCommand({
+    Bucket: config.bucket,
+    Key: key,
+    ...(responseContentType ? { ResponseContentType: responseContentType } : {}),
+  });
+  return getSignedUrl(client, command, { expiresIn: expiresInSeconds });
 };
