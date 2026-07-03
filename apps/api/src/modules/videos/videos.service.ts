@@ -51,18 +51,19 @@ import {
   getS3Client,
   headObject,
 } from "@clipflow/s3";
-import { publishVideo, unpublishVideo as unpublishVideoOnYouTube, uploadVideoThumbnail } from "@clipflow/youtube-upload";
+import { publishVideo as publishVideoOnYouTube, unpublishVideo as unpublishVideoOnYouTube, uploadVideoThumbnail } from "@clipflow/youtube-upload";
 import { pino } from "pino";
 import { AppError } from "../../errors/AppError.js";
 import { prisma } from "../../lib/prisma.js";
 import { requireDatabase } from "../../lib/db-guard.js";
 import { cache } from "../../lib/cache.js";
-import { enqueueIngestJob } from "../../lib/queue.js";
+import { enqueueIngestJob, enqueuePublishJob } from "../../lib/queue.js";
 import { toVideoDto } from "./videos.types.js";
 import type {
   CreateVideoInput,
   ListPublishedVideosQuery,
   ListVideosQuery,
+  PublishVideoInput,
   UpdateVideoInput,
 } from "./videos.schemas.js";
 
@@ -801,6 +802,17 @@ export const updateVideo = async (
   if ("description" in input) data.description = input.description;
   if ("tags" in input) data.tags = input.tags;
 
+  // YouTube status block — every field optional. The publish worker
+  // (`@clipflow/youtube-upload → buildStatusFromVideo`) reads these off
+  // the row, so a successful PATCH here is what gets sent to YouTube on
+  // the next publish.
+  if ("privacyStatus" in input) data.privacyStatus = input.privacyStatus;
+  if ("madeForKids" in input) data.madeForKids = input.madeForKids;
+  if ("embeddable" in input) data.embeddable = input.embeddable;
+  if ("license" in input) data.license = input.license;
+  if ("publicStatsViewable" in input) data.publicStatsViewable = input.publicStatsViewable;
+  if ("commentPolicy" in input) data.commentPolicy = input.commentPolicy;
+
   // summary + chapters must travel together through `chaptersJson`. If
   // either key is present, we (re)build the full object — otherwise
   // a partial save would clobber the LLM-generated counterpart.
@@ -867,7 +879,7 @@ export const publishVideoNow = async (
 ): Promise<Video> => {
   requireDatabase();
   await loadVideoForOwner(userId, videoId);
-  const result = await publishVideo(
+  const result = await publishVideoOnYouTube(
     { videoId },
     { prisma, env, logger: buildConsoleLogger("api") },
   );
@@ -884,6 +896,60 @@ export const publishVideoNow = async (
   }
   const updated = await prisma.video.findUniqueOrThrow({ where: { id: videoId } });
   return toVideoDto(updated);
+};
+
+/**
+ * User-driven publish endpoint. Dispatches to one of two paths:
+ *
+ * - `scheduledPublishAt` set → row flips to `SCHEDULED`, a delayed
+ *   `youtube-publish` job is enqueued via `enqueuePublishJob`, and we
+ *   return the updated row immediately. The worker startup-recovery
+ *   pass picks the job up even if the API / worker was offline at
+ *   the scheduled time (cerebrum 2026-06-27).
+ * - `scheduledPublishAt` omitted → delegates to `publishVideoNow` for
+ *   the synchronous YouTube upload path. Same code path as the
+ *   previously-unused `publishVideoNow` — we keep that helper as the
+ *   authoritative "publish now" implementation so the two callers
+ *   can't drift on YouTube-thumbnail sequencing.
+ *
+ * Status guard: `READY_FOR_REVIEW` or `PUBLISH_FAILED` only. Publishing
+ * a `PUBLISHED` row would be a silent YouTube state change with no
+ * UI affordance to reverse it (unpublish is the explicit reversal —
+ * an auto-republish would skip that safety), and publishing any
+ * earlier status would race with the pipeline workers that own those
+ * rows.
+ */
+export const publishVideo = async (
+  userId: string,
+  videoId: string,
+  input: PublishVideoInput,
+  env: Env,
+): Promise<Video> => {
+  requireDatabase();
+  const existing = await loadVideoForOwner(userId, videoId);
+  if (existing.status !== "READY_FOR_REVIEW" && existing.status !== "PUBLISH_FAILED") {
+    throw new AppError(
+      409,
+      "NOT_PUBLISHABLE",
+      "Video can't be published from its current status.",
+    );
+  }
+
+  if (input.scheduledPublishAt) {
+    // Scheduled path — flip the row, enqueue a delayed job, return the
+    // updated DTO. The job itself runs from the worker, which picks
+    // up the row's status + metadata via `buildStatusFromVideo`.
+    const scheduledPublishAt = new Date(input.scheduledPublishAt);
+    const updated = await prisma.video.update({
+      where: { id: videoId },
+      data: { status: "SCHEDULED", scheduledPublishAt },
+    });
+    await enqueuePublishJob(videoId, scheduledPublishAt, env);
+    return toVideoDto(updated);
+  }
+
+  // Immediate path — delegate to the existing sync helper.
+  return publishVideoNow(userId, videoId, env);
 };
 
 // ---------- internal helpers ----------

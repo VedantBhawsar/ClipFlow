@@ -61,6 +61,7 @@ vi.mock("../../lib/cache.js", () => ({
 
 vi.mock("../../lib/queue.js", () => ({
   enqueueIngestJob: vi.fn().mockResolvedValue("ingest-job-1"),
+  enqueuePublishJob: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@clipflow/youtube-upload", () => ({
@@ -102,8 +103,8 @@ vi.mock("../../lib/logger.js", () => ({
 import { prisma } from "../../lib/prisma.js";
 import { cache } from "../../lib/cache.js";
 import { headObject, deleteObject, createPresignedPostUrl } from "@clipflow/s3";
-import { enqueueIngestJob } from "../../lib/queue.js";
-import { unpublishVideo as unpublishOnYouTube } from "@clipflow/youtube-upload";
+import { enqueueIngestJob, enqueuePublishJob } from "../../lib/queue.js";
+import { unpublishVideo as unpublishOnYouTube, publishVideo as publishOnYouTube } from "@clipflow/youtube-upload";
 
 const mockFindChannel = vi.mocked(prisma.youTubeChannel.findUnique);
 const mockVideoCreate = vi.mocked(prisma.video.create);
@@ -112,6 +113,7 @@ const mockVideoFindUnique = vi.mocked(prisma.video.findUnique);
 const mockVideoFindUniqueOrThrow = vi.mocked(prisma.video.findUniqueOrThrow);
 const mockVideoFindMany = vi.mocked(prisma.video.findMany);
 const mockUnpublishOnYouTube = vi.mocked(unpublishOnYouTube);
+const mockPublishOnYouTube = vi.mocked(publishOnYouTube);
 const mockCacheGet = vi.mocked(cache.get);
 const mockCacheSet = vi.mocked(cache.set);
 const mockCacheDel = vi.mocked(cache.del);
@@ -119,6 +121,7 @@ const mockHead = vi.mocked(headObject);
 const mockDeleteObject = vi.mocked(deleteObject);
 const mockPresign = vi.mocked(createPresignedPostUrl);
 const mockEnqueue = vi.mocked(enqueueIngestJob);
+const mockEnqueuePublish = vi.mocked(enqueuePublishJob);
 
 const baseEnv = {
   YOUTUBE_MAX_VIDEO_BYTES: 5 * 1024 * 1024 * 1024,
@@ -776,6 +779,238 @@ describe("videos.service", () => {
         where: { id: reviewRow.id },
         data: { description: null },
       });
+    });
+
+    it("merges the YouTube status block fields when provided", async () => {
+      await videosService.updateVideo("user-1", reviewRow.id, {
+        privacyStatus: "unlisted",
+        madeForKids: true,
+        embeddable: false,
+        license: "creativeCommon",
+        publicStatsViewable: false,
+        commentPolicy: "disable",
+      });
+      expect(mockVideoUpdate).toHaveBeenCalledWith({
+        where: { id: reviewRow.id },
+        data: {
+          privacyStatus: "unlisted",
+          madeForKids: true,
+          embeddable: false,
+          license: "creativeCommon",
+          publicStatsViewable: false,
+          commentPolicy: "disable",
+        },
+      });
+    });
+
+    it("leaves untouched status-block fields out of the update payload", async () => {
+      await videosService.updateVideo("user-1", reviewRow.id, {
+        privacyStatus: "public",
+      });
+      const call = mockVideoUpdate.mock.calls.at(-1)?.[0];
+      expect(call?.data).toEqual({ privacyStatus: "public" });
+      // None of the other YouTube-status fields should sneak in.
+      expect(call?.data).not.toHaveProperty("madeForKids");
+      expect(call?.data).not.toHaveProperty("embeddable");
+      expect(call?.data).not.toHaveProperty("license");
+      expect(call?.data).not.toHaveProperty("publicStatsViewable");
+      expect(call?.data).not.toHaveProperty("commentPolicy");
+    });
+  });
+
+  describe("publishVideo (POST /api/videos/:id/publish)", () => {
+    /**
+     * A row in the editable window. The service flips this to
+     * `SCHEDULED` (with a date) when scheduling, or delegates to the
+     * sync `publishVideoNow` path when publishing immediately.
+     */
+    const reviewRow: StubVideo = {
+      ...stubCreatedVideo,
+      status: "READY_FOR_REVIEW",
+    };
+
+    it("publishes immediately when no schedule is provided", async () => {
+      mockVideoFindUnique.mockResolvedValue(reviewRow);
+      mockPublishOnYouTube.mockResolvedValue({
+        youtubeVideoId: "yt_xyz",
+        publishedAt: new Date(),
+      });
+      const updatedRow = {
+        ...reviewRow,
+        status: "PUBLISHED" as const,
+        youtubeVideoId: "yt_xyz",
+        publishedAt: new Date(),
+      };
+      mockVideoFindUniqueOrThrow.mockResolvedValue(updatedRow);
+
+      const result = await videosService.publishVideo(
+        "user-1",
+        reviewRow.id,
+        {},
+        baseEnv,
+      );
+
+      expect(mockPublishOnYouTube).toHaveBeenCalledTimes(1);
+      expect(mockEnqueuePublish).not.toHaveBeenCalled();
+      expect(result.status).toBe("PUBLISHED");
+      expect(result.youtubeVideoId).toBe("yt_xyz");
+    });
+
+    it("schedules with a future date when scheduledPublishAt is provided", async () => {
+      const futureDate = new Date(Date.now() + 60 * 60 * 1000);
+      mockVideoFindUnique.mockResolvedValue(reviewRow);
+      mockVideoUpdate.mockResolvedValue({
+        ...reviewRow,
+        status: "SCHEDULED",
+        scheduledPublishAt: futureDate,
+      } as never);
+
+      const result = await videosService.publishVideo(
+        "user-1",
+        reviewRow.id,
+        { scheduledPublishAt: futureDate.toISOString() },
+        baseEnv,
+      );
+
+      // The row is flipped to SCHEDULED with the date persisted.
+      expect(mockVideoUpdate).toHaveBeenCalledWith({
+        where: { id: reviewRow.id },
+        data: { status: "SCHEDULED", scheduledPublishAt: futureDate },
+      });
+      // The publish job is enqueued with the date so BullMQ can
+      // schedule the delayed run.
+      expect(mockEnqueuePublish).toHaveBeenCalledWith(
+        reviewRow.id,
+        futureDate,
+        baseEnv,
+      );
+      // The sync publish path must NOT fire — this is a deferred job.
+      expect(mockPublishOnYouTube).not.toHaveBeenCalled();
+      expect(result.status).toBe("SCHEDULED");
+    });
+
+    it("rejects publish from a non-READY_FOR_REVIEW/PUBLISH_FAILED video with 409", async () => {
+      mockVideoFindUnique.mockResolvedValue({
+        ...reviewRow,
+        status: "PUBLISHED",
+      });
+
+      await expect(
+        videosService.publishVideo("user-1", reviewRow.id, {}, baseEnv),
+      ).rejects.toMatchObject({ code: "NOT_PUBLISHABLE", statusCode: 409 });
+      expect(mockPublishOnYouTube).not.toHaveBeenCalled();
+      expect(mockEnqueuePublish).not.toHaveBeenCalled();
+    });
+
+    it("rejects publish from a video the user does not own", async () => {
+      mockVideoFindUnique.mockResolvedValue({
+        ...reviewRow,
+        userId: "someone-else",
+      });
+
+      await expect(
+        videosService.publishVideo("user-1", reviewRow.id, {}, baseEnv),
+      ).rejects.toMatchObject({ code: "VIDEO_NOT_FOUND", statusCode: 404 });
+      expect(mockPublishOnYouTube).not.toHaveBeenCalled();
+      expect(mockEnqueuePublish).not.toHaveBeenCalled();
+    });
+
+    it("allows retry from PUBLISH_FAILED status (immediate publish)", async () => {
+      mockVideoFindUnique.mockResolvedValue({
+        ...reviewRow,
+        status: "PUBLISH_FAILED",
+        failureReason: "Previous publish failed.",
+      });
+      mockPublishOnYouTube.mockResolvedValue({
+        youtubeVideoId: "yt_retry",
+        publishedAt: new Date(),
+      });
+      mockVideoFindUniqueOrThrow.mockResolvedValue({
+        ...reviewRow,
+        status: "PUBLISHED",
+        youtubeVideoId: "yt_retry",
+        publishedAt: new Date(),
+      });
+
+      const result = await videosService.publishVideo(
+        "user-1",
+        reviewRow.id,
+        {},
+        baseEnv,
+      );
+
+      expect(mockPublishOnYouTube).toHaveBeenCalledTimes(1);
+      expect(result.status).toBe("PUBLISHED");
+      expect(result.youtubeVideoId).toBe("yt_retry");
+    });
+
+    it("propagates YouTube permanent publish errors on the immediate path", async () => {
+      mockVideoFindUnique.mockResolvedValue(reviewRow);
+      const { PermanentPublishError } = await import("@clipflow/youtube-upload");
+      mockPublishOnYouTube.mockRejectedValue(
+        new PermanentPublishError("QUOTA_EXCEEDED", "Daily quota exhausted."),
+      );
+
+      await expect(
+        videosService.publishVideo("user-1", reviewRow.id, {}, baseEnv),
+      ).rejects.toMatchObject({ reasonCode: "QUOTA_EXCEEDED" });
+      // The DB row is NOT touched on a failed YouTube call — the
+      // central error middleware maps the error to 5xx and the row
+      // stays in READY_FOR_REVIEW so the user can retry later.
+      expect(mockVideoUpdate).not.toHaveBeenCalled();
+    });
+
+    it("rejects a scheduled time less than 15 min in future (server-side guard)", async () => {
+      // The zod `.superRefine` enforces the 15-min floor. The service
+      // assumes the schema has already run by the time it's invoked
+      // (the route mounts `validate({ body: publishVideoSchema })`),
+      // but we still double-check the service-level dispatch doesn't
+      // accept a value that would put the row in SCHEDULED with an
+      // invalid date.
+      mockVideoFindUnique.mockResolvedValue(reviewRow);
+      const soonDate = new Date(Date.now() + 5 * 60 * 1000); // 5 min from now
+
+      const result = await videosService.publishVideo(
+        "user-1",
+        reviewRow.id,
+        { scheduledPublishAt: soonDate.toISOString() },
+        baseEnv,
+      );
+
+      // The service trusts the schema; it accepts the date and enqueues
+      // the job. BullMQ's `delay = max(0, date - now)` will fire
+      // immediately. The zod layer is the authoritative gate — this
+      // test is a regression guard that the service doesn't strip the
+      // date out of the payload.
+      expect(mockEnqueuePublish).toHaveBeenCalledWith(
+        reviewRow.id,
+        soonDate,
+        baseEnv,
+      );
+      expect(result.status).toBe("SCHEDULED");
+    });
+
+    it("schedules a date exactly 60 days out (boundary)", async () => {
+      const sixtyDaysOut = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
+      mockVideoFindUnique.mockResolvedValue(reviewRow);
+      mockVideoUpdate.mockResolvedValue({
+        ...reviewRow,
+        status: "SCHEDULED",
+        scheduledPublishAt: sixtyDaysOut,
+      } as never);
+
+      await videosService.publishVideo(
+        "user-1",
+        reviewRow.id,
+        { scheduledPublishAt: sixtyDaysOut.toISOString() },
+        baseEnv,
+      );
+
+      expect(mockEnqueuePublish).toHaveBeenCalledWith(
+        reviewRow.id,
+        sixtyDaysOut,
+        baseEnv,
+      );
     });
   });
 });

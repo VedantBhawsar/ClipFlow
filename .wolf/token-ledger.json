@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-06-26T04:13:47.972Z",
   "lifetime": {
-    "total_tokens_estimated": 488001,
-    "total_reads": 213,
-    "total_writes": 146,
-    "total_sessions": 40,
-    "anatomy_hits": 161,
+    "total_tokens_estimated": 669857,
+    "total_reads": 242,
+    "total_writes": 209,
+    "total_sessions": 50,
+    "anatomy_hits": 187,
     "anatomy_misses": 11,
-    "repeated_reads_blocked": 24,
-    "estimated_savings_vs_bare_cli": 91645
+    "repeated_reads_blocked": 36,
+    "estimated_savings_vs_bare_cli": 171708
   },
   "sessions": [
     {
@@ -2373,6 +2373,662 @@
         "writes_count": 18,
         "repeated_reads_blocked": 7,
         "anatomy_lookups": 12
+      }
+    },
+    {
+      "id": "session-2026-07-02-1953",
+      "started": "2026-07-02T14:23:07.076Z",
+      "ended": "2026-07-02T14:26:11.872Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/types/src/index.ts",
+          "tokens_estimated": 5910,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [],
+      "totals": {
+        "input_tokens_estimated": 5910,
+        "output_tokens_estimated": 0,
+        "reads_count": 1,
+        "writes_count": 0,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-07-02-1953",
+      "started": "2026-07-02T14:23:07.076Z",
+      "ended": "2026-07-02T14:33:19.581Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/types/src/index.ts",
+          "tokens_estimated": 5910,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/review/chapters-review.tsx",
+          "tokens_estimated": 5834,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/page.tsx",
+          "tokens_estimated": 5446,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/review/chapter-edit-dialog.tsx",
+          "tokens_estimated": 2198,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/review/chapters-review.tsx",
+          "tokens_estimated": 4679,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/video-details-dialog.tsx",
+          "tokens_estimated": 2270,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/edit-details-button.tsx",
+          "tokens_estimated": 302,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/page.tsx",
+          "tokens_estimated": 48,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/page.tsx",
+          "tokens_estimated": 71,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/page.tsx",
+          "tokens_estimated": 308,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/page.tsx",
+          "tokens_estimated": 281,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/review/chapters-review.tsx",
+          "tokens_estimated": 37,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 17190,
+        "output_tokens_estimated": 10194,
+        "reads_count": 3,
+        "writes_count": 9,
+        "repeated_reads_blocked": 2,
+        "anatomy_lookups": 3
+      }
+    },
+    {
+      "id": "session-2026-07-02-1953",
+      "started": "2026-07-02T14:23:07.076Z",
+      "ended": "2026-07-02T14:34:14.822Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/types/src/index.ts",
+          "tokens_estimated": 5910,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/review/chapters-review.tsx",
+          "tokens_estimated": 5834,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/page.tsx",
+          "tokens_estimated": 5355,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/review/chapter-edit-dialog.tsx",
+          "tokens_estimated": 2198,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/review/chapters-review.tsx",
+          "tokens_estimated": 4679,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/video-details-dialog.tsx",
+          "tokens_estimated": 2270,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/edit-details-button.tsx",
+          "tokens_estimated": 302,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/page.tsx",
+          "tokens_estimated": 48,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/page.tsx",
+          "tokens_estimated": 71,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/page.tsx",
+          "tokens_estimated": 308,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/page.tsx",
+          "tokens_estimated": 281,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/review/chapters-review.tsx",
+          "tokens_estimated": 37,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/page.tsx",
+          "tokens_estimated": 20,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 17099,
+        "output_tokens_estimated": 10214,
+        "reads_count": 3,
+        "writes_count": 10,
+        "repeated_reads_blocked": 3,
+        "anatomy_lookups": 3
+      }
+    },
+    {
+      "id": "session-2026-07-02-1953",
+      "started": "2026-07-02T14:23:07.076Z",
+      "ended": "2026-07-02T14:35:09.969Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/types/src/index.ts",
+          "tokens_estimated": 5910,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/review/chapters-review.tsx",
+          "tokens_estimated": 5834,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/page.tsx",
+          "tokens_estimated": 5355,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/review/chapter-edit-dialog.tsx",
+          "tokens_estimated": 2198,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/review/chapters-review.tsx",
+          "tokens_estimated": 4679,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/video-details-dialog.tsx",
+          "tokens_estimated": 2270,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/edit-details-button.tsx",
+          "tokens_estimated": 302,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/page.tsx",
+          "tokens_estimated": 48,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/page.tsx",
+          "tokens_estimated": 71,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/page.tsx",
+          "tokens_estimated": 308,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/page.tsx",
+          "tokens_estimated": 281,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/review/chapters-review.tsx",
+          "tokens_estimated": 37,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/page.tsx",
+          "tokens_estimated": 20,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 17099,
+        "output_tokens_estimated": 10214,
+        "reads_count": 3,
+        "writes_count": 10,
+        "repeated_reads_blocked": 3,
+        "anatomy_lookups": 3
+      }
+    },
+    {
+      "id": "session-2026-07-02-2007",
+      "started": "2026-07-02T14:37:29.039Z",
+      "ended": "2026-07-02T14:42:54.141Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/review/chapters-review.tsx",
+          "tokens_estimated": 4682,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/review/chapter-edit-dialog.tsx",
+          "tokens_estimated": 2198,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/page.tsx",
+          "tokens_estimated": 5355,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [],
+      "totals": {
+        "input_tokens_estimated": 12235,
+        "output_tokens_estimated": 0,
+        "reads_count": 3,
+        "writes_count": 0,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 2
+      }
+    },
+    {
+      "id": "session-2026-07-02-2007",
+      "started": "2026-07-02T14:37:29.039Z",
+      "ended": "2026-07-02T14:44:07.773Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/review/chapters-review.tsx",
+          "tokens_estimated": 4682,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/review/chapter-edit-dialog.tsx",
+          "tokens_estimated": 2198,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/page.tsx",
+          "tokens_estimated": 5355,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [],
+      "totals": {
+        "input_tokens_estimated": 12235,
+        "output_tokens_estimated": 0,
+        "reads_count": 3,
+        "writes_count": 0,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 2
+      }
+    },
+    {
+      "id": "session-2026-07-02-2007",
+      "started": "2026-07-02T14:37:29.039Z",
+      "ended": "2026-07-02T14:47:31.710Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/review/chapters-review.tsx",
+          "tokens_estimated": 4682,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/review/chapter-edit-dialog.tsx",
+          "tokens_estimated": 2198,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/page.tsx",
+          "tokens_estimated": 5355,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/ui/dialog.tsx",
+          "tokens_estimated": 1230,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/globals.css",
+          "tokens_estimated": 3081,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/globals.css",
+          "tokens_estimated": 16,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 16546,
+        "output_tokens_estimated": 16,
+        "reads_count": 5,
+        "writes_count": 1,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 4
+      }
+    },
+    {
+      "id": "session-2026-07-02-2026",
+      "started": "2026-07-02T14:56:13.476Z",
+      "ended": "2026-07-02T15:02:59.215Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.test.ts",
+          "tokens_estimated": 8030,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/ui/sheet.tsx",
+          "tokens_estimated": 1329,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/types/src/index.ts",
+          "tokens_estimated": 644,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.schemas.ts",
+          "tokens_estimated": 478,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts",
+          "tokens_estimated": 512,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/edit-details-button.tsx",
+          "tokens_estimated": 344,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/page.tsx",
+          "tokens_estimated": 160,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/video-details-dialog.tsx",
+          "tokens_estimated": 4496,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/video-details-dialog.tsx",
+          "tokens_estimated": 10,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.test.ts",
+          "tokens_estimated": 490,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 8030,
+        "output_tokens_estimated": 8463,
+        "reads_count": 1,
+        "writes_count": 9,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-07-02-2058",
+      "started": "2026-07-02T15:28:40.505Z",
+      "ended": "2026-07-02T15:38:45.478Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/video-metadata-editor.test.tsx",
+          "tokens_estimated": 1916,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 2718,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 76,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 129,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 127,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 68,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 68,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 175,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 141,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 66,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 66,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 194,
+          "action": "edit"
+        },
+        {
+          "file": "/tmp/add_bugs.jq",
+          "tokens_estimated": 876,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 1916,
+        "output_tokens_estimated": 4704,
+        "reads_count": 1,
+        "writes_count": 12,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-07-02-2058",
+      "started": "2026-07-02T15:28:40.505Z",
+      "ended": "2026-07-02T15:50:39.041Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/video-metadata-editor.test.tsx",
+          "tokens_estimated": 1916,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts",
+          "tokens_estimated": 10686,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.controller.ts",
+          "tokens_estimated": 3657,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/lib/queue.ts",
+          "tokens_estimated": 2912,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/youtube-upload/src/publish-video.ts",
+          "tokens_estimated": 3664,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/index.ts",
+          "tokens_estimated": 2252,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 2718,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 76,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 129,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 127,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 68,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 68,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 175,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 141,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 66,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 66,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+          "tokens_estimated": 194,
+          "action": "edit"
+        },
+        {
+          "file": "/tmp/add_bugs.jq",
+          "tokens_estimated": 876,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 25087,
+        "output_tokens_estimated": 4704,
+        "reads_count": 6,
+        "writes_count": 12,
+        "repeated_reads_blocked": 4,
+        "anatomy_lookups": 6
       }
     }
   ],

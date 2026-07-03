@@ -1467,6 +1467,414 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-02T03:37:33.141Z"
+    },
+    {
+      "id": "bug-091",
+      "timestamp": "2026-07-02T14:15:22.540Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/web/app/globals.css",
+      "root_cause": "10 lines replaced/restructured",
+      "fix": "Rewrote 16→28 lines (10 removed) | Also: /* shadcn neutral — dark, lifted one step per Desi; --background: #16170F;",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "css"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-02T14:15:34.773Z"
+    },
+    {
+      "id": "bug-092",
+      "timestamp": "2026-07-02T14:15:55.824Z",
+      "error_message": "CSS fix: outline",
+      "file": "apps/web/app/globals.css",
+      "root_cause": "outline: none → 2px solid var(--accent)",
+      "fix": "Changed outline: none → 2px solid var(--accent)",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "css"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T14:15:55.824Z"
+    },
+    {
+      "id": "bug-093",
+      "timestamp": "2026-07-02T14:31:13.474Z",
+      "error_message": "Incorrect value in code",
+      "file": "apps/web/app/dashboard/published/[id]/page.tsx",
+      "root_cause": "Had \"@/components/dashboard/video-metadata-editor\"",
+      "fix": "Changed to \"@/components/review/video-review-panel\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T14:31:13.474Z"
+    },
+    {
+      "id": "bug-094",
+      "timestamp": "2026-07-02T14:31:46.022Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/web/app/dashboard/published/[id]/page.tsx",
+      "root_cause": "15 lines replaced/restructured",
+      "fix": "Rewrote 42→26 lines (15 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T14:31:46.022Z"
+    },
+    {
+      "id": "bug-095",
+      "timestamp": "2026-07-02T14:32:18.875Z",
+      "error_message": "Incorrect value in code",
+      "file": "apps/web/components/review/chapters-review.tsx",
+      "root_cause": "Had \"Set start to current playhead\"",
+      "fix": "Changed to \"Use current playhead as chapter start\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T14:32:18.875Z"
+    },
+    {
+      "id": "bug-096",
+      "timestamp": "2026-07-02T20:10:00Z",
+      "error_message": "Dialog backdrop missing, no enter/exit animations — choppy feel",
+      "file": "apps/web/app/globals.css",
+      "root_cause": "tailwindcss-animate was listed in package.json but never registered via @plugin in globals.css. In Tailwind v4, plugins must be declared with @plugin \"pkg-name\" in the CSS entrypoint — the old tailwind.config.js plugins array is no longer read. Without registration, all animate-in/animate-out/fade-in-0/zoom-in-95 etc. utilities generate no CSS, so shadcn Dialog backdrop and content transitions are silent no-ops.",
+      "fix": "Added @plugin \"tailwindcss-animate\"; as the second line of apps/web/app/globals.css, immediately after @import \"tailwindcss\";",
+      "tags": [
+        "tailwind-v4",
+        "animation",
+        "shadcn",
+        "dialog",
+        "plugin",
+        "configuration"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02"
+    },
+    {
+      "id": "bug-097",
+      "timestamp": "2026-07-02T14:58:09.409Z",
+      "error_message": "Type error",
+      "file": "apps/web/app/dashboard/published/[id]/page.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T14:58:09.409Z"
+    },
+    {
+      "id": "bug-098",
+      "timestamp": "2026-07-02T15:01:06.047Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/api/src/modules/videos/videos.service.test.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T15:01:06.047Z"
+    },
+    {
+      "id": "bug-099",
+      "timestamp": "2026-07-02T15:15:14.428Z",
+      "error_message": "Null/undefined access in ",
+      "file": "../../../.claude/plans/witty-snuggling-seal.md",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T15:15:14.428Z"
+    },
+    {
+      "id": "bug-100",
+      "timestamp": "2026-07-02T15:21:46.237Z",
+      "error_message": "Missing guard clause",
+      "file": "apps/api/src/modules/videos/videos.schemas.ts",
+      "root_cause": "No early return/throw for edge case: data.scheduledPublishAt === undefined",
+      "fix": "Added guard clause: if (data.scheduledPublishAt === undefined)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T15:21:46.237Z"
+    },
+    {
+      "id": "bug-101",
+      "timestamp": "2026-07-02T15:22:12.738Z",
+      "error_message": "Type error",
+      "file": "apps/api/src/modules/videos/videos.service.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T15:22:12.738Z"
+    },
+    {
+      "id": "bug-102",
+      "timestamp": "2026-07-02T15:22:31.969Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/api/src/modules/videos/videos.controller.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T15:22:31.969Z"
+    },
+    {
+      "id": "bug-103",
+      "timestamp": "2026-07-02T15:23:24.251Z",
+      "error_message": "Type error",
+      "file": "apps/api/src/modules/videos/videos.service.test.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T15:23:24.251Z"
+    },
+    {
+      "id": "bug-104",
+      "timestamp": "2026-07-02T15:24:59.168Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/web/lib/api-client.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T15:24:59.168Z"
+    },
+    {
+      "id": "bug-105",
+      "timestamp": "2026-07-02T15:25:15.282Z",
+      "error_message": "Type error",
+      "file": "apps/web/hooks/use-videos.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T15:25:15.282Z"
+    },
+    {
+      "id": "bug-106",
+      "timestamp": "2026-07-02T15:26:15.486Z",
+      "error_message": "CSS fix: privacyStatus",
+      "file": "apps/web/app/dashboard/published/[id]/page.tsx",
+      "root_cause": "privacyStatus: video.privacyStatus as VideoPrivacyStatus, → video.privacyStatus,",
+      "fix": "Changed privacyStatus: video.privacyStatus as VideoPrivacyStatus, → video.privacyStatus,",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T15:26:15.486Z"
+    },
+    {
+      "id": "bug-107",
+      "timestamp": "2026-07-02T15:26:23.778Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/web/app/dashboard/published/[id]/page.tsx",
+      "root_cause": "52 lines replaced/restructured",
+      "fix": "Rewrote 58→8 lines (52 removed) | Also: VideoCommentPolicy,; VideoLicense,",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-02T15:26:56.280Z"
+    },
+    {
+      "id": "bug-108",
+      "timestamp": "2026-07-02T15:34:21.520Z",
+      "error_message": "Type error",
+      "file": "apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation | Also: fireEvent.change(screen.getByTestId(\"publish-sheet-datetime\"; target: { value: soonLocal }, | Also: fireEvent.change(screen.getByTestId(\"publish-sheet-datetime\"; target: { value: farLocal }, | Also: /**; * Format a Date as `YYYY-MM-DDTHH:mm` in the local timezone ",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-07-02T15:36:20.967Z"
+    },
+    {
+      "id": "bug-109",
+      "timestamp": "2026-07-02T15:34:26.386Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 5→9 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T15:34:26.386Z"
+    },
+    {
+      "id": "bug-110",
+      "timestamp": "2026-07-02T15:35:55.180Z",
+      "error_message": "CSS fix: YYYY-MM-DDTHH",
+      "file": "apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+      "root_cause": "YYYY-MM-DDTHH: mm` (no seconds / tz). → mm` string from",
+      "fix": "Changed YYYY-MM-DDTHH: mm` (no seconds / tz). → mm` string from",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T15:35:55.180Z"
+    },
+    {
+      "id": "bug-111",
+      "timestamp": "2026-07-02T15:38:00.000Z",
+      "error_message": "Test timed out in 5000ms — all 8 publish-button.test.tsx tests hung on userEvent.click against the Sheet trigger. vi.useFakeTimers() in beforeEach collides with radix Sheet portal mounting (uses setTimeout for focus + portal placement).",
+      "file": "apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+      "root_cause": "vi.useFakeTimers() in beforeEach freezes radix Dialog/Sheet portal timers, hanging userEvent. Tests appear stuck at click() and never complete.",
+      "fix": "Drop vi.useFakeTimers() entirely. Use real timers and await deferred side effects via `await act(() => new Promise(r => setTimeout(r, 250)))` for the 200ms redirect.",
+      "tags": [
+        "test",
+        "vitest",
+        "radix",
+        "userEvent",
+        "fake-timers"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T15:38:00.000Z"
+    },
+    {
+      "id": "bug-112",
+      "timestamp": "2026-07-02T15:38:00.000Z",
+      "error_message": "YouTube-min error test got \"Schedule time must be in the future.\" instead of \"at least 15 min\" — Date constructed as Date.now() + 5 min parsed to past when sliced via .toISOString().slice(0, 16) and re-parsed by new Date(\"YYYY-MM-DDTHH:mm\") in IST timezone.",
+      "file": "apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+      "root_cause": ".toISOString() returns UTC; .slice(0, 16) strips the Z marker; new Date(\"YYYY-MM-DDTHH:mm\") is then parsed as LOCAL time. In non-UTC TZ (e.g. IST = UTC+5:30), the same wall-clock string can represent a different UTC instant — often hours earlier.",
+      "fix": "Build the datetime-local string from local-time getters: `${y}-${pad(M+1)}-${pad(D)}T${pad(h)}:${pad(m)}`. This round-trips through new Date() to the same ms-since-epoch regardless of TZ.",
+      "tags": [
+        "test",
+        "timezone",
+        "datetime-local",
+        "iso-string"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T15:38:00.000Z"
+    },
+    {
+      "id": "bug-113",
+      "timestamp": "2026-07-02T15:38:00.000Z",
+      "error_message": "userEvent.type on datetime-local input causes per-keystroke validation against partial strings (\"2026-07-02T20:5\" parses as a different time than the final \"2026-07-02T20:55\"). Submit button flips to disabled mid-typing.",
+      "file": "apps/web/app/dashboard/published/[id]/publish-button.test.tsx",
+      "root_cause": "Sheet re-runs validateScheduledAt on every onChange. userEvent.type fires one keystroke at a time, so each intermediate state triggers validation. Partial strings often parse to the past, disabling the submit button before the final value is set.",
+      "fix": "Use fireEvent.change(input, { target: { value: futureLocal } }) to set the value atomically. Reserve userEvent.type for inputs without per-keystroke validation (text inputs that don't gate the submit button).",
+      "tags": [
+        "test",
+        "userEvent",
+        "controlled-input",
+        "datetime-local",
+        "validation"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T15:38:00.000Z"
+    },
+    {
+      "id": "bug-114",
+      "timestamp": "2026-07-02T16:03:08.805Z",
+      "error_message": "Type error",
+      "file": "apps/api/src/modules/preferences/preferences.schemas.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T16:03:08.805Z"
+    },
+    {
+      "id": "bug-115",
+      "timestamp": "2026-07-02T16:06:03.113Z",
+      "error_message": "Type error",
+      "file": "apps/api/src/lib/queue.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-02T16:06:03.113Z"
     }
   ]
 }

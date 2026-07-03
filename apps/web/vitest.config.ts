@@ -18,6 +18,8 @@ export default defineConfig({
       "components/**/*.test.ts",
       "components/**/*.test.tsx",
       "hooks/**/*.test.ts",
+      "app/**/*.test.ts",
+      "app/**/*.test.tsx",
     ],
     setupFiles: ["./vitest.setup.ts"],
     coverage: {

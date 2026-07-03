@@ -36,6 +36,7 @@ import type {
   OnboardingStatusResponse,
   PaginatedVideos,
   PatchProfileRequest,
+  PublishVideoRequest,
   RefreshRequest,
   RefreshResponse,
   RegisterRequest,
@@ -210,6 +211,12 @@ export interface ApiClient {
   getPlaybackUrl(id: string): Promise<{ url: string }>;
   deleteVideo(id: string): Promise<void>;
   unpublishVideo(id: string): Promise<Video>;
+  /**
+   * Publish a `READY_FOR_REVIEW` (or `PUBLISH_FAILED` retry) video.
+   * Pass an ISO 8601 `scheduledPublishAt` to schedule; omit it to
+   * publish now. The server enforces the 15-min / 60-day window.
+   */
+  publishVideo(id: string, body?: PublishVideoRequest): Promise<Video>;
 }
 
 /**
@@ -379,6 +386,9 @@ export function createApiClient(accessToken: string | null): ApiClient {
     },
     unpublishVideo(id) {
       return request("POST", `/api/videos/${id}/unpublish`);
+    },
+    publishVideo(id, body) {
+      return request("POST", `/api/videos/${id}/publish`, body ?? {});
     },
   };
 }

@@ -455,10 +455,41 @@ export interface CreateVideoRequest {
 }
 
 /**
+ * Body for `POST /api/videos/:id/publish`. Used by the "Publish"
+ * button on the video detail page once the user has finished editing
+ * a `READY_FOR_REVIEW` (or `PUBLISH_FAILED` retry) row.
+ *
+ * - Omit `scheduledPublishAt` to publish immediately. The service
+ *   delegates to the existing `publishVideoNow` path so YouTube gets
+ *   the row's already-saved metadata via `buildStatusFromVideo` —
+ *   there's no second layer of metadata passing through this body.
+ * - Set `scheduledPublishAt` to a future ISO 8601 instant (≥15 min
+ *   out, ≤60 days — YouTube's own window) and the service flips the
+ *   row to `SCHEDULED` and enqueues a delayed `youtube-publish` job.
+ *   The worker startup-recovery pass picks up the job even if the API
+ *   or worker was offline at the scheduled time.
+ */
+export interface PublishVideoRequest {
+  /**
+   * ISO 8601 string for the desired publish time. Omit for an
+   * immediate publish. The server validates the 15-min / 60-day
+   * window — clients should mirror the same bounds so the user
+   * gets instant feedback, but the server is the source of truth.
+   */
+  scheduledPublishAt?: string;
+}
+
+/**
  * Body for `PATCH /api/videos/:id`. Used by the in-place editor on the
  * review screen to fix up AI-generated metadata and chapters before
  * publishing. All fields optional — the service merges on top of the
  * existing row.
+ *
+ * The metadata fields (title/description/tags) + the YouTube status
+ * block (privacyStatus/madeForKids/embeddable/license/publicStatsViewable/
+ * commentPolicy) all flow into the same partial-merge on the row — the
+ * publish worker reads them off the row at publish time, so a save here
+ * is the source of truth for what gets sent to YouTube.
  *
  * The API enforces the same shape + YouTube-rule invariants that the
  * LLM uses on initial generation (first startMs=0, ≥10 s gap, ≤100 char
@@ -481,6 +512,23 @@ export interface UpdateVideoRequest {
    * ≥10 s apart, titles ≤100 chars, between 3 and 12 chapters.
    */
   chapters?: { startMs: number; title: string }[];
+  // ---- YouTube status block ----
+  //
+  // All optional. Mirrors the fields `videos.insert` accepts under
+  // `status.*`. Defaults match YouTube's own defaults; the create-time
+  // zod schema applies them, so omitting all six leaves the row at its
+  // already-saved state.
+  privacyStatus?: VideoPrivacyStatus;
+  /** COPPA self-declaration. */
+  madeForKids?: boolean;
+  /** Allow other sites to embed this video. */
+  embeddable?: boolean;
+  /** Standard YouTube license vs Creative Commons — Attribution. */
+  license?: VideoLicense;
+  /** Show the public view count on the watch page. */
+  publicStatsViewable?: boolean;
+  /** Comments: allow all, hold all for review, or disable. */
+  commentPolicy?: VideoCommentPolicy;
 }
 
 /**

@@ -281,7 +281,7 @@ function Section({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <Label className="text-[12px] font-medium uppercase tracking-wide text-[color:var(--ink-muted)]">
           {title}
         </Label>
         <div className="flex items-center gap-2">
@@ -307,7 +307,12 @@ function Section({
           </Button>
         </div>
       </div>
-      <div className={cn("rounded-md", dirty && "ring-1 ring-primary/20")}>
+      <div
+        className={cn(
+          "rounded-md",
+          dirty && "ring-1 ring-[color:var(--accent)]/25",
+        )}
+      >
         {children}
       </div>
     </div>

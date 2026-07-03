@@ -377,6 +377,15 @@ export const updateVideoSchema = z
       .min(3, "YouTube requires at least 3 chapters.")
       .max(12, "YouTube allows at most 12 chapters.")
       .optional(),
+    // YouTube status block — reuse the schemas already declared above
+    // for `createVideoSchema` so the bounds stay in one place. All
+    // optional so a per-section save can patch one field at a time.
+    privacyStatus: privacyStatusSchema.optional(),
+    madeForKids: madeForKidsSchema.optional(),
+    embeddable: embeddableSchema.optional(),
+    license: licenseSchema.optional(),
+    publicStatsViewable: publicStatsViewableSchema.optional(),
+    commentPolicy: commentPolicySchema.optional(),
   })
   .refine(
     (data) => {
@@ -398,3 +407,62 @@ export const updateVideoSchema = z
   );
 
 export type UpdateVideoInput = z.infer<typeof updateVideoSchema>;
+
+// ---- Publish / Schedule (POST /api/videos/:id/publish) ----
+//
+// Body for the user-driven "Publish" button on the video detail page.
+// Empty body = publish now (the service delegates to the existing
+// `publishVideoNow` path). A `scheduledPublishAt` flips the row to
+// `SCHEDULED` and enqueues a delayed `youtube-publish` job.
+//
+// YouTube's own window for scheduled videos is 15 min ≤ publishAt ≤
+// 60 days out. We mirror those bounds here so the server is the source
+// of truth — a hand-rolled client can't bypass the 15-min floor by
+// omitting the field and POSTing a date directly into the job payload.
+
+/**
+ * Minimum lead time YouTube accepts on a scheduled video. Anything
+ * closer than this returns 400 from `videos.insert`.
+ */
+const SCHEDULED_MIN_LEAD_MS = 15 * 60 * 1000;
+/**
+ * Maximum lead time YouTube accepts on a scheduled video.
+ */
+const SCHEDULED_MAX_LEAD_MS = 60 * 24 * 60 * 60 * 1000;
+
+export const publishVideoSchema = z
+  .object({
+    scheduledPublishAt: scheduledPublishAtSchema,
+  })
+  .superRefine((data, ctx) => {
+    if (data.scheduledPublishAt === undefined) return;
+    const ms = new Date(data.scheduledPublishAt).getTime();
+    const now = Date.now();
+    if (ms <= now) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["scheduledPublishAt"],
+        message: "scheduledPublishAt must be in the future.",
+      });
+      return;
+    }
+    if (ms - now < SCHEDULED_MIN_LEAD_MS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["scheduledPublishAt"],
+        message:
+          "scheduledPublishAt must be at least 15 minutes in the future (YouTube minimum).",
+      });
+      return;
+    }
+    if (ms - now > SCHEDULED_MAX_LEAD_MS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["scheduledPublishAt"],
+        message:
+          "scheduledPublishAt must be within 60 days (YouTube scheduled maximum).",
+      });
+    }
+  });
+
+export type PublishVideoInput = z.infer<typeof publishVideoSchema>;

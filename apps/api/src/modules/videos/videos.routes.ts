@@ -15,6 +15,7 @@
  *   GET    /api/videos/:id                     → committed: read
  *   PATCH  /api/videos/:id                     → committed: update (READY_FOR_REVIEW only)
  *   DELETE /api/videos/:id                     → committed: cancel
+ *   POST   /api/videos/:id/publish             → committed: publish (now or scheduled)
  *   POST   /api/videos/:id/unpublish           → committed: unpublish
  *   GET    /api/videos/:id/playback-url        → committed: presigned GET URL
  *
@@ -41,6 +42,7 @@ import {
   getVideoController,
   listPublishedVideosController,
   listVideosController,
+  publishVideoController,
   streamUserVideosController,
   streamVideoController,
   unpublishVideoController,
@@ -51,6 +53,7 @@ import {
   listPublishedVideosQuerySchema,
   listVideosQuerySchema,
   pendingUploadIdParamsSchema,
+  publishVideoSchema,
   updateVideoSchema,
   videoIdParamsSchema,
 } from "./videos.schemas.js";
@@ -159,6 +162,13 @@ export const buildVideosRouter = (env: Env): Router => {
     auth,
     validate({ params: videoIdParamsSchema }),
     deleteVideoController,
+  );
+
+  router.post(
+    "/:id/publish",
+    auth,
+    validate({ params: videoIdParamsSchema, body: publishVideoSchema }),
+    publishVideoController,
   );
 
   router.post(

@@ -1,23 +1,36 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, ExternalLink, Loader2, AlertCircle } from "lucide-react";
-import type { Video, VideoStatus } from "@clipflow/types";
+import { ArrowLeft, ExternalLink, AlertCircle } from "lucide-react";
+import type {
+  Video,
+  VideoPrivacyStatus,
+  VideoStatus,
+} from "@clipflow/types";
 
 import {
   StatusTimeline,
   type TimelineStatus,
 } from "@/components/dashboard/status-timeline";
-import { ProcessingSubSteps } from "@/components/dashboard/processing-substeps";
 import { VideoDetailLiveProgress } from "@/components/dashboard/video-detail-live-progress";
-import { VideoMetadataEditor } from "@/components/dashboard/video-metadata-editor";
 import { VideoReviewPanel } from "@/components/review/video-review-panel";
+import { ThumbnailReview } from "@/components/review/thumbnail-review";
+import type { ThumbnailOption } from "@/components/review/thumbnail-card";
 import { UnpublishButton } from "@/app/dashboard/published/[id]/unpublish-button";
 import { CancelButton } from "@/app/dashboard/published/[id]/cancel-button";
-import { Badge } from "@/components/ui/badge";
+import { EditDetailsButton } from "@/app/dashboard/published/[id]/edit-details-button";
+import { PublishButton } from "@/app/dashboard/published/[id]/publish-button";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/auth";
 import { serverFetch, ServerApiError } from "@/lib/api-client";
 import BackButton from "@/components/shared/BackButton";
+import { cn } from "@/lib/utils";
+import {
+  formatBytes,
+  formatCommentPolicy,
+  formatDuration,
+  formatLicense,
+  formatPrivacy,
+} from "@/lib/voice";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -28,24 +41,47 @@ export const metadata: Metadata = {
   description: "Video details and publishing controls.",
 };
 
+/**
+ * User-facing labels for each backend `VideoStatus`. Design.md
+ * Section 4 (voice + copy): active voice, plain verbs, no jargon.
+ * Every status has a text label — never signal state by color alone.
+ */
 const STATUS_LABEL: Record<VideoStatus, string> = {
   UPLOADED: "Awaiting upload",
   READY: "Ready to process",
   EXTRACTING: "Extracting audio & frames",
   TRANSCRIBING: "Transcribing",
   GENERATING: "Generating chapters & thumbnails",
-  READY_FOR_REVIEW: "Ready for review",
+  READY_FOR_REVIEW: "Ready for your review",
   SCHEDULED: "Scheduled",
-  PUBLISHING: "Publishing…",
+  PUBLISHING: "Publishing",
   PUBLISHED: "Published",
   PUBLISH_FAILED: "Publish failed",
   FAILED: "Processing failed",
 };
 
 /**
+ * Which token drives the status label chip. Uses `--status-*` variables
+ * from Design.md Section 2 — no ad-hoc palette.
+ */
+const STATUS_TONE: Record<VideoStatus, "processing" | "ready" | "scheduled" | "error" | "neutral"> = {
+  UPLOADED: "neutral",
+  READY: "neutral",
+  EXTRACTING: "processing",
+  TRANSCRIBING: "processing",
+  GENERATING: "processing",
+  READY_FOR_REVIEW: "ready",
+  SCHEDULED: "scheduled",
+  PUBLISHING: "processing",
+  PUBLISHED: "ready",
+  PUBLISH_FAILED: "error",
+  FAILED: "error",
+};
+
+/**
  * Same mapping the dashboard's `VideoCard` uses — keep the visual
- * language consistent across row and detail page so the timeline
- * reads the same way in both views.
+ * language consistent across row and detail page so the timeline reads
+ * the same way in both views.
  */
 const mapStatus = (status: Video["status"]): TimelineStatus => {
   switch (status) {
@@ -65,12 +101,12 @@ const mapStatus = (status: Video["status"]): TimelineStatus => {
     case "PUBLISHED":
       return "published";
     case "FAILED":
-      return "uploaded";
+      return "processing";
   }
 };
 
 /**
- * `/dashboard/videos/:id` — full detail view for a single video.
+ * `/dashboard/published/:id` — full detail view for a single video.
  *
  * Server-rendered so the page is meaningful on first paint (no client
  * round-trip for the initial read).
@@ -93,16 +129,10 @@ export default async function VideoDetailPage({ params }: PageProps) {
   let video: Video | null = null;
   try {
     video = await fetchVideo(token, id);
-
-    console.log("video", video.chaptersJson)
   } catch (err) {
     if (err instanceof ServerApiError && err.status === 404) {
       notFound();
     }
-    // Anything else (network / 500) — render a minimal fallback so
-    // the chrome (sidebar, back link) still works and the user can
-    // navigate away. The server component boundary will surface the
-    // real error to the error overlay in dev.
     video = null;
   }
 
@@ -111,60 +141,99 @@ export default async function VideoDetailPage({ params }: PageProps) {
   }
 
   const timelineStatus = mapStatus(video.status);
-  const thumbnailUrl = video.youtubeVideoId
+  const hasError = video.status === "FAILED" || video.status === "PUBLISH_FAILED";
+  const publishedThumbnail = video.youtubeVideoId
     ? `https://i.ytimg.com/vi/${video.youtubeVideoId}/hqdefault.jpg`
     : null;
+  const thumbnailOptions = buildThumbnailOptions(video, publishedThumbnail);
+  const selectedThumbnailId =
+    thumbnailOptions.find((t) => t.src != null)?.id ?? thumbnailOptions[0]?.id;
+  const inFlight = video.status !== "PUBLISHED";
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-2">
-          <BackButton className={"mb-2"}>
-            <Button variant="ghost" size="sm" className="-ml-2">
-              <ArrowLeft aria-hidden="true" />
-              Back
-            </Button>
-          </BackButton>
+      <header className="space-y-4">
+        <BackButton className="mb-1 block">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-ml-2 text-[color:var(--ink-muted)]"
+          >
+            <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+            Back
+          </Button>
+        </BackButton>
 
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {video.title}
-            </h1>
-            <StatusBadge status={video.status} />
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 space-y-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-[28px] font-medium leading-tight tracking-tight text-[color:var(--ink)]">
+                {video.title}
+              </h1>
+              <StatusPill status={video.status} />
+            </div>
+            <p className="text-[12px] text-[color:var(--ink-muted)]">
+              Last updated{" "}
+              <span className="font-mono tabular-nums">
+                {new Date(video.updatedAt).toLocaleString()}
+              </span>
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Last updated {new Date(video.updatedAt).toLocaleString()}
-          </p>
-        </div>
 
-        <ActionPanel video={video} />
+          <ActionPanel video={video} />
+        </div>
       </header>
 
+      {/* Pipeline status strip — the signature element, per Design.md
+          Section 2. */}
       <section
         aria-labelledby="status-heading"
-        className="rounded-xl border border-border bg-card p-4"
+        className="rounded-xl border border-[color:var(--line)] bg-[color:var(--surface)] p-5"
       >
-        <h2 id="status-heading" className="sr-only">
-          Pipeline status
-        </h2>
-        <StatusTimeline status={timelineStatus} className="max-w-2xl" />
-        <ProcessingSubSteps status={video.status} />
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
+          <div className="space-y-0.5">
+            <h2
+              id="status-heading"
+              className="text-[13px] font-medium uppercase tracking-wide text-[color:var(--ink-muted)]"
+            >
+              Pipeline
+            </h2>
+            <p className="text-[14px] text-[color:var(--ink)]">
+              {STATUS_LABEL[video.status]}
+            </p>
+          </div>
+          {video.scheduledPublishAt && video.status === "SCHEDULED" ? (
+            <p className="text-[12px] text-[color:var(--ink-muted)]">
+              Publishes{" "}
+              <span className="font-mono tabular-nums text-[color:var(--ink)]">
+                {new Date(video.scheduledPublishAt).toLocaleString()}
+              </span>
+            </p>
+          ) : null}
+          {video.publishedAt ? (
+            <p className="text-[12px] text-[color:var(--ink-muted)]">
+              Published{" "}
+              <span className="font-mono tabular-nums text-[color:var(--ink)]">
+                {new Date(video.publishedAt).toLocaleString()}
+              </span>
+            </p>
+          ) : null}
+        </div>
+
+        <StatusTimeline status={timelineStatus} hasError={hasError} />
+
         {video.failureReason ? (
-          <p className="mt-3 text-xs text-destructive">
+          <p className="mt-4 flex items-start gap-2 text-[13px] text-[color:var(--status-error)]">
             <AlertCircle
-              className="mr-1 inline h-3.5 w-3.5"
+              className="mt-0.5 h-4 w-4 shrink-0"
               aria-hidden="true"
             />
             {video.failureReason}
           </p>
         ) : null}
-        {video.scheduledPublishAt && video.status === "SCHEDULED" ? (
-          <p className="mt-3 text-xs text-muted-foreground">
-            Will publish {new Date(video.scheduledPublishAt).toLocaleString()}
-          </p>
-        ) : null}
-        {video.status !== "PUBLISHED" ? (
-          <div className="mt-4">
+
+        {inFlight ? (
+          <div className="mt-4 border-t border-[color:var(--line)] pt-3">
             <VideoDetailLiveProgress videoId={video.id} />
           </div>
         ) : null}
@@ -178,130 +247,117 @@ export default async function VideoDetailPage({ params }: PageProps) {
         />
       ) : null}
 
-      <section
-        aria-labelledby="thumbnail-heading"
-        className="rounded-xl border border-border bg-card p-4"
-      >
-        <h2
-          id="thumbnail-heading"
-          className="mb-3 text-sm font-semibold text-foreground"
-        >
-          Thumbnail
-        </h2>
-        {thumbnailUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={thumbnailUrl}
-            alt=""
-            className="h-32 w-56 rounded-md object-cover"
-          />
-        ) : (
-          <div className="flex h-32 w-56 items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
-            {video.status === "PUBLISHING" ? (
-              <Loader2 className="h-6 w-6 animate-spin" />
-            ) : (
-              "—"
-            )}
-          </div>
-        )}
-      </section>
+      {/* Thumbnails grid — always visible on the detail page. The
+          selected tile is the one actually going to YouTube. */}
+      <ThumbnailReview
+        options={thumbnailOptions}
+        selectedId={selectedThumbnailId}
+        regenerationsUsed={0}
+        regenerationsAllowed={5}
+        disabled
+      />
 
+      {/* Details — text-heavy content, capped at the ~960px column
+          rule from Design.md Section 2. */}
       <section
         aria-labelledby="metadata-heading"
-        className="rounded-xl border border-border bg-card p-4"
+        className="mx-0 max-w-[60rem]"
       >
-        <h2
-          id="metadata-heading"
-          className="mb-4 text-sm font-semibold text-foreground"
-        >
-          Details
-        </h2>
-        {video.status === "READY_FOR_REVIEW" ? (
-          <div className="mb-6">
-            <VideoMetadataEditor
-              video={{
-                id: video.id,
-                title: video.title,
-                description: video.description,
-                tags: video.tags,
-              }}
-            />
+        <div className="rounded-xl border border-[color:var(--line)] bg-[color:var(--surface)] p-5">
+          <h2
+            id="metadata-heading"
+            className="mb-4 text-[13px] font-medium uppercase tracking-wide text-[color:var(--ink-muted)]"
+          >
+            Details
+          </h2>
+          <dl className="grid gap-x-8 gap-y-4 text-[14px] sm:grid-cols-2">
+            <DetailRow label="Description" span={2}>
+              {video.description ? (
+                <p className="whitespace-pre-wrap text-[color:var(--ink)]/85">
+                  {video.description}
+                </p>
+              ) : (
+                <EmptyValue />
+              )}
+            </DetailRow>
+            <DetailRow label="Tags" span={2}>
+              {video.tags.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {video.tags.map((t) => (
+                    <span
+                      key={t}
+                      className="rounded-full border border-[color:var(--line)] px-2 py-0.5 text-[12px] text-[color:var(--ink)]"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <EmptyValue />
+              )}
+            </DetailRow>
+            <DetailRow label="Privacy">
+              {formatPrivacy(video.privacyStatus as VideoPrivacyStatus)}
+            </DetailRow>
+            <DetailRow label="Audience">
+              {video.madeForKids ? "Made for kids" : "Not made for kids"}
+              {video.ageRestriction !== "none" ? (
+                <span className="ml-2 text-[color:var(--ink-muted)]">
+                  · age restricted (18+)
+                </span>
+              ) : null}
+            </DetailRow>
+            <DetailRow label="Comments">
+              {formatCommentPolicy(video.commentPolicy)}
+            </DetailRow>
+            <DetailRow label="Embedding">
+              {video.embeddable
+                ? "Other sites can embed this video"
+                : "Embedding disabled"}
+            </DetailRow>
+            <DetailRow label="License">
+              {formatLicense(video.license)}
+            </DetailRow>
+            <DetailRow label="Public stats">
+              {video.publicStatsViewable
+                ? "View count visible on watch page"
+                : "View count hidden from public"}
+            </DetailRow>
+          </dl>
+
+          {/* Technical block — kept at the bottom, mono, muted, so
+              the primary view stays creator-facing (Design.md Section
+              4). */}
+          <div className="mt-6 border-t border-[color:var(--line)] pt-4">
+            <h3 className="mb-3 text-[12px] font-medium uppercase tracking-wide text-[color:var(--ink-muted)]">
+              Technical
+            </h3>
+            <dl className="grid gap-x-8 gap-y-2 text-[13px] sm:grid-cols-2">
+              <DetailRow label="File" muted>
+                <span className="font-mono text-[12px] tabular-nums">
+                  {video.originalFilename} · {formatBytes(video.fileSizeBytes)}
+                </span>
+              </DetailRow>
+              {video.durationSeconds != null ? (
+                <DetailRow label="Duration" muted>
+                  <span className="font-mono text-[12px] tabular-nums">
+                    {formatDuration(video.durationSeconds)}
+                  </span>
+                </DetailRow>
+              ) : null}
+              <DetailRow label="Video ID" muted>
+                <span className="font-mono text-[12px]">{video.id}</span>
+              </DetailRow>
+              {video.youtubeVideoId ? (
+                <DetailRow label="YouTube ID" muted>
+                  <span className="font-mono text-[12px]">
+                    {video.youtubeVideoId}
+                  </span>
+                </DetailRow>
+              ) : null}
+            </dl>
           </div>
-        ) : null}
-        <dl className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
-          {video.status !== "READY_FOR_REVIEW" ? (
-            <>
-              <DetailRow label="Description">
-                {video.description ? (
-                  <p className="whitespace-pre-wrap text-foreground/90">
-                    {video.description}
-                  </p>
-                ) : (
-                  <EmptyValue />
-                )}
-              </DetailRow>
-              <DetailRow label="Tags">
-                {video.tags.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {video.tags.map((t) => (
-                      <Badge key={t} variant="secondary">
-                        {t}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyValue />
-                )}
-              </DetailRow>
-            </>
-          ) : null}
-          <DetailRow label="Category">
-            <span className="font-mono text-xs">{video.categoryId}</span>
-          </DetailRow>
-          <DetailRow label="Privacy">
-            <span className="capitalize">{video.privacyStatus}</span>
-          </DetailRow>
-          <DetailRow label="Audience">
-            {video.madeForKids ? "Made for kids" : "Not made for kids"}
-            {video.ageRestriction !== "none" && (
-              <span className="ml-2 text-muted-foreground">
-                · age {video.ageRestriction}
-              </span>
-            )}
-          </DetailRow>
-          <DetailRow label="Distribution">
-            <ul className="space-y-0.5">
-              <li>{video.embeddable ? "Embeddable" : "Not embeddable"}</li>
-              <li>
-                License:{" "}
-                <span className="font-mono text-xs">{video.license}</span>
-              </li>
-              <li>
-                {video.publicStatsViewable
-                  ? "Public stats viewable"
-                  : "Stats hidden from public"}
-              </li>
-            </ul>
-          </DetailRow>
-          <DetailRow label="Comments">
-            <span className="font-mono text-xs">{video.commentPolicy}</span>
-          </DetailRow>
-          <DetailRow label="File">
-            <span className="font-mono text-xs">
-              {video.originalFilename} · {formatBytes(video.fileSizeBytes)}
-            </span>
-          </DetailRow>
-          {video.scheduledPublishAt ? (
-            <DetailRow label="Scheduled">
-              {new Date(video.scheduledPublishAt).toLocaleString()}
-            </DetailRow>
-          ) : null}
-          {video.publishedAt ? (
-            <DetailRow label="Published">
-              {new Date(video.publishedAt).toLocaleString()}
-            </DetailRow>
-          ) : null}
-        </dl>
+        </div>
       </section>
     </div>
   );
@@ -313,27 +369,40 @@ async function fetchVideo(token: string, id: string): Promise<Video> {
 
 // ---------- sub-components ----------
 
-function StatusBadge({ status }: { status: VideoStatus }) {
-  const className = {
-    UPLOADED: "bg-muted text-muted-foreground",
-    READY: "bg-muted text-muted-foreground",
-    EXTRACTING: "bg-status-processing/15 text-status-processing",
-    TRANSCRIBING: "bg-status-processing/15 text-status-processing",
-    GENERATING: "bg-status-processing/15 text-status-processing",
-    READY_FOR_REVIEW: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
-    SCHEDULED: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
-    PUBLISHING: "bg-status-processing/15 text-status-processing",
-    PUBLISHED: "bg-status-ready/15 text-status-ready",
-    PUBLISH_FAILED: "bg-destructive/15 text-destructive",
-    FAILED: "bg-destructive/15 text-destructive",
-  }[status];
+/**
+ * Status pill using Design.md's token palette — no ad-hoc colors.
+ * Text label is always present so state is not communicated by color
+ * alone (Section 6).
+ */
+function StatusPill({ status }: { status: VideoStatus }) {
+  const tone = STATUS_TONE[status];
+  const cls = {
+    processing:
+      "bg-[color:var(--status-processing)]/12 text-[color:var(--status-processing)]",
+    ready:
+      "bg-[color:var(--status-ready)]/12 text-[color:var(--status-ready)]",
+    scheduled:
+      "bg-[color:var(--status-scheduled)]/12 text-[color:var(--status-scheduled)]",
+    error:
+      "bg-[color:var(--status-error)]/12 text-[color:var(--status-error)]",
+    neutral:
+      "bg-[color:var(--muted)] text-[color:var(--ink-muted)]",
+  }[tone];
+
   return (
     <span
-      className={
-        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide " +
-        className
-      }
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium",
+        cls,
+      )}
     >
+      <span
+        className={cn(
+          "inline-block h-1.5 w-1.5 rounded-full bg-current",
+          tone === "processing" && "motion-safe:animate-pulse",
+        )}
+        aria-hidden="true"
+      />
       {STATUS_LABEL[status]}
     </span>
   );
@@ -342,22 +411,32 @@ function StatusBadge({ status }: { status: VideoStatus }) {
 function DetailRow({
   label,
   children,
+  span,
+  muted,
 }: {
   label: string;
   children: React.ReactNode;
+  span?: 2;
+  muted?: boolean;
 }) {
   return (
-    <div className="space-y-1">
-      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+    <div className={cn("space-y-1", span === 2 && "sm:col-span-2")}>
+      <dt className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--ink-muted)]">
         {label}
       </dt>
-      <dd className="text-sm">{children}</dd>
+      <dd
+        className={cn(
+          muted ? "text-[color:var(--ink-muted)]" : "text-[color:var(--ink)]",
+        )}
+      >
+        {children}
+      </dd>
     </div>
   );
 }
 
 function EmptyValue() {
-  return <span className="text-muted-foreground">—</span>;
+  return <span className="text-[color:var(--ink-muted)]">—</span>;
 }
 
 function ActionPanel({ video }: { video: Video }) {
@@ -369,6 +448,31 @@ function ActionPanel({ video }: { video: Video }) {
   ].includes(video.status);
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-2">
+      {video.status === "READY_FOR_REVIEW" ? (
+        <EditDetailsButton
+          video={{
+            id: video.id,
+            title: video.title,
+            description: video.description,
+            tags: video.tags,
+            privacyStatus: video.privacyStatus as VideoPrivacyStatus,
+            madeForKids: video.madeForKids,
+            embeddable: video.embeddable,
+            license: video.license,
+            publicStatsViewable: video.publicStatsViewable,
+            commentPolicy: video.commentPolicy,
+          }}
+        />
+      ) : null}
+      {video.status === "READY_FOR_REVIEW" || video.status === "PUBLISH_FAILED" ? (
+        <PublishButton
+          video={{
+            id: video.id,
+            title: video.title,
+            privacyStatus: video.privacyStatus,
+          }}
+        />
+      ) : null}
       {video.youtubeVideoId ? (
         <Button asChild variant="outline" size="sm">
           <a
@@ -385,16 +489,65 @@ function ActionPanel({ video }: { video: Video }) {
         <UnpublishButton videoId={video.id} />
       ) : null}
       {canCancel ? <CancelButton videoId={video.id} /> : null}
-      {/* TODO: Retry button — needs POST /api/videos/:id/retry.
-          Adding a retry endpoint requires deciding whether the worker
-          picks it up via BullMQ or the API re-enqueues inline; defer
-          until the next slice. */}
     </div>
   );
 }
 
-function formatBytes(n: number): string {
-  if (n >= 1024 ** 3) return `${(n / 1024 ** 3).toFixed(1)} GB`;
-  if (n >= 1024 ** 2) return `${(n / 1024 ** 2).toFixed(1)} MB`;
-  return `${n} B`;
+// ---------- formatters (Voice + Copy, Design.md Section 4) ----------
+//
+// `formatBytes`, `formatCommentPolicy`, `formatDuration`,
+// `formatLicense`, and `formatPrivacy` were lifted to
+// `apps/web/lib/voice.ts` when the Publish sheet needed
+// `formatPrivacy` (cerebrum 2026-07-02: "When a second page needs
+// the same formatter, lift it to `apps/web/lib/voice.ts`"). The page
+// now imports them from there.
+
+/**
+ * Build the thumbnail candidate slots shown in the review grid.
+ *
+ * The v1 data model persists a single custom thumbnail (`s3KeyThumbnail`)
+ * plus, once published, YouTube's own generated frame — we render both
+ * as the "selected" and "AI candidate" slots respectively, and pad the
+ * grid with empty slots so the layout is always the same 4-up grid
+ * across statuses. Empty slots carry the copy Design.md Section 4
+ * calls for ("Regenerate to fill") instead of showing a raw placeholder
+ * image.
+ *
+ * The 5-regeneration cap is v1's default tier limit; when tier data
+ * lives in the DB (v1.5 billing slice), the page will pass real values.
+ */
+function buildThumbnailOptions(
+  video: Video,
+  publishedThumbnail: string | null,
+): ThumbnailOption[] {
+  const options: ThumbnailOption[] = [];
+
+  if (video.s3KeyThumbnail) {
+    options.push({
+      id: "user-upload",
+      src: publishedThumbnail ?? null,
+      alt: `Your custom thumbnail for "${video.title}"`,
+      label: "Your upload",
+    });
+  }
+
+  if (publishedThumbnail && !video.s3KeyThumbnail) {
+    options.push({
+      id: "youtube-generated",
+      src: publishedThumbnail,
+      alt: `YouTube-generated thumbnail for "${video.title}"`,
+      label: "YouTube default",
+    });
+  }
+
+  while (options.length < 4) {
+    options.push({
+      id: `slot-${options.length}`,
+      src: null,
+      alt: "",
+      label: `Candidate ${options.length + 1}`,
+    });
+  }
+
+  return options;
 }

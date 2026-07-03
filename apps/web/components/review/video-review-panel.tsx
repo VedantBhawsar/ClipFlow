@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import ArtPlayer from "artplayer";
-import { Sparkles, Save, X } from "lucide-react";
+import { Save, X } from "lucide-react";
 import { toast } from "sonner";
 import type { ChaptersJson } from "@clipflow/types";
 import { VideoPlayer } from "@/components/review/video-player";
@@ -20,7 +20,11 @@ interface VideoReviewPanelProps {
  * Review screen for the AI-generated chapter list + summary. Owned by
  * the video detail page when the row is in `READY_FOR_REVIEW`.
  *
- * The panel is now the canonical owner of the in-flight edit state:
+ * Layout note: this section takes the two-column wide layout exception
+ * called out in Design.md — the player + summary/chapters strip is the
+ * "payoff moment" and gets more width than the Details section below.
+ *
+ * State model:
  *  - `serverValue` is the value returned from the API (the source of
  *    truth until the user saves).
  *  - `draftValue` is the user's pending edits.
@@ -28,9 +32,7 @@ interface VideoReviewPanelProps {
  *    for cheapness — the shape is bounded so this is fine).
  *
  * `ChaptersReview` is a controlled component — every local mutation
- * flows back through `onChange` and lands in `draftValue`. The user
- * hits "Save changes" to persist via `useUpdateVideo`, or "Discard" to
- * roll `draftValue` back to `serverValue`.
+ * flows back through `onChange` and lands in `draftValue`.
  */
 export function VideoReviewPanel({
   videoId,
@@ -115,17 +117,19 @@ export function VideoReviewPanel({
   return (
     <section
       aria-labelledby="review-heading"
-      className="rounded-xl border border-border bg-card"
+      className="rounded-xl border border-[color:var(--line)] bg-[color:var(--surface)]"
     >
-      <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-amber-500" aria-hidden="true" />
+      <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-[color:var(--line)] px-5 py-4">
+        <div className="min-w-0 space-y-1">
           <h2
             id="review-heading"
-            className="text-sm font-semibold text-foreground"
+            className="text-[16px] font-medium text-[color:var(--ink)]"
           >
-            Review Generated Content
+            Review chapters &amp; summary
           </h2>
+          <p className="text-[13px] text-[color:var(--ink-muted)]">
+            Preview the video and edit the generated chapters before scheduling.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {isDirty ? (
@@ -151,13 +155,9 @@ export function VideoReviewPanel({
           </Button>
         </div>
       </div>
-      <p className="border-b border-border px-4 pb-3 pt-0 text-xs text-muted-foreground">
-        Preview the video and review the AI-generated chapters and summary
-        before publishing.
-      </p>
 
-      <div className="grid gap-4 p-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div>
           <VideoPlayer
             videoId={videoId}
             chaptersJson={chaptersJson}
@@ -165,7 +165,7 @@ export function VideoReviewPanel({
             onTimeUpdate={handleTimeUpdate}
           />
         </div>
-        <div className="max-h-[500px] overflow-y-auto lg:col-span-1">
+        <div className="max-h-[560px] overflow-y-auto pr-1">
           <ChaptersReview
             chaptersJson={draftValue}
             durationSeconds={durationSeconds}

@@ -21,6 +21,7 @@ import type {
   ListPublishedVideosParams,
   ListVideosParams,
   PaginatedVideos,
+  PublishVideoRequest,
   UpdateVideoRequest,
   Video,
 } from "@clipflow/types";
@@ -165,6 +166,43 @@ export function useUnpublishVideo() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["videos", "published"] });
       void qc.invalidateQueries({ queryKey: ["videos", "list"] });
+    },
+  });
+}
+
+/**
+ * Publish a `READY_FOR_REVIEW` (or `PUBLISH_FAILED` retry) video.
+ * Empty `body` publishes immediately; a `scheduledPublishAt` ISO
+ * 8601 string schedules the row and enqueues a delayed BullMQ job.
+ *
+ * On success, invalidates the same slots as `useUpdateVideo`:
+ *   - the full videos list (so the dashboard re-renders the row's
+ *     new status — `PUBLISHING` immediately, `PUBLISHED` once the
+ *     worker resolves),
+ *   - the published page (so the row appears in the published list
+ *     once it actually goes live),
+ *   - the single-video detail slot (so the in-flight detail page
+ *     re-fetches its new status).
+ *
+ * The Publish sheet is responsible for the post-success navigation
+ * (`router.push("/dashboard/published")`); the hook itself only
+ * touches the cache, so a future caller that wants to keep the user
+ * on the detail page (e.g. an inline "Publish now" button) can use
+ * the same hook without inheriting the redirect.
+ */
+export function usePublishVideo() {
+  const api = useApi();
+  const qc = useQueryClient();
+  return useMutation<
+    Video,
+    Error,
+    { id: string; body?: PublishVideoRequest }
+  >({
+    mutationFn: ({ id, body }) => api.publishVideo(id, body),
+    onSuccess: (video) => {
+      void qc.invalidateQueries({ queryKey: ["videos", "list"] });
+      void qc.invalidateQueries({ queryKey: ["videos", "published"] });
+      void qc.invalidateQueries({ queryKey: queryKeys.videos.detail(video.id) });
     },
   });
 }

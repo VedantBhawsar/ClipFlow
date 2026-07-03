@@ -1,7 +1,11 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-02T03:34:03.045Z
-> Files: 336 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-02T15:38:02.029Z
+> Files: 351 tracked | Anatomy hits: 0 | Misses: 0
+
+## ../../../../../tmp/
+
+- `add_bugs.jq` — Declares on (~818 tok)
 
 ## ../../../../../tmp/pw-capture/
 
@@ -10,6 +14,7 @@
 ## ../../../.claude/plans/
 
 - `quirky-giggling-blanket.md` — Plan: In-place editing for video metadata + chapters (~2106 tok)
+- `witty-snuggling-seal.md` — Plan: Add Publish / Schedule UI for READY_FOR_REVIEW videos (~4526 tok)
 - `zazzy-plotting-peacock.md` — Audio + Frame Extraction (`video-ingest` queue) (~3360 tok)
 
 ## ../../../.claude/projects/-Users-vedant-Documents-projects-ClipFlow/
@@ -143,11 +148,11 @@
 
 ## apps/api/src/modules/videos/
 
-- `videos.controller.ts` — Videos controller. (~3317 tok)
-- `videos.routes.ts` — Videos route definitions. (~1431 tok)
-- `videos.schemas.ts` — Zod schemas for the videos module. (~3747 tok)
-- `videos.service.test.ts` — Tests for the videos service. (~8030 tok)
-- `videos.service.ts` — Videos service — owns all DB + S3 + YouTube-publish enqueue logic (~9852 tok)
+- `videos.controller.ts` — Videos controller. (~3657 tok)
+- `videos.routes.ts` — Videos route definitions. (~1514 tok)
+- `videos.schemas.ts` — Zod schemas for the videos module. (~4468 tok)
+- `videos.service.test.ts` — Tests for the videos service. (~10483 tok)
+- `videos.service.ts` — Videos service — owns all DB + S3 + YouTube-publish enqueue logic (~10686 tok)
 - `videos.types.ts` — Module-internal types for the videos module. (~615 tok)
 
 ## apps/api/src/modules/youtube/
@@ -182,12 +187,12 @@
 - `postcss.config.mjs` — Declares config (~26 tok)
 - `README.md` — Project documentation (~353 tok)
 - `tsconfig.json` — TypeScript configuration (~114 tok)
-- `vitest.config.ts` — Vitest test configuration (~256 tok)
+- `vitest.config.ts` — /*.test.ts", (~272 tok)
 - `vitest.setup.ts` (~11 tok)
 
 ## apps/web/app/
 
-- `globals.css` — Styles: 6 rules, 89 vars, 2 layers (~1590 tok)
+- `globals.css` — Styles: 23 rules, 110 vars (~3090 tok)
 - `layout.tsx` — interTight (~506 tok)
 - `page.tsx` — Marketing landing. (~600 tok)
 
@@ -220,7 +225,10 @@
 ## apps/web/app/dashboard/published/[id]/
 
 - `cancel-button.tsx` — Cancel action for the video detail page. Calls (~430 tok)
-- `page.tsx` — Renders VideoMetadataEditor above Details when status === READY_FOR_REVIEW (~3960 tok)
+- `edit-details-button.tsx` — Thin client island that keeps the Sheet open-state and renders the (~344 tok)
+- `page.tsx` — User-facing labels for each backend `VideoStatus`. Design.md (~5247 tok)
+- `publish-button.test.tsx` — Tests for `<PublishButton>` + the `<PublishSheet>` it opens. (~3072 tok)
+- `publish-button.tsx` — Header "Publish" button for a `READY_FOR_REVIEW` (or (~304 tok)
 - `unpublish-button.tsx` — Unpublish action for the video detail page. Calls (~426 tok)
 
 ## apps/web/app/dashboard/settings/
@@ -291,16 +299,20 @@
 - `empty-state.test.tsx` (~328 tok)
 - `empty-state.tsx` — Whether the user has connected a YouTube channel. When `false`, (~607 tok)
 - `processing-substeps.tsx` — Sub-stage breakdown for the "Processing" bucket of the 5-stage (~1804 tok)
+- `publish-sheet.tsx` — Which fields the sheet needs off the `Video` row. The page passes (~2743 tok)
 - `published-video-card.tsx` — One row in the `/dashboard/published` library. (~1874 tok)
 - `published-video-list.tsx` — Date-range buckets shown in the Select. Each maps to a `since` ISO (~4280 tok)
 - `sidebar.test.tsx` — mockUseSession (~1377 tok)
 - `sidebar.tsx` — Show as a real link vs. a "coming soon" placeholder. (~1986 tok)
-- `status-timeline.tsx` — Visual pipeline stages shown in the timeline strip. (~1038 tok)
+- `status-timeline.tsx` — Visual pipeline stages shown in the timeline strip — the signature (~1429 tok)
 - `video-card.tsx` — Latest SSE events for real-time progress display (~2406 tok)
-- `video-detail-live-progress.tsx` — VideoDetailLiveProgress — uses useEffect (~828 tok)
+- `video-detail-live-progress.tsx` — Ambient real-time progress strip for the detail page. Per Design.md (~627 tok)
+- `video-details-dialog.tsx` — Which fields can be patched via PATCH /api/videos/:id. (~4494 tok)
 - `video-list.tsx` — The already-fetched videos to render. In the SSR dashboard flow (~1238 tok)
 - `video-metadata-editor.test.tsx` — Tests for `<VideoMetadataEditor>` — the in-place title/description/tags (~1916 tok)
-- `video-metadata-editor.tsx` — In-place editor for the user-supplied metadata on the review screen (~2833 tok)
+- `video-metadata-editor.test.tsx` — Tests for the in-place title/description/tags editor. (~4300 tok)
+- `video-metadata-editor.tsx` — In-place editor for the user-supplied metadata on the review screen (~2854 tok)
+- `video-metadata-editor.tsx` — In-place title/description/tags editor for the review screen. Per-section dirty state + Save. Calls useUpdateVideo + router.refresh. (~3550 tok)
 - `youtube-connect-card.tsx` — Persistent channel-connection card. Per Design.md, channel-connection (~2614 tok)
 
 ## apps/web/components/landing/
@@ -332,16 +344,14 @@
 - `question-goal.tsx` — Step 4 — primary goal. Four single-select cards. Drives which feature (~912 tok)
 - `question-niche.tsx` — One-line description shown under the label on the card. (~1064 tok)
 
-## apps/web/components/dashboard/
-
-- `video-metadata-editor.tsx` — In-place title/description/tags editor for the review screen. Per-section dirty state + Save. Calls useUpdateVideo + router.refresh. (~3550 tok)
-- `video-metadata-editor.test.tsx` — Tests for the in-place title/description/tags editor. (~4300 tok)
-
 ## apps/web/components/review/
 
+- `chapter-edit-dialog.tsx` — 0-based index of the chapter being edited, used only for the heading. (~2198 tok)
 - `chapters-review.test.tsx` — Tests for the controlled `<ChaptersReview>` component. (~1689 tok)
-- `chapters-review.tsx` — Fired whenever the user mutates the chapter list or summary. (~4529 tok)
-- `video-review-panel.tsx` — Review screen for the AI-generated chapter list + summary. Owned by (~1654 tok)
+- `chapters-review.tsx` — Fired whenever the user mutates the chapter list or summary. (~4682 tok)
+- `thumbnail-card.tsx` — Shape for a single thumbnail candidate rendered by (~1242 tok)
+- `thumbnail-review.tsx` — id of the currently active option — falls back to `options[0]`. (~953 tok)
+- `video-review-panel.tsx` — Review screen for the AI-generated chapter list + summary. Owned by (~1647 tok)
 
 ## apps/web/components/settings/
 
@@ -370,6 +380,7 @@
 - `input.tsx` — Standard shadcn/ui Input. Plain wrapper around <input> so any (~269 tok)
 - `label.tsx` — labelVariants (~210 tok)
 - `select.tsx` — Select (~1816 tok)
+- `sheet.tsx` — Right-edge Sheet (shadcn new-york) — side-variant styling via class-variance-authority. Wraps radix-ui DialogPrimitive (Sheet is a Dialog with directional animations). Use for side panels instead of centered modals when forms get taller than ~5 fields. (~1329 tok)
 - `skeleton.tsx` — Skeleton (~79 tok)
 - `switch.test.tsx` — el (~364 tok)
 - `switch.tsx` — Minimal accessible switch. (~539 tok)
@@ -391,12 +402,12 @@
 - `use-update-preferences.ts` — Partial update of the authenticated user's preferences. The server (~330 tok)
 - `use-update-profile.ts` — Update the authenticated user's profile. Two flavors: (~474 tok)
 - `use-video-sse.ts` — Subscribe to SSE events for video processing. (~847 tok)
-- `use-videos.ts` — TanStack Query hooks + an XHR-based upload helper for the (~3004 tok)
+- `use-videos.ts` — TanStack Query hooks + an XHR-based upload helper for the (~3432 tok)
 - `use-youtube-connection.ts` — Narrow YouTube-connection read for /settings/connected. The (~203 tok)
 
 ## apps/web/lib/
 
-- `api-client.ts` — Typed API surface for talking to the Express backend. (~3886 tok)
+- `api-client.ts` — Typed API surface for talking to the Express backend. (~4004 tok)
 - `auth-guard.test.tsx` — mockReplace (~700 tok)
 - `auth-guard.tsx` — Where to send unauthenticated users. Defaults to /signin. (~521 tok)
 - `env.ts` — Centralized access to NEXT_PUBLIC_* env vars. (~184 tok)
@@ -407,6 +418,8 @@
 - `query-client.ts` — Create a fresh QueryClient with the app's defaults. (~773 tok)
 - `query-keys.ts` — Centralized, type-safe query key factory. (~596 tok)
 - `utils.ts` — Conditionally join class names then run them through tailwind-merge (~98 tok)
+- `voice.test.ts` — Tests for the voice formatters. Lifted from the video detail page (~849 tok)
+- `voice.ts` — User-facing formatters (Voice + Copy, Design.md Section 4). (~800 tok)
 
 ## apps/worker/
 
@@ -594,7 +607,7 @@
 
 ## packages/types/src/
 
-- `index.ts` — ---------- Enums (mirror Prisma enums in packages/db) ---------- (~5910 tok)
+- `index.ts` — ---------- Enums (mirror Prisma enums in packages/db) ---------- (~6546 tok)
 
 ## packages/typescript-config/
 

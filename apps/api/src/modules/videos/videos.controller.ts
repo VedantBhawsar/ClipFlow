@@ -27,6 +27,7 @@ import type {
   CreateVideoInput,
   ListPublishedVideosQuery,
   ListVideosQuery,
+  PublishVideoInput,
   UpdateVideoInput,
 } from "./videos.schemas.js";
 import "../auth/auth.types.js";
@@ -257,6 +258,38 @@ export const deleteVideoController = async (
   }
   await videosService.deleteVideo(userId, id, env);
   sendEmpty(res, "Video deleted.");
+};
+
+/**
+ * POST /api/videos/:id/publish
+ *
+ * User-driven publish trigger from the video detail page. Empty body
+ * = publish immediately; `scheduledPublishAt` ISO 8601 in the body =
+ * schedule for that instant. The service dispatches to the
+ * `publishVideoNow` helper (sync YouTube upload) or the
+ * `enqueuePublishJob` path (delayed BullMQ job) accordingly.
+ *
+ * Service-level guards:
+ *   - 404 `VIDEO_NOT_FOUND` for unknown / foreign id (via
+ *     `loadVideoForOwner`).
+ *   - 409 `NOT_PUBLISHABLE` when the row isn't in `READY_FOR_REVIEW`
+ *     or `PUBLISH_FAILED`.
+ *   - 400 for malformed `scheduledPublishAt` (not ISO 8601, in the
+ *     past, <15 min out, >60 days out).
+ */
+export const publishVideoController = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  const userId = requireUser(req);
+  const env = requireEnv(req);
+  const id = (req.params as { id?: string }).id;
+  if (!id) {
+    throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
+  }
+  const input = (req.body ?? {}) as PublishVideoInput;
+  const result = await videosService.publishVideo(userId, id, input, env);
+  sendOk(res, result, "Video published.");
 };
 
 /**

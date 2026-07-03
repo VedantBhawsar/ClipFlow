@@ -579,3 +579,192 @@ Summary of work delivered: full-stack in-place editing of `Video.title/descripti
 - Server-rendered detail pages need `router.refresh()` after mutation
 
 Next slice candidates (deferred): retry endpoint (`POST /api/videos/:id/retry`), reorder chapters with drag-handle, in-line chapter timestamp edit (currently requires "Use current time" only).
+
+## Session: 2026-07-02 19:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-02 19:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-02 19:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:45 | Created apps/web/components/dashboard/status-timeline.tsx | — | ~1429 |
+| 19:45 | Edited apps/web/app/globals.css | expanded (+12 lines) | ~243 |
+| 19:45 | Edited apps/web/app/globals.css | expanded (+7 lines) | ~154 |
+| 19:45 | Edited apps/web/app/globals.css | expanded (+9 lines) | ~241 |
+| 19:45 | Edited apps/web/app/globals.css | CSS: outline-offset, border-radius | ~96 |
+| 19:46 | Edited apps/web/app/globals.css | modified media() | ~300 |
+| 19:46 | Created apps/web/components/review/thumbnail-card.tsx | — | ~1242 |
+| 19:47 | Created apps/web/components/review/thumbnail-review.tsx | — | ~953 |
+| 19:48 | Created apps/web/components/review/chapters-review.tsx | — | ~5834 |
+| 19:49 | Created apps/web/components/review/video-review-panel.tsx | — | ~1647 |
+| 19:49 | Created apps/web/components/dashboard/video-detail-live-progress.tsx | — | ~627 |
+| 19:49 | Edited apps/web/components/dashboard/video-metadata-editor.tsx | CSS: color, color | ~328 |
+| 19:51 | Created apps/web/app/dashboard/published/[id]/page.tsx | — | ~5446 |
+
+## Session: 2026-07-02 19:53
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:54 | Rebuilt /dashboard/published/[id]/page.tsx to Design.md tokens: removed ProcessingSubSteps, added StatusPill+DetailRow subcomponents, wired ThumbnailReview grid, capped Details to max-w-[60rem], added formatters for privacy/comment/license/embed, moved raw IDs/filesizes into muted "Technical" block with mono font | apps/web/app/dashboard/published/[id]/page.tsx | ✓ typecheck+tests green | ~5400 |
+| 19:55 | Ran pnpm --filter web check-types and vitest — 93/93 tests still pass, chapters-review getByText("3") preserved by keeping `{chapters.length}` inline in the h3 | (verify only) | ✓ | ~200 |
+
+### Session summary
+Completed Design.md compliance pass on Video Detail page. All 6 planned tasks closed:
+1. Token palette wired via app/globals.css (Design.md --bg/--surface/--ink/--ink-muted/--line/--accent/--status-*).
+2. StatusTimeline: 5-segment strip with hasError prop; pulsing current segment (motion-safe); labelled.
+3. ChaptersReview: inline-edit, DnD grip handles (HTML5), monospace timestamps, inline errors in --status-error, review-reveal stagger.
+4. ThumbnailReview + ThumbnailCard: 16:9 grid, 2px --accent selected border, "X of Y regenerations used" copy, empty-slot placeholder.
+5. Voice/Copy: raw fields (allowAll/holdAll/disable/creativeCommon/standard/embeddable/publicStatsViewable/privacy) → creator-facing labels; numeric categoryId not surfaced anymore (moved out of primary view).
+6. Entrance animation: CSS-only .review-reveal with per-item --stagger-index inside @media (prefers-reduced-motion: no-preference). One-shot on mount.
+
+Details column capped at max-w-[60rem]; review panel keeps two-column layout as the specified exception.
+| 19:59 | Created apps/web/components/review/chapter-edit-dialog.tsx | — | ~2198 |
+| 20:00 | Created apps/web/components/review/chapters-review.tsx | — | ~4679 |
+| 20:00 | Created apps/web/components/dashboard/video-details-dialog.tsx | — | ~2270 |
+| 20:01 | Created apps/web/app/dashboard/published/[id]/edit-details-button.tsx | — | ~302 |
+| 20:01 | Edited apps/web/app/dashboard/published/[id]/page.tsx | 3→2 lines | ~48 |
+| 20:01 | Edited apps/web/app/dashboard/published/[id]/page.tsx | added 1 import(s) | ~71 |
+| 20:01 | Edited apps/web/app/dashboard/published/[id]/page.tsx | modified ActionPanel() | ~308 |
+| 20:01 | Edited apps/web/app/dashboard/published/[id]/page.tsx | reduced (-16 lines) | ~281 |
+| 20:02 | Edited apps/web/components/review/chapters-review.tsx | 2→2 lines | ~37 |
+| 20:03 | Replaced inline chapter editing with ChapterEditDialog (title + startMs, MM:SS input, validation forwarded from parent rowErrors). Removed editingIndex/editTitle/editingKey states from chapters-review.tsx. | components/review/chapter-edit-dialog.tsx (new), components/review/chapters-review.tsx | ✓ 93/93 tests | ~2800 |
+| 20:03 | Created VideoDetailsDialog (title/description/tags, single Save button). Created EditDetailsButton client island. Removed VideoMetadataEditor from inline Details block; moved to header action panel, visible only when READY_FOR_REVIEW. | components/dashboard/video-details-dialog.tsx (new), app/dashboard/published/[id]/edit-details-button.tsx (new), page.tsx | ✓ typecheck clean | ~3200 |
+| 20:03 | Session end: 9 writes across 5 files (chapter-edit-dialog.tsx, chapters-review.tsx, video-details-dialog.tsx, edit-details-button.tsx, page.tsx) | 3 reads | ~27384 tok |
+| 20:04 | Edited apps/web/app/dashboard/published/[id]/page.tsx | inline fix | ~20 |
+| 20:04 | Session end: 10 writes across 5 files (chapter-edit-dialog.tsx, chapters-review.tsx, video-details-dialog.tsx, edit-details-button.tsx, page.tsx) | 3 reads | ~27313 tok |
+| 20:05 | Session end: 10 writes across 5 files (chapter-edit-dialog.tsx, chapters-review.tsx, video-details-dialog.tsx, edit-details-button.tsx, page.tsx) | 3 reads | ~27313 tok |
+
+## Session: 2026-07-02 20:07
+| 20:08 | User asked whether chapters rearrange on /dashboard/published/[id] is the right approach. Couldn't run designqc (openwolf CLI not in PATH, npx variant auth-fails). Evaluated from source: chapters-review.tsx + chapter-edit-dialog.tsx + page.tsx, plus cerebrum rule 2026-07-02. Pattern (row-level DnD grip + edit via Dialog) is correct per cerebrum. Surfaced DnD mechanics concerns: swap-startMs semantics, no drop indicator, no keyboard a11y, poor touch support. | memory.md + buglog/decision (pending) | user-feedback-only | ~0 |
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:16 | Edited apps/web/app/globals.css | 1→2 lines | ~16 |
+| 20:10 | Fixed missing @plugin "tailwindcss-animate" in globals.css — shadcn Dialog had no backdrop fade and no enter/exit animations because animate-in/out/fade/zoom utilities were silently inert | apps/web/app/globals.css | ✓ typecheck clean | ~300 |
+| 20:17 | Session end: 1 writes across 1 files (globals.css) | 5 reads | ~16562 tok |
+
+## Session: 2026-07-02 20:19
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:24 | Created ../../../.claude/plans/witty-snuggling-seal.md | — | ~2341 |
+
+## Session: 2026-07-02 20:26
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-02 20:26
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:26 | Created apps/web/components/ui/sheet.tsx | — | ~1329 |
+| 20:27 | Edited packages/types/src/index.ts | expanded (+23 lines) | ~644 |
+| 20:27 | Edited apps/api/src/modules/videos/videos.schemas.ts | expanded (+9 lines) | ~478 |
+| 20:27 | Edited apps/api/src/modules/videos/videos.service.ts | added 6 condition(s) | ~512 |
+| 20:28 | Created apps/web/app/dashboard/published/[id]/edit-details-button.tsx | — | ~344 |
+| 20:28 | Edited apps/web/app/dashboard/published/[id]/page.tsx | expanded (+6 lines) | ~160 |
+| 20:29 | Created apps/web/components/dashboard/video-details-dialog.tsx | — | ~4496 |
+| 20:29 | Edited apps/web/components/dashboard/video-details-dialog.tsx | inline fix | ~10 |
+| 20:31 | Edited apps/api/src/modules/videos/videos.service.test.ts | added optional chaining | ~490 |
+| 20:32 | Wired YouTube status block fields (privacyStatus / madeForKids / embeddable / license / publicStatsViewable / commentPolicy) into VideoDetailsDialog. New shadcn Sheet primitive replaces Dialog. Reused existing zod sub-schemas + Select + Switch. 155/155 api + 93/93 web tests green; web + api + worker typecheck clean; pre-existing worker lint warnings unchanged. | 7 files (sheet.tsx new + 6 edits) | green |
+| 20:32 | Session end: 9 writes across 8 files (sheet.tsx, index.ts, videos.schemas.ts, videos.service.ts, edit-details-button.tsx) | 1 reads | ~16493 tok |
+
+## Session: 2026-07-02 20:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:45 | Edited ../../../.claude/plans/witty-snuggling-seal.md | added optional chaining | ~4828 |
+| 20:51 | Edited packages/types/src/index.ts | expanded (+25 lines) | ~644 |
+| 20:51 | Edited apps/api/src/modules/videos/videos.schemas.ts | added 4 condition(s) | ~596 |
+| 20:51 | Edited apps/api/src/modules/videos/videos.service.ts | 8→9 lines | ~78 |
+| 20:52 | Edited apps/api/src/modules/videos/videos.service.ts | added 2 condition(s) | ~950 |
+| 20:52 | Edited apps/api/src/modules/videos/videos.controller.ts | 6→7 lines | ~44 |
+| 20:52 | Edited apps/api/src/modules/videos/videos.controller.ts | removed 24 lines | ~11 |
+| 20:52 | Edited apps/api/src/modules/videos/videos.controller.ts | added nullish coalescing | ~577 |
+| 20:52 | Edited apps/api/src/modules/videos/videos.routes.ts | 23→25 lines | ~182 |
+| 20:52 | Edited apps/api/src/modules/videos/videos.routes.ts | 20→21 lines | ~340 |
+| 20:52 | Edited apps/api/src/modules/videos/videos.routes.ts | expanded (+7 lines) | ~80 |
+| 20:52 | Edited apps/api/src/modules/videos/videos.service.test.ts | 3→4 lines | ~48 |
+| 20:52 | Edited apps/api/src/modules/videos/videos.service.test.ts | inline fix | ~21 |
+| 20:52 | Edited apps/api/src/modules/videos/videos.service.test.ts | 1→2 lines | ~30 |
+| 20:53 | Edited apps/api/src/modules/videos/videos.service.test.ts | inline fix | ~33 |
+| 20:53 | Edited apps/api/src/modules/videos/videos.service.test.ts | 1→2 lines | ~34 |
+| 20:53 | Edited apps/api/src/modules/videos/videos.service.test.ts | expanded (+196 lines) | ~2194 |
+| 20:53 | Edited apps/api/src/modules/videos/videos.service.ts | inline fix | ~42 |
+| 20:53 | Edited apps/api/src/modules/videos/videos.service.ts | publishVideo() → publishVideoOnYouTube() | ~35 |
+| 20:54 | Created apps/web/lib/voice.ts | — | ~800 |
+| 20:54 | Created apps/web/lib/voice.test.ts | — | ~849 |
+| 20:54 | Edited apps/web/lib/api-client.ts | 22→23 lines | ~138 |
+| 20:54 | Edited apps/web/lib/api-client.ts | modified deleteVideo() | ~108 |
+| 20:54 | Edited apps/web/lib/api-client.ts | added nullish coalescing | ~59 |
+| 20:55 | Edited apps/web/hooks/use-videos.ts | 9→10 lines | ~59 |
+| 20:55 | Edited apps/web/hooks/use-videos.ts | modified useUnpublishVideo() | ~624 |
+| 20:55 | Created apps/web/components/dashboard/publish-sheet.tsx | — | ~2743 |
+| 20:56 | Created apps/web/app/dashboard/published/[id]/publish-button.tsx | — | ~304 |
+| 20:56 | Edited apps/web/app/dashboard/published/[id]/page.tsx | expanded (+8 lines) | ~195 |
+| 20:56 | Edited apps/web/app/dashboard/published/[id]/page.tsx | expanded (+9 lines) | ~239 |
+| 20:56 | Edited apps/web/app/dashboard/published/[id]/page.tsx | CSS: 2026-07-02 | ~119 |
+| 20:56 | Edited apps/web/app/dashboard/published/[id]/page.tsx | 7→5 lines | ~25 |
+| 20:57 | Edited apps/web/vitest.config.ts | 10→12 lines | ~79 |
+| 20:57 | Created apps/web/app/dashboard/published/[id]/publish-button.test.tsx | — | ~2695 |
+
+## Session: 2026-07-02 20:58
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:03 | Created apps/web/app/dashboard/published/[id]/publish-button.test.tsx | — | ~2718 |
+| 21:04 | Edited apps/web/app/dashboard/published/[id]/publish-button.test.tsx | 4→4 lines | ~76 |
+| 21:04 | Edited apps/web/app/dashboard/published/[id]/publish-button.test.tsx | CSS: 2026-07-02T20, target, value | ~129 |
+| 21:04 | Edited apps/web/app/dashboard/published/[id]/publish-button.test.tsx | type() → change() | ~127 |
+| 21:04 | Edited apps/web/app/dashboard/published/[id]/publish-button.test.tsx | type() → change() | ~68 |
+| 21:04 | Edited apps/web/app/dashboard/published/[id]/publish-button.test.tsx | type() → change() | ~68 |
+| 21:05 | Edited apps/web/app/dashboard/published/[id]/publish-button.test.tsx | 9→11 lines | ~175 |
+| 21:05 | Edited apps/web/app/dashboard/published/[id]/publish-button.test.tsx | 9→9 lines | ~141 |
+| 21:06 | Edited apps/web/app/dashboard/published/[id]/publish-button.test.tsx | 5→5 lines | ~66 |
+| 21:06 | Edited apps/web/app/dashboard/published/[id]/publish-button.test.tsx | 5→5 lines | ~66 |
+| 21:06 | Edited apps/web/app/dashboard/published/[id]/publish-button.test.tsx | CSS: YYYY-MM-DDTHH, d, n | ~194 |
+| 21:08 | Created ../../../../../tmp/add_bugs.jq | — | ~818 |
+
+## Session: 2026-07-02 21:08 — verification + OpenWolf updates
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|---------|
+| 21:06 | `pnpm --filter api check-types` — clean | — | pass | ~2k |
+| 21:06 | `pnpm --filter web check-types` — clean (after `next typegen`) | — | pass | ~2k |
+| 21:06 | `pnpm --filter api test:ci` — 163/163 passing | — | pass | ~1k |
+| 21:06 | `pnpm exec turbo run lint` — 2/2 packages clean | — | pass | ~1k |
+| 21:06 | `pnpm test:ci` — 123/127 pass; 4 pre-existing failures in change-password-form.test.tsx (unrelated) | — | pass (new tests) | ~2k |
+| 21:08 | Added 4 cerebrum entries (publish/schedule API, PublishSheet UX, fake-timers+radix pitfall, datetime-local TZ pitfall, fireEvent.change for controlled inputs) | .wolf/cerebrum.md | logged | ~1k |
+| 21:08 | Added 3 new bugs to .wolf/buglog.json (bug-111 fake-timers, bug-112 datetime-local TZ, bug-113 userEvent.type partial validation) | .wolf/buglog.json | logged | ~1k |
+
+## Slice summary: Publish / Schedule UI
+
+Closed the loop on the user-driven publish trigger for `READY_FOR_REVIEW` (and retry from `PUBLISH_FAILED`) videos. New endpoint `POST /api/videos/:id/publish` accepts `scheduledPublishAt` (ISO 8601, optional) — empty means publish now, set means schedule via `enqueuePublishJob`. UI: header "Publish" button → right-edge `<PublishSheet>` with single `<input type="datetime-local">` (empty = publish now), `(Asia/Kolkata)` timezone label from `useSettings().defaultTimezone`, inline client-side validation (mirror of server bounds: empty OK, <=now → "in the future", <15min → YouTube min, >60days → YouTube max). On success → `toast.success("Video published.")` → `router.push("/dashboard/published")` after 200ms close animation. Lifted voice formatters (`formatPrivacy`, `formatCommentPolicy`, `formatLicense`, `formatBytes`, `formatDuration`) from the page into `apps/web/lib/voice.ts` per the cerebrum rule. 17 formatter tests + 9 publish-button tests added; all 8 backend `publishVideo` tests passing; full API suite 163/163; full web suite 123/127 (4 pre-existing failures in change-password-form unrelated).
+| 21:08 | Session end: 12 writes across 2 files (publish-button.test.tsx, add_bugs.jq) | 1 reads | ~6620 tok |
+| 21:20 | Session end: 12 writes across 2 files (publish-button.test.tsx, add_bugs.jq) | 6 reads | ~29791 tok |
+| 21:32 | Edited packages/db/schema.prisma | expanded (+6 lines) | ~115 |
+| 21:32 | Edited packages/types/src/index.ts | expanded (+6 lines) | ~113 |
+| 21:33 | Edited packages/types/src/index.ts | expanded (+6 lines) | ~93 |
+| 21:33 | Edited apps/api/src/modules/preferences/preferences.schemas.ts | expanded (+26 lines) | ~281 |
+| 21:33 | Edited apps/api/src/modules/preferences/preferences.schemas.ts | 18→20 lines | ~216 |
+| 21:33 | Edited apps/api/src/modules/preferences/preferences.service.ts | 32→34 lines | ~348 |
+| 21:33 | Edited apps/api/src/modules/preferences/preferences.service.ts | added 1 condition(s) | ~145 |
+| 21:35 | Created packages/db/prisma/migrations/20260702000000_add_webhook_url/migration.sql | — | ~86 |
+| 21:35 | Edited apps/api/src/modules/preferences/preferences.service.test.ts | 15→16 lines | ~137 |
+| 21:35 | Edited apps/api/src/lib/queue.ts | 10→12 lines | ~152 |
+| 21:36 | Edited apps/api/src/lib/queue.ts | added 3 condition(s) | ~321 |
+| 21:36 | Edited apps/api/src/lib/queue.ts | 2→5 lines | ~89 |
+| 21:36 | Edited apps/api/src/lib/queue.ts | added 1 condition(s) | ~389 |
+| 21:36 | Edited apps/api/src/lib/queue.ts | added 1 condition(s) | ~89 |
+| 21:36 | Edited apps/api/src/index.ts | expanded (+11 lines) | ~228 |
+| 21:37 | Edited apps/api/src/index.ts | 7→8 lines | ~50 |
+| 21:37 | Edited packages/types/src/index.ts | expanded (+19 lines) | ~212 |
+| 21:38 | Created apps/worker/src/jobs/post-publish.ts | — | ~2728 |

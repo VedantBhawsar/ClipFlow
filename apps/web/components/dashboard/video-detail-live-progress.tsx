@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { Loader2 } from "lucide-react";
 import { useVideoSSE } from "@/hooks/use-video-sse";
 import { cn } from "@/lib/utils";
 
@@ -9,6 +8,15 @@ interface VideoDetailLiveProgressProps {
   videoId: string;
 }
 
+/**
+ * Ambient real-time progress strip for the detail page. Per Design.md
+ * Section 5 (motion is off by default; no loading spinners where the
+ * status timeline can indicate in-progress instead), this component
+ * carries text-only status and progress information — no spinner, no
+ * animated progress bar. The pulsing segment on the parent's
+ * `<StatusTimeline>` is the shared indicator of "something is
+ * happening".
+ */
 export function VideoDetailLiveProgress({
   videoId,
 }: VideoDetailLiveProgressProps) {
@@ -25,76 +33,40 @@ export function VideoDetailLiveProgress({
     }
   }, [latest, videoId]);
 
-  if (!latest && connected) {
-    return (
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
-        Connected
-      </div>
-    );
-  }
-
-  if (!latest) return null;
+  if (!latest && !connected) return null;
 
   return (
-    <div className="space-y-2 rounded-lg border border-border bg-card p-3">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-foreground">
-          Live Progress
-        </span>
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-[color:var(--ink-muted)]">
+      <span className="inline-flex items-center gap-1.5">
         <span
           className={cn(
-            "inline-flex items-center gap-1 text-xs",
-            connected ? "text-green-600" : "text-muted-foreground",
+            "inline-block h-1.5 w-1.5 rounded-full",
+            connected
+              ? "bg-[color:var(--status-ready)]"
+              : "bg-[color:var(--ink-muted)]/40",
           )}
-        >
-          <span
-            className={cn(
-              "inline-block h-2 w-2 rounded-full",
-              connected ? "bg-green-500" : "bg-gray-300",
-            )}
-          />
-          {connected ? "Live" : "Disconnected"}
+          aria-hidden="true"
+        />
+        <span>{connected ? "Live" : "Reconnecting"}</span>
+      </span>
+
+      {latest?.type === "PROGRESS" ? (
+        <span className="font-mono tabular-nums">
+          {latest.stage} · {latest.progress}%
         </span>
-      </div>
+      ) : null}
 
-      {error && (
-        <p className="text-xs text-destructive">
-          {error}
-        </p>
-      )}
+      {latest?.type === "STATUS_UPDATE" ? (
+        <span>Stage: {latest.status}</span>
+      ) : null}
 
-      {latest.type === "STATUS_UPDATE" && (
-        <div className="flex items-center gap-2 text-sm">
-          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          <span className="text-foreground">
-            Status: <span className="font-medium">{latest.status}</span>
-          </span>
-        </div>
-      )}
+      {error ? (
+        <span className="text-[color:var(--status-error)]">{error}</span>
+      ) : null}
 
-      {latest.type === "PROGRESS" && (
-        <div className="space-y-1">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-foreground">{latest.stage}</span>
-            <span className="text-muted-foreground">
-              {latest.progress}%
-            </span>
-          </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-all duration-500"
-              style={{ width: `${latest.progress}%` }}
-            />
-          </div>
-        </div>
-      )}
-
-      {latest.type === "ERROR" && (
-        <p className="text-xs text-destructive">
-          Error: {latest.error}
-        </p>
-      )}
+      {latest?.type === "ERROR" ? (
+        <span className="text-[color:var(--status-error)]">{latest.error}</span>
+      ) : null}
     </div>
   );
 }
