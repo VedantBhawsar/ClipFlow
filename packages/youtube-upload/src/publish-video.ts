@@ -27,9 +27,11 @@ import { buildS3Config, getObjectStream, getS3Client } from "@clipflow/s3";
 import { PermanentPublishError } from "./errors.js";
 import { refreshAccessToken } from "./token-refresh.js";
 import {
+  formatChaptersForDescription,
   setYouTubeThumbnail,
   startResumableUploadSession,
   toYouTubeLicense,
+  updateVideoSnippet,
   updateVideoStatus,
   uploadVideoBytes,
 } from "./youtube-api.js";
@@ -127,12 +129,27 @@ export const publishVideo = async (
     throw err;
   }
 
+  // Build enriched description with chapters if available.
+  // chaptersJson is persisted as `{ summary, chapters[] }` by the
+  // generate worker + the API's updateVideo path; pass the inner
+  // array, not the wrapper object, otherwise formatChaptersForDescription
+  // would walk `.summary` / `.chapters` and emit "NaN:NaN" lines that
+  // YouTube can't recognize as timestamps. The legacy bare-array
+  // shape (pre-v1.5) is also accepted as a back-compat fallback.
+  const chaptersBlock = formatChaptersForDescription(
+    extractChapters(video.chaptersJson),
+  );
+
+  console.log("chapterBlock", chaptersBlock)
+  console.log("video.description", video.description)
+  const enrichedDescription = (video.description ?? "") + chaptersBlock;
+
   // Step 1: ask YouTube for a resumable session.
   const sessionUrl = await startResumableUploadSession({
     accessToken,
     metadata: {
       title: video.title,
-      description: video.description ?? "",
+      description: enrichedDescription,
       tags: video.tags,
       categoryId: video.categoryId,
     },
@@ -357,6 +374,50 @@ export const unpublishVideo = async (
     { videoId: video.id, youtubeVideoId: video.youtubeVideoId },
     "Video unpublished on YouTube.",
   );
+};
+
+/**
+ * Pull the chapter list out of the `chaptersJson` JSON column.
+ *
+ * The worker (`apps/worker/src/jobs/generate.ts`) and the API
+ * (`apps/api/src/modules/videos/videos.service.ts → updateVideo`)
+ * persist `chaptersJson` as `{ summary, chapters[] }`. Pre-v1.5
+ * rows (or any in-flight rows from before the schema change) had a
+ * bare chapter array. Accept either shape so a single payload-pick
+ * helper works for both.
+ *
+ * Returns `null` for missing / malformed shapes — the caller
+ * (`formatChaptersForDescription`) treats that as "no chapters".
+ */
+type ChapterRow = { startMs: number; title: string };
+const extractChapters = (
+  raw: unknown,
+): ChapterRow[] | null | undefined => {
+  if (raw == null) return raw;
+  // New shape: { summary, chapters[] }
+  if (typeof raw === "object") {
+    const obj = raw as { chapters?: unknown };
+    if (Array.isArray(obj.chapters)) {
+      return obj.chapters.filter(
+        (c): c is ChapterRow =>
+          typeof c === "object" &&
+          c !== null &&
+          typeof (c as { startMs?: unknown }).startMs === "number" &&
+          typeof (c as { title?: unknown }).title === "string",
+      );
+    }
+  }
+  // Legacy shape: bare chapter array.
+  if (Array.isArray(raw)) {
+    return raw.filter(
+      (c): c is ChapterRow =>
+        typeof c === "object" &&
+        c !== null &&
+        typeof (c as { startMs?: unknown }).startMs === "number" &&
+        typeof (c as { title?: unknown }).title === "string",
+    );
+  }
+  return null;
 };
 
 /**

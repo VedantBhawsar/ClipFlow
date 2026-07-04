@@ -27,6 +27,7 @@ import {
 } from "./lib/queue.js";
 import { prisma, setDatabaseAvailable } from "./lib/prisma.js";
 import { connectEventBus, eventBus } from "./lib/events.js";
+import { inspect } from "node:util";
 import type { Logger } from "./lib/logger.js";
 
 /**
@@ -224,7 +225,17 @@ const main = async (): Promise<void> => {
   });
 
   process.on("unhandledRejection", (reason) => {
-    logger.error({ reason }, "Unhandled promise rejection");
+    // Prisma errors (and many third-party Errors) expose their message
+    // via getters or non-enumerable properties that pino's default
+    // serializer collapses to `{}`. Fall back to util.inspect so the
+    // log line actually shows why the rejection happened — without this
+    // the operator just sees "Unhandled promise rejection" and the
+    // reason is a blank object.
+    const detail =
+      reason instanceof Error
+        ? { message: reason.message, stack: reason.stack }
+        : inspect(reason, { depth: 6, breakLength: Infinity });
+    logger.error({ detail }, "Unhandled promise rejection");
   });
   process.on("uncaughtException", (err) => {
     logger.fatal({ err }, "Uncaught exception");

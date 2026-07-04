@@ -15,11 +15,16 @@ export {
   GOOGLE_TOKEN_ENDPOINT,
 } from "./token-refresh.js";
 export {
+  formatChaptersForDescription,
+  setYouTubeThumbnail,
   startResumableUploadSession,
-  uploadVideoBytes,
+  updateVideoSnippet,
   updateVideoStatus,
+  uploadVideoBytes,
   toYouTubeLicense,
+  type SetThumbnailInput,
   type VideoMetadataInput,
+  type VideoSnippetInput,
   type VideoStatusInput,
   type StartResumableUploadInput,
   type UploadBytesInput,

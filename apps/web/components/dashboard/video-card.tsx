@@ -3,11 +3,13 @@
 import * as React from "react";
 import Link from "next/link";
 import { ExternalLink, Loader2, AlertCircle } from "lucide-react";
-import type { TimelineStatus } from "@/components/dashboard/status-timeline";
+import type { Video, SseVideoEvent } from "@clipflow/types";
+
 import { StatusTimeline } from "@/components/dashboard/status-timeline";
 import { Button } from "@/components/ui/button";
+import { StatusPill } from "@/components/dashboard/status-pill";
 import { cn } from "@/lib/utils";
-import type { Video, SseVideoEvent } from "@clipflow/types";
+import { isFailedStatus, mapTimelineStatus } from "@/lib/video-status";
 
 interface VideoCardProps {
   video: Video;
@@ -18,64 +20,18 @@ interface VideoCardProps {
 }
 
 /**
- * Map a server-side VideoStatus to the timeline's visual stage.
- *
- * The timeline has 5 user-facing buckets. Multiple backend statuses
- * collapse into a single bucket where the distinction isn't meaningful
- * to the user (e.g. EXTRACTING → TRANSCRIBING → GENERATING all show
- * as "Processing").
- *
- * Failed statuses (PUBLISH_FAILED, FAILED) map to the stage they were
- * in when the failure occurred so the timeline still reflects
- * progress; the error is communicated via the card's red border,
- * failure reason text, and SSE error events.
- */
-const mapStatus = (status: Video["status"]): TimelineStatus => {
-  switch (status) {
-    case "UPLOADED":
-    case "READY":
-      return "uploaded";
-    case "EXTRACTING":
-    case "TRANSCRIBING":
-    case "GENERATING":
-      return "processing";
-    case "READY_FOR_REVIEW":
-      return "ready_for_review";
-    case "SCHEDULED":
-    case "PUBLISHING":
-    case "PUBLISH_FAILED":
-      return "scheduled";
-    case "PUBLISHED":
-      return "published";
-    case "FAILED":
-      return "uploaded";
-  }
-};
-
-const STATUS_LABEL: Record<Video["status"], string> = {
-  UPLOADED: "Awaiting upload",
-  READY: "Ready to process",
-  EXTRACTING: "Extracting audio & frames",
-  TRANSCRIBING: "Transcribing",
-  GENERATING: "Generating chapters & thumbnails",
-  READY_FOR_REVIEW: "Ready for review",
-  SCHEDULED: "Scheduled",
-  PUBLISHING: "Publishing…",
-  PUBLISHED: "Published",
-  PUBLISH_FAILED: "Publish failed",
-  FAILED: "Processing failed",
-};
-
-/**
- * One row in the dashboard video list. Renders the title, status badge,
- * status timeline, and a "View on YouTube" link once published.
+ * One row in the dashboard video list. Renders the title, status pill,
+ * status timeline (with stage labels visible — per Design.md this is
+ * the signature element, never a generic "Processing" spinner), and a
+ * "View on YouTube" link once published.
  *
  * When `sseEvents` is provided the card picks the latest SSE event for
  * its video ID and renders a live progress bar (PROGRESS) or status
  * indicator (STATUS_UPDATE / ERROR) above the timeline.
  */
 export function VideoCard({ video, onCancel, isCancelling, sseEvents }: VideoCardProps) {
-  const timelineStatus = mapStatus(video.status);
+  const timelineStatus = mapTimelineStatus(video.status);
+  const hasError = isFailedStatus(video.status);
   const thumbnailUrl = video.youtubeVideoId
     ? `https://i.ytimg.com/vi/${video.youtubeVideoId}/hqdefault.jpg`
     : null;
@@ -93,8 +49,8 @@ export function VideoCard({ video, onCancel, isCancelling, sseEvents }: VideoCar
   return (
     <article
       className={cn(
-        "flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center",
-        video.status === "PUBLISH_FAILED" && "border-destructive/40",
+        "flex flex-col gap-4 rounded-xl border border-[color:var(--line)] bg-[color:var(--surface)] p-4 sm:flex-row sm:items-center",
+        hasError && "border-[color:var(--status-error)]/30",
       )}
     >
       <div className="flex items-center gap-4">
@@ -106,11 +62,11 @@ export function VideoCard({ video, onCancel, isCancelling, sseEvents }: VideoCar
             className="h-16 w-28 shrink-0 rounded-md object-cover"
           />
         ) : (
-          <div className="flex h-16 w-28 shrink-0 items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
+          <div className="flex h-16 w-28 shrink-0 items-center justify-center rounded-md bg-[color:var(--muted)] text-xs text-[color:var(--ink-muted)]">
             {video.status === "PUBLISHING" ? (
               <Loader2 className="h-5 w-5 animate-spin" />
-            ) : video.status === "PUBLISH_FAILED" ? (
-              <AlertCircle className="h-5 w-5 text-destructive" />
+            ) : hasError ? (
+              <AlertCircle className="h-5 w-5 text-[color:var(--status-error)]" />
             ) : (
               "—"
             )}
@@ -124,28 +80,28 @@ export function VideoCard({ video, onCancel, isCancelling, sseEvents }: VideoCar
                 card) so the right-side action buttons stay clickable
                 and so the row itself doesn't get an ambiguous "link"
                 treatment under focus. */}
-            <h3 className="truncate text-sm font-medium text-foreground">
+            <h3 className="truncate text-sm font-medium text-[color:var(--ink)]">
               <Link
                 href={`/dashboard/published/${video.id}`}
-                className="rounded-sm outline-none transition-colors hover:text-foreground/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="rounded-sm outline-none transition-colors hover:text-[color:var(--ink)]/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 {video.title}
               </Link>
             </h3>
-            <StatusBadge status={video.status} />
+            <StatusPill status={video.status} />
           </div>
 
           {latestSseEvent?.type === "PROGRESS" ? (
             <div className="space-y-1">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-primary">{latestSseEvent.stage}</span>
-                <span className="text-muted-foreground">
+                <span className="text-[color:var(--accent)]">{latestSseEvent.stage}</span>
+                <span className="font-mono tabular-nums text-[color:var(--ink-muted)]">
                   {latestSseEvent.progress}%
                 </span>
               </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--muted)]">
                 <div
-                  className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
+                  className="h-full rounded-full bg-[color:var(--accent)] transition-all duration-500 ease-out"
                   style={{ width: `${latestSseEvent.progress}%` }}
                 />
               </div>
@@ -153,20 +109,23 @@ export function VideoCard({ video, onCancel, isCancelling, sseEvents }: VideoCar
           ) : null}
 
           {latestSseEvent?.type === "ERROR" ? (
-            <p className="truncate text-xs text-destructive text-ellipsis">
+            <p className="truncate text-xs text-[color:var(--status-error)]">
               Error: {latestSseEvent.error}
             </p>
           ) : null}
 
-          <StatusTimeline status={timelineStatus} />
+          <StatusTimeline status={timelineStatus} hasError={hasError} />
           {video.failureReason ? (
-            <p className="truncate text-xs text-destructive text-ellipsis">
+            <p className="truncate text-xs text-[color:var(--status-error)]">
               {video.failureReason}
             </p>
           ) : null}
           {video.scheduledPublishAt && video.status === "SCHEDULED" ? (
-            <p className="text-xs text-muted-foreground">
-              Will publish {new Date(video.scheduledPublishAt).toLocaleString()}
+            <p className="text-xs text-[color:var(--ink-muted)]">
+              Will publish{" "}
+              <span className="font-mono tabular-nums text-[color:var(--ink)]">
+                {new Date(video.scheduledPublishAt).toLocaleString()}
+              </span>
             </p>
           ) : null}
         </div>
@@ -191,7 +150,7 @@ export function VideoCard({ video, onCancel, isCancelling, sseEvents }: VideoCar
             size="sm"
             onClick={() => onCancel(video.id)}
             disabled={isCancelling}
-            className="text-muted-foreground hover:text-destructive"
+            className="text-[color:var(--ink-muted)] hover:text-[color:var(--status-error)]"
           >
             {isCancelling ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -202,31 +161,5 @@ export function VideoCard({ video, onCancel, isCancelling, sseEvents }: VideoCar
         ) : null}
       </div>
     </article>
-  );
-}
-
-function StatusBadge({ status }: { status: Video["status"] }) {
-  const className = {
-    UPLOADED: "bg-muted text-muted-foreground",
-    READY: "bg-muted text-muted-foreground",
-    EXTRACTING: "bg-status-processing/15 text-status-processing",
-    TRANSCRIBING: "bg-status-processing/15 text-status-processing",
-    GENERATING: "bg-status-processing/15 text-status-processing",
-    READY_FOR_REVIEW: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
-    SCHEDULED: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
-    PUBLISHING: "bg-status-processing/15 text-status-processing",
-    PUBLISHED: "bg-status-ready/15 text-status-ready",
-    PUBLISH_FAILED: "bg-destructive/15 text-destructive",
-    FAILED: "bg-destructive/15 text-destructive",
-  }[status];
-  return (
-    <span
-      className={cn(
-        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide",
-        className,
-      )}
-    >
-      {STATUS_LABEL[status]}
-    </span>
   );
 }

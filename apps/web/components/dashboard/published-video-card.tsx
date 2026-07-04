@@ -41,7 +41,7 @@ export function PublishedVideoCard({ video }: PublishedVideoCardProps) {
   const extraTagCount = video.tags.length - tagsToShow.length;
 
   return (
-    <article className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center">
+    <article className="flex flex-col gap-4 rounded-xl border border-[color:var(--line)] bg-[color:var(--surface)] p-4 sm:flex-row sm:items-center">
       <Link
         href={`/dashboard/published/${video.id}`}
         aria-label={`Open ${video.title}`}
@@ -55,11 +55,11 @@ export function PublishedVideoCard({ video }: PublishedVideoCardProps) {
             className="h-16 w-28 rounded-md object-cover"
           />
         ) : (
-          <div className="flex h-16 w-28 items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
+          <div className="flex h-16 w-28 items-center justify-center rounded-md bg-[color:var(--muted)] text-xs text-[color:var(--ink-muted)]">
             {video.status === "PUBLISHING" ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : video.status === "PUBLISH_FAILED" ? (
-              <AlertCircle className="h-5 w-5 text-destructive" />
+              <AlertCircle className="h-5 w-5 text-[color:var(--status-error)]" />
             ) : (
               "—"
             )}
@@ -72,10 +72,10 @@ export function PublishedVideoCard({ video }: PublishedVideoCardProps) {
           {/* Title is the link target — drilling into a video opens
               its detail page. Wrapping just the title (not the whole
               card) so the right-side action buttons stay clickable. */}
-          <h3 className="truncate text-sm font-medium text-foreground">
+          <h3 className="truncate text-sm font-medium text-[color:var(--ink)]">
             <Link
               href={`/dashboard/published/${video.id}`}
-              className="rounded-sm outline-none transition-colors hover:text-foreground/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="rounded-sm outline-none transition-colors hover:text-[color:var(--ink)]/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               {video.title}
             </Link>
@@ -91,14 +91,14 @@ export function PublishedVideoCard({ video }: PublishedVideoCardProps) {
               </Badge>
             ))}
             {extraTagCount > 0 ? (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-[color:var(--ink-muted)]">
                 +{extraTagCount} more
               </span>
             ) : null}
           </div>
         ) : null}
 
-        <p className="truncate text-xs text-muted-foreground">
+        <p className="truncate text-xs text-[color:var(--ink-muted)]">
           Published {publishedLabel}
           {video.originalFilename ? (
             <>
@@ -151,16 +151,23 @@ function AudienceFlags({ video }: { video: Video }) {
   if (flags.length === 0) return null;
 
   return (
-    <p className="text-xs text-muted-foreground">{flags.join(" · ")}</p>
+    <p className="text-xs text-[color:var(--ink-muted)]">{flags.join(" · ")}</p>
   );
 }
 
+/**
+ * Privacy pill for the published library. Public is the success tone
+ * (matches the "video is out" frame of mind); unlisted is muted; private
+ * uses `--status-scheduled` deliberately (not destructive) — "private"
+ * is the creator's own choice, not an error state, and a destructive
+ * red would read as "something is wrong."
+ */
 function PrivacyPill({ privacy }: { privacy: string }) {
   const className = {
-    public: "bg-status-ready/15 text-status-ready",
-    unlisted: "bg-muted text-muted-foreground",
-    private: "bg-destructive/15 text-destructive",
-  }[privacy] ?? "bg-muted text-muted-foreground";
+    public: "bg-[color:var(--status-ready)]/12 text-[color:var(--status-ready)]",
+    unlisted: "bg-[color:var(--muted)] text-[color:var(--ink-muted)]",
+    private: "bg-[color:var(--status-scheduled)]/12 text-[color:var(--status-scheduled)]",
+  }[privacy] ?? "bg-[color:var(--muted)] text-[color:var(--ink-muted)]";
   const label =
     privacy === "public"
       ? "Public"

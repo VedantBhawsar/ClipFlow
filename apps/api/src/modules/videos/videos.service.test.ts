@@ -681,15 +681,24 @@ describe("videos.service", () => {
       expect(mockUnpublishOnYouTube).not.toHaveBeenCalled();
     });
 
-    it("propagates VIDEO_NOT_PUBLISHED from the upload package", async () => {
+    it("propagates VIDEO_NOT_PUBLISHED from the upload package as a mapped AppError", async () => {
       mockVideoFindUnique.mockResolvedValue({ ...publishedRow, status: "READY" });
       const { PermanentPublishError } = await import("@clipflow/youtube-upload");
       mockUnpublishOnYouTube.mockRejectedValue(
         new PermanentPublishError("VIDEO_NOT_PUBLISHED", "Video is READY, not PUBLISHED."),
       );
+      // The service wraps youtube-upload's PermanentPublishError into an
+      // AppError so the central error middleware can serialize it into
+      // the standard failure envelope (with the real reason instead of
+      // a generic 500). `reasonCode` is preserved inside `details` for
+      // hooks that want to branch on the specific YouTube reason.
       await expect(
         videosService.unpublishVideo("user-1", publishedRow.id, baseEnv),
-      ).rejects.toMatchObject({ reasonCode: "VIDEO_NOT_PUBLISHED" });
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        code: "VIDEO_NOT_PUBLISHED",
+        details: { reasonCode: "VIDEO_NOT_PUBLISHED" },
+      });
       expect(mockVideoFindUniqueOrThrow).not.toHaveBeenCalled();
     });
   });
@@ -944,18 +953,26 @@ describe("videos.service", () => {
       expect(result.youtubeVideoId).toBe("yt_retry");
     });
 
-    it("propagates YouTube permanent publish errors on the immediate path", async () => {
+    it("wraps YouTube permanent publish errors into a mapped AppError on the immediate path", async () => {
       mockVideoFindUnique.mockResolvedValue(reviewRow);
       const { PermanentPublishError } = await import("@clipflow/youtube-upload");
       mockPublishOnYouTube.mockRejectedValue(
         new PermanentPublishError("QUOTA_EXCEEDED", "Daily quota exhausted."),
       );
 
+      // QUOTA_EXCEEDED → 429 YOUTUBE_QUOTA_EXCEEDED per the mapper in
+      // videos.service. The real message from YouTube ("Daily quota
+      // exhausted.") is preserved so the frontend can toast it verbatim
+      // instead of showing a generic "Something went wrong".
       await expect(
         videosService.publishVideo("user-1", reviewRow.id, {}, baseEnv),
-      ).rejects.toMatchObject({ reasonCode: "QUOTA_EXCEEDED" });
-      // The DB row is NOT touched on a failed YouTube call — the
-      // central error middleware maps the error to 5xx and the row
+      ).rejects.toMatchObject({
+        statusCode: 429,
+        code: "YOUTUBE_QUOTA_EXCEEDED",
+        message: "Daily quota exhausted.",
+        details: { reasonCode: "QUOTA_EXCEEDED" },
+      });
+      // The DB row is NOT touched on a failed YouTube call — the row
       // stays in READY_FOR_REVIEW so the user can retry later.
       expect(mockVideoUpdate).not.toHaveBeenCalled();
     });

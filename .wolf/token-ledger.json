@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-06-26T04:13:47.972Z",
   "lifetime": {
-    "total_tokens_estimated": 669857,
-    "total_reads": 242,
-    "total_writes": 209,
-    "total_sessions": 50,
-    "anatomy_hits": 187,
-    "anatomy_misses": 11,
-    "repeated_reads_blocked": 36,
-    "estimated_savings_vs_bare_cli": 171708
+    "total_tokens_estimated": 834571,
+    "total_reads": 292,
+    "total_writes": 259,
+    "total_sessions": 60,
+    "anatomy_hits": 234,
+    "anatomy_misses": 13,
+    "repeated_reads_blocked": 50,
+    "estimated_savings_vs_bare_cli": 307984
   },
   "sessions": [
     {
@@ -3029,6 +3029,657 @@
         "writes_count": 12,
         "repeated_reads_blocked": 4,
         "anatomy_lookups": 6
+      }
+    },
+    {
+      "id": "session-2026-07-03-2237",
+      "started": "2026-07-03T17:07:53.506Z",
+      "ended": "2026-07-03T17:13:20.637Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/dashboard-content.tsx",
+          "tokens_estimated": 2411,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/layout.tsx",
+          "tokens_estimated": 314,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/video-list.tsx",
+          "tokens_estimated": 1238,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/page.tsx",
+          "tokens_estimated": 190,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/sidebar.tsx",
+          "tokens_estimated": 2075,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/hooks/use-videos.ts",
+          "tokens_estimated": 3432,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/lib/video-status.ts",
+          "tokens_estimated": 1246,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/ui/sheet.tsx",
+          "tokens_estimated": 1329,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/youtube-connect-card.tsx",
+          "tokens_estimated": 2837,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/cancel-button.tsx",
+          "tokens_estimated": 430,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/dashboard-content.tsx",
+          "tokens_estimated": 2836,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/video-list.tsx",
+          "tokens_estimated": 513,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/dashboard-stats.tsx",
+          "tokens_estimated": 1956,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/sidebar-content.tsx",
+          "tokens_estimated": 2045,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/mobile-nav.tsx",
+          "tokens_estimated": 697,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/sidebar.tsx",
+          "tokens_estimated": 200,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/layout.tsx",
+          "tokens_estimated": 582,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/cancel-button.tsx",
+          "tokens_estimated": 23,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 15502,
+        "output_tokens_estimated": 8852,
+        "reads_count": 10,
+        "writes_count": 8,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 9
+      }
+    },
+    {
+      "id": "session-2026-07-04-0847",
+      "started": "2026-07-04T03:17:10.755Z",
+      "ended": "2026-07-04T03:25:03.574Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/youtube-upload/src/publish-video.ts",
+          "tokens_estimated": 3664,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/youtube-upload/src/youtube-api.ts",
+          "tokens_estimated": 3839,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/youtube-upload/src/index.ts",
+          "tokens_estimated": 218,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/db/schema.prisma",
+          "tokens_estimated": 4208,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/generate.ts",
+          "tokens_estimated": 3836,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/youtube-upload/src/youtube-api.test.ts",
+          "tokens_estimated": 559,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/youtube-publish.ts",
+          "tokens_estimated": 1482,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.types.ts",
+          "tokens_estimated": 615,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts",
+          "tokens_estimated": 10686,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/scripts/check-videos.ts",
+          "tokens_estimated": 358,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/youtube-upload/src/publish-video.ts",
+          "tokens_estimated": 184,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/youtube-upload/src/publish-video.ts",
+          "tokens_estimated": 450,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/youtube-upload/src/youtube-api.ts",
+          "tokens_estimated": 540,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/youtube-upload/src/youtube-api.test.ts",
+          "tokens_estimated": 572,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 29465,
+        "output_tokens_estimated": 1746,
+        "reads_count": 10,
+        "writes_count": 4,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 10
+      }
+    },
+    {
+      "id": "session-2026-07-04-0857",
+      "started": "2026-07-04T03:27:56.487Z",
+      "ended": "2026-07-04T03:29:45.699Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/middleware/validate.ts",
+          "tokens_estimated": 593,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/middleware/rate-limit.ts",
+          "tokens_estimated": 1210,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/middleware/error.ts",
+          "tokens_estimated": 966,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts",
+          "tokens_estimated": 10686,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/lib/api-client.ts",
+          "tokens_estimated": 4004,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.controller.ts",
+          "tokens_estimated": 3657,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.schemas.ts",
+          "tokens_estimated": 4468,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/youtube-upload/src/errors.ts",
+          "tokens_estimated": 588,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/published/[id]/publish-button.tsx",
+          "tokens_estimated": 304,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/youtube-upload/src/publish-video.ts",
+          "tokens_estimated": 4292,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/publish-sheet.tsx",
+          "tokens_estimated": 2743,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/hooks/use-videos.ts",
+          "tokens_estimated": 3432,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/app.ts",
+          "tokens_estimated": 1479,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [],
+      "totals": {
+        "input_tokens_estimated": 38422,
+        "output_tokens_estimated": 0,
+        "reads_count": 13,
+        "writes_count": 0,
+        "repeated_reads_blocked": 4,
+        "anatomy_lookups": 13
+      }
+    },
+    {
+      "id": "session-2026-07-04-0902",
+      "started": "2026-07-04T03:32:20.644Z",
+      "ended": "2026-07-04T03:34:32.931Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/index.ts",
+          "tokens_estimated": 2252,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/app.ts",
+          "tokens_estimated": 145,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/app.ts",
+          "tokens_estimated": 42,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/index.ts",
+          "tokens_estimated": 174,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/index.ts",
+          "tokens_estimated": 226,
+          "action": "edit"
+        },
+        {
+          "file": "/tmp/append-bug-128.cjs",
+          "tokens_estimated": 594,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 2252,
+        "output_tokens_estimated": 1181,
+        "reads_count": 1,
+        "writes_count": 5,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-07-04-0902",
+      "started": "2026-07-04T03:32:20.644Z",
+      "ended": "2026-07-04T03:42:25.285Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/index.ts",
+          "tokens_estimated": 2252,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/errors/AppError.ts",
+          "tokens_estimated": 374,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts",
+          "tokens_estimated": 11564,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/youtube-upload/src/index.ts",
+          "tokens_estimated": 218,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/lib/response.ts",
+          "tokens_estimated": 547,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.test.ts",
+          "tokens_estimated": 10483,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/app.ts",
+          "tokens_estimated": 145,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/app.ts",
+          "tokens_estimated": 42,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/index.ts",
+          "tokens_estimated": 174,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/index.ts",
+          "tokens_estimated": 226,
+          "action": "edit"
+        },
+        {
+          "file": "/tmp/append-bug-128.cjs",
+          "tokens_estimated": 594,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts",
+          "tokens_estimated": 66,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts",
+          "tokens_estimated": 805,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts",
+          "tokens_estimated": 99,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts",
+          "tokens_estimated": 272,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts",
+          "tokens_estimated": 189,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.controller.ts",
+          "tokens_estimated": 50,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/lib/api-client.ts",
+          "tokens_estimated": 429,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/lib/api-client.ts",
+          "tokens_estimated": 288,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.test.ts",
+          "tokens_estimated": 314,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.test.ts",
+          "tokens_estimated": 328,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 25438,
+        "output_tokens_estimated": 4021,
+        "reads_count": 6,
+        "writes_count": 15,
+        "repeated_reads_blocked": 4,
+        "anatomy_lookups": 6
+      }
+    },
+    {
+      "id": "session-2026-07-04-0902",
+      "started": "2026-07-04T03:32:20.644Z",
+      "ended": "2026-07-04T04:08:30.843Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/index.ts",
+          "tokens_estimated": 2252,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/errors/AppError.ts",
+          "tokens_estimated": 374,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts",
+          "tokens_estimated": 11564,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/youtube-upload/src/index.ts",
+          "tokens_estimated": 218,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/lib/response.ts",
+          "tokens_estimated": 547,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.test.ts",
+          "tokens_estimated": 10483,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/youtube-upload/src/youtube-api.ts",
+          "tokens_estimated": 4914,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/youtube-upload/dist/youtube-api.js",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/youtube-upload/dist/publish-video.js",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/youtube-upload/src/youtube-api.test.ts",
+          "tokens_estimated": 1439,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/app.ts",
+          "tokens_estimated": 145,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/app.ts",
+          "tokens_estimated": 42,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/index.ts",
+          "tokens_estimated": 174,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/index.ts",
+          "tokens_estimated": 226,
+          "action": "edit"
+        },
+        {
+          "file": "/tmp/append-bug-128.cjs",
+          "tokens_estimated": 594,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts",
+          "tokens_estimated": 66,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts",
+          "tokens_estimated": 805,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts",
+          "tokens_estimated": 99,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts",
+          "tokens_estimated": 272,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts",
+          "tokens_estimated": 189,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.controller.ts",
+          "tokens_estimated": 50,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/lib/api-client.ts",
+          "tokens_estimated": 429,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/lib/api-client.ts",
+          "tokens_estimated": 288,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.test.ts",
+          "tokens_estimated": 314,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.test.ts",
+          "tokens_estimated": 328,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/youtube-upload/src/youtube-api.ts",
+          "tokens_estimated": 750,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/youtube-upload/src/youtube-api.test.ts",
+          "tokens_estimated": 616,
+          "action": "edit"
+        },
+        {
+          "file": "/tmp/append-bug-138.cjs",
+          "tokens_estimated": 657,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 31791,
+        "output_tokens_estimated": 6044,
+        "reads_count": 10,
+        "writes_count": 18,
+        "repeated_reads_blocked": 6,
+        "anatomy_lookups": 8
       }
     }
   ],

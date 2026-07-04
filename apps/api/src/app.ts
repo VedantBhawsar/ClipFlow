@@ -12,6 +12,11 @@ import compression from "compression";
 import { pinoHttp } from "pino-http";
 import type { Env } from "@clipflow/config";
 import { buildLogger, type Logger } from "./lib/logger.js";
+// Side-effect import — patches Express 4's Layer.handle_request so
+// async rejections flow into next(err) instead of becoming
+// unhandledRejection. Must come AFTER `import express` and BEFORE
+// any Router() construction. See lib/async-handler.ts for the why.
+import "./lib/async-handler.js";
 import { buildErrorHandler, notFoundHandler } from "./middleware/error.js";
 import { requestIdMiddleware } from "./middleware/request-id.js";
 import { buildGlobalRateLimiter } from "./middleware/rate-limit.js";

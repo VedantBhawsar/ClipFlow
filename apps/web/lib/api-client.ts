@@ -88,6 +88,29 @@ export class ServerApiError extends Error {
 }
 
 /**
+ * Client-side counterpart of `ServerApiError`. Carries the HTTP status,
+ * the machine-readable `code` from the backend's failure envelope, and
+ * any `details` the server chose to include (e.g. Zod issues, YouTube
+ * reason codes). Callers that only need a user-facing string can still
+ * read `error.message`; hooks that want to branch on the failure can
+ * `instanceof`-check and read `error.code`.
+ *
+ * `SessionExpiredError` remains a distinct type so the global
+ * QueryCache handler can identify session death without string-matching.
+ */
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string,
+    message: string,
+    public readonly details?: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+/**
  * Read the failure envelope from a non-2xx response.
  *
  * Falls back to a generic message + `UNKNOWN` code when the body
@@ -265,18 +288,27 @@ export function createApiClient(accessToken: string | null): ApiClient {
     }
 
     if (!response.ok) {
-      let message = "Something went wrong. Try again.";
       const failure = await readFailureBody(response);
-      if (failure?.message) message = failure.message;
-      throw new Error(message);
+      const message = failure?.message ?? "Something went wrong. Try again.";
+      const code = failure?.error ?? "UNKNOWN";
+      throw new ApiError(response.status, code, message, failure?.details);
     }
+
+    // 204 No Content — no envelope to unwrap. Cast is safe because
+    // void-returning methods thread `T = void` through here.
+    if (response.status === 204) return undefined as T;
 
     // All success paths return the standard envelope; unwrap `data`.
     const envelope = (await response.json()) as ApiResponse<T>;
     if (!envelope.success) {
       // Server sent a 2xx with a failure body — defensive guard so the
       // frontend never hands a `{ success: false }` payload up to a hook.
-      throw new Error(envelope.message || "Unexpected response from server.");
+      throw new ApiError(
+        response.status,
+        envelope.error ?? "UNKNOWN",
+        envelope.message || "Unexpected response from server.",
+        envelope.details,
+      );
     }
     return envelope.data;
   }

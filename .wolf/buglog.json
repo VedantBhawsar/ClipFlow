@@ -1875,6 +1875,396 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-02T16:06:03.113Z"
+    },
+    {
+      "id": "bug-116",
+      "timestamp": "2026-07-03T17:03:53.698Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/web/components/dashboard/sidebar.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-03T17:03:53.698Z"
+    },
+    {
+      "id": "bug-117",
+      "timestamp": "2026-07-03T17:03:58.473Z",
+      "error_message": "Incorrect value in code",
+      "file": "apps/web/components/dashboard/sidebar.tsx",
+      "root_cause": "Had \"flex-1 truncate text-muted-foreground\"",
+      "fix": "Changed to \"flex-1 truncate text-[color:var(--ink-muted)]\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-03T17:03:58.473Z"
+    },
+    {
+      "id": "bug-118",
+      "timestamp": "2026-07-03T17:04:26.679Z",
+      "error_message": "Wrong return value",
+      "file": "apps/web/components/dashboard/youtube-connect-card.tsx",
+      "root_cause": "Was returning: <Skeleton className=\"h-20 bg-card\" />;",
+      "fix": "Now returns: (",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-03T17:04:26.679Z"
+    },
+    {
+      "id": "bug-119",
+      "timestamp": "2026-07-03T17:05:51.067Z",
+      "error_message": "CSS fix: hover",
+      "file": "apps/web/components/dashboard/published-video-card.tsx",
+      "root_cause": "hover: text-foreground/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background\" → text-[color:var(--ink)]/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background\"",
+      "fix": "Changed hover: text-foreground/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background\" → text-[color:var(--ink)]/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background\"",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-03T17:05:51.067Z"
+    },
+    {
+      "id": "bug-120",
+      "timestamp": "2026-07-03T17:05:56.531Z",
+      "error_message": "Type error",
+      "file": "apps/web/components/dashboard/published-video-card.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-03T17:05:56.531Z"
+    },
+    {
+      "id": "bug-121",
+      "timestamp": "2026-07-03T17:10:00.391Z",
+      "error_message": "Incorrect value in code",
+      "file": "apps/web/app/dashboard/published/[id]/cancel-button.tsx",
+      "root_cause": "Had \"text-muted-foreground hover:text-destructive\"",
+      "fix": "Changed to \"text-[color:var(--ink-muted)] hover:text-[color:v",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-03T17:10:00.391Z"
+    },
+    {
+      "id": "bug-122",
+      "timestamp": "2026-07-04T03:20:41.881Z",
+      "error_message": "Null/undefined access in ",
+      "file": "packages/youtube-upload/src/publish-video.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-04T03:20:41.881Z"
+    },
+    {
+      "id": "bug-123",
+      "timestamp": "2026-07-04T03:21:34.574Z",
+      "error_message": "Significant refactor of ",
+      "file": "packages/youtube-upload/src/youtube-api.ts",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 32→50 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-04T03:21:34.574Z"
+    },
+    {
+      "id": "bug-124",
+      "timestamp": "2026-07-04T03:22:05.108Z",
+      "error_message": "Type error",
+      "file": "packages/youtube-upload/src/youtube-api.test.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-04T03:22:05.108Z"
+    },
+    {
+      "id": "bug-125",
+      "timestamp": "2026-07-04T08:55:00.000Z",
+      "error_message": "User-reported: 'worker unable to upload the chapters over the google.' Videos published successfully but no chapter markers appeared on YouTube. The enriched description was being sent with `NaN:NaN summary` style lines instead of valid `MM:SS Chapter Title` timestamps.",
+      "file": "packages/youtube-upload/src/publish-video.ts",
+      "root_cause": "`chaptersJson` on the Video row was persisted as `{ summary, chapters[] }` after the v1.5 schema change (see cerebrum 2026-07-01), but the publish path still cast it directly as `{ startMs, title }[]`. `formatChaptersForDescription` was called with the wrapper object, not the inner array. Its guard `chapters.length < 3` evaluated `undefined < 3` (false), so it proceeded to map over the object's string + array keys and emit `NaN:NaN` lines — which YouTube cannot parse as chapter timestamps. Video published cleanly, no error surfaced, chapters silently disappeared.",
+      "fix": "Two-layer fix. (1) `packages/youtube-upload/src/publish-video.ts` extracts chapters via a new local `extractChapters()` helper that handles the `{ summary, chapters[] }` shape AND the pre-v1.5 bare-array shape (back-compat for any in-flight legacy rows). (2) `packages/youtube-upload/src/youtube-api.ts → formatChaptersForDescription` is now shape-tolerant — accepts the bare array OR the wrapper object, returns `\"\"` for anything else. Three regression tests added to youtube-api.test.ts pinning the wrapper-object path so a future refactor that flattens back to the bare array can't silently reintroduce the NaN:NaN output.",
+      "tags": [
+        "manual",
+        "user-reported",
+        "youtube",
+        "chapters",
+        "publish",
+        "json-shape",
+        "v1.5",
+        "regression"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-04T08:55:00.000Z"
+    },
+    {
+      "id": "bug-126",
+      "timestamp": "2026-07-04T03:31:28.659Z",
+      "error_message": "Function not marked async",
+      "file": "apps/api/src/app.ts",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier | Also: // Activate the Express 4 async-error monkey-patch. Idempote; // side-effect import above installs it as soon as Express i",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-04T03:32:24.967Z"
+    },
+    {
+      "id": "bug-127",
+      "timestamp": "2026-07-04T03:32:28.777Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/api/src/app.ts",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 9→3 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-04T03:32:28.777Z"
+    },
+    {
+      "id": "bug-128",
+      "timestamp": "2026-07-04T03:33:00.000Z",
+      "error_message": "POST /api/videos/:id/publish hangs forever; OPTIONS 204 lands, POST sits pending until socket timeout. Server log: \"Unhandled promise rejection reason: {}\". Console error references videos.scheduledPublishAt, videos.youtubeVideoId, videos.createdAt, videos.updatedAt, videos.publishedAt - i.e. the Prisma update call in the publish controller rejected but the response never went out.",
+      "file": "apps/api/src/lib/async-handler.ts (new) + apps/api/src/app.ts (wiring) + apps/api/src/index.ts (logger hardening)",
+      "root_cause": "Express 4 does not auto-forward async handler rejections to next(err). Every controller in this codebase is async (req, res) => { ... } with no try/catch - the same pattern as express-async-errors. When the Prisma update rejects, the returned promise becomes an unhandledRejection, the response is never sent, and the request hangs until socket timeout. pino logged \"reason: {}\" because Prisma errors expose message/stack via getters/non-enumerable properties the default serializer collapses to {} - masking the real cause.",
+      "fix": "Added lib/async-handler.ts that monkey-patches Layer.prototype.handle_request to .catch(next) returned promises (semantically equivalent to express-async-errors, zero new deps). Wired via side-effect import in app.ts after import express and before any Router() construction (import order: import express -> import async-handler -> ...). Hardened the unhandledRejection handler in index.ts to use util.inspect (depth: 6) so future Prisma-style errors log with full detail. Updated cerebrum + memory.",
+      "tags": [
+        "express-4",
+        "async-handler",
+        "unhandled-rejection",
+        "monkey-patch",
+        "prisma",
+        "publish",
+        "bug-128"
+      ],
+      "related_bugs": [
+        "bug-127"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-04T03:33:00.000Z"
+    },
+    {
+      "id": "bug-129",
+      "timestamp": "2026-07-04T03:35:40.184Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/api/src/modules/videos/videos.service.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-04T03:35:40.184Z"
+    },
+    {
+      "id": "bug-130",
+      "timestamp": "2026-07-04T03:35:50.646Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "apps/api/src/modules/videos/videos.service.ts",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-04T03:35:50.646Z"
+    },
+    {
+      "id": "bug-131",
+      "timestamp": "2026-07-04T03:36:16.313Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/api/src/modules/videos/videos.service.ts",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 22→16 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-04T03:36:16.313Z"
+    },
+    {
+      "id": "bug-132",
+      "timestamp": "2026-07-04T03:36:58.393Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/web/lib/api-client.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-04T03:36:58.393Z"
+    },
+    {
+      "id": "bug-133",
+      "timestamp": "2026-07-04T03:39:11.357Z",
+      "error_message": "Type error",
+      "file": "apps/api/src/modules/videos/videos.service.test.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-04T03:39:11.357Z"
+    },
+    {
+      "id": "bug-134",
+      "timestamp": "2026-07-04T03:39:23.813Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/api/src/modules/videos/videos.service.test.ts",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 15→23 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-04T03:39:23.813Z"
+    },
+    {
+      "id": "bug-135",
+      "timestamp": "2026-07-04T09:10:00Z",
+      "error_message": "Publish / unpublish requests that failed on the YouTube side surfaced a generic '{ error: INTERNAL_SERVER_ERROR, message: Something went wrong. Please try again. }' 500 in the frontend instead of the real reason (quota, needs-reauth, invalid metadata, channel-not-connected, etc.).",
+      "file": "apps/api/src/modules/videos/videos.service.ts",
+      "root_cause": "@clipflow/youtube-upload throws its own domain error classes (`PermanentPublishError` with a `reasonCode`, `TransientPublishError`). Neither is an `AppError`, so the central error middleware (apps/api/src/middleware/error.ts) treated them as 'unknown error' → generic 500 with a canned message. The real message was logged server-side but never crossed the wire.",
+      "fix": "Added a `mapYouTubeErrorToAppError` helper + `PERMANENT_REASON_TO_APP` mapping table in videos.service.ts that translates each PermanentReasonCode to an appropriate (statusCode, code) tuple and re-throws as `AppError` (preserving the upstream message and stashing `reasonCode`/`upstreamStatus` inside `details`). Wrapped `publishVideoOnYouTube` in `publishVideoNow` and `unpublishVideoOnYouTube` in `unpublishVideo` with try/catch that runs errors through the mapper. Also introduced `ApiError` in apps/web/lib/api-client.ts (mirroring `ServerApiError`) so the client-side `request()` no longer discards the `code` + `details` from the failure envelope.",
+      "tags": [
+        "error-handling",
+        "youtube",
+        "publish",
+        "unpublish",
+        "app-error",
+        "middleware",
+        "api-client"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-04T09:10:00Z"
+    },
+    {
+      "id": "bug-136",
+      "timestamp": "2026-07-04T04:07:10.335Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "packages/youtube-upload/src/youtube-api.ts",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-04T04:07:10.335Z"
+    },
+    {
+      "id": "bug-137",
+      "timestamp": "2026-07-04T04:07:43.038Z",
+      "error_message": "Function not marked async",
+      "file": "packages/youtube-upload/src/youtube-api.test.ts",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-04T04:07:43.038Z"
+    },
+    {
+      "id": "bug-138",
+      "timestamp": "2026-07-04T04:08:00.000Z",
+      "error_message": "POST /api/videos/vid_14afd62d-9474-4dc3-9b0c-ca6e7416a3ba/publish hangs. Server log: \"Unhandled promise rejection detail: { message: chapters.map is not a function, stack: TypeError: chapters.map is not a function at formatChaptersForDescription (...packages/youtube-upload/dist/youtube-api.js:229:28) at publishVideo (...dist/publish-video.js:66:27) at async publishVideoNow (apps/api/src/modules/videos/videos.service.ts:955:14) at async publishVideoController (apps/api/src/modules/videos/videos.controller.ts:291:18) }\".",
+      "file": "packages/youtube-upload/src/youtube-api.ts + rebuilt dist/youtube-api.js + packages/youtube-upload/src/youtube-api.test.ts (regressions)",
+      "root_cause": "Two-layer: (1) formatChaptersForDescription in src was shape-tolerant for bare arrays and for { summary, chapters[] }, but if `chapters` was an object/string/number/etc., it stored it into `list` and called list.map() → TypeError. (2) The earlier src-side fix from bug-125 was correct, but `dist/` had not been rebuilt — the API process imports `@clipflow/youtube-upload` via package.json main/exports which points at ./dist/index.js, so the runtime call hit the OLD unrefactored compiled output (no extractChapters, no array-unwrap), and the same TypeError fired on the { summary, chapters[] } wrapper because the wrapper is not an array.",
+      "fix": "(1) Hardened formatChaptersForDescription: any non-array top-level input -> null; then Array.isArray(list) guard before list.map(); any non-array `list` returns \"\" instead of throwing. (2) Rebuilt dist via `pnpm --filter @clipflow/youtube-upload build` so the API process loads the fixed compiled code. (3) Added two regression tests: wrapper whose chapters field is an object/string/number/null, and bare non-array inputs.",
+      "tags": [
+        "youtube-upload",
+        "chapters",
+        "shape-tolerance",
+        "defensive-coding",
+        "dist-rebuild",
+        "publish",
+        "bug-138"
+      ],
+      "related_bugs": [
+        "bug-125",
+        "bug-128"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-04T04:08:00.000Z"
     }
   ]
 }

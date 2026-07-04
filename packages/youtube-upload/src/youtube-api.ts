@@ -307,6 +307,134 @@ export const updateVideoStatus = async (
   }
 };
 
+export interface VideoSnippetInput {
+  title: string;
+  description: string;
+  tags: string[];
+  categoryId: string;
+}
+
+/**
+ * `PUT /videos?part=snippet` — update an existing video's snippet
+ * fields (title, description, tags, categoryId). Used after publish
+ * when the user edits metadata that was already sent to YouTube.
+ *
+ * YouTube requires ALL snippet fields on every update — omitting one
+ * clears it. Callers must supply the full current state, not just
+ * the changed fields.
+ *
+ * @throws TransientPublishError on 5xx / 408 / 429 / network.
+ * @throws PermanentPublishError on other 4xx.
+ */
+export const updateVideoSnippet = async (
+  accessToken: string,
+  videoId: string,
+  snippet: VideoSnippetInput,
+): Promise<void> => {
+  let res: Response;
+  try {
+    res = await fetch(`${YOUTUBE_API_BASE}?part=snippet`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json; charset=UTF-8",
+      },
+      body: JSON.stringify({
+        id: videoId,
+        snippet: {
+          title: snippet.title,
+          description: snippet.description,
+          tags: snippet.tags,
+          categoryId: snippet.categoryId,
+        },
+      }),
+    });
+  } catch (err) {
+    throw new TransientPublishError(
+      `Network failure updating YouTube video snippet: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    if (isTransientHttpStatus(res.status)) {
+      throw new TransientPublishError(
+        `YouTube snippet update transient failure (${res.status}): ${body.slice(0, 200)}`,
+        res.status,
+      );
+    }
+    throw new PermanentPublishError(
+      "FORBIDDEN",
+      `YouTube rejected snippet update (${res.status}): ${body.slice(0, 300)}`,
+      res.status,
+    );
+  }
+};
+
+/**
+ * Format chapter data from `chaptersJson` into YouTube description
+ * timestamps. Returns the formatted chapter block as a string, or an
+ * empty string if no chapters are provided.
+ *
+ * The published `chaptersJson` JSON column has shape
+ * `{ summary, chapters[] }` (see `packages/db/schema.prisma → Video`
+ * and `apps/worker/src/jobs/generate.ts`). For convenience this
+ * helper also accepts a bare chapter array (the pre-v1.5 shape, and
+ * the natural input if a caller already extracted `.chapters`). Any
+ * other shape returns `""` so the description is never silently
+ * polluted with bogus `NaN:NaN` lines that YouTube won't recognize
+ * as chapter timestamps — and so an unexpected shape (e.g. someone
+ * re-wrapping the payload with extra keys, or a partial migration
+ * leaving `chapters` as an object) never throws a runtime
+ * `chapters.map is not a function` that hangs the publish request.
+ *
+ * YouTube chapter format:
+ *   0:00 Title
+ *   MM:SS Title
+ *   H:MM:SS Title
+ *
+ * Chapters must: start at 0:00, be at least 3, each ≥10s apart,
+ * and titles ≤100 chars. The LLM output is validated against these
+ * rules before storage, so we assume validity here.
+ */
+export const formatChaptersForDescription = (
+  chapters:
+    | { startMs: number; title: string }[]
+    | { summary?: string; chapters?: unknown }
+    | null
+    | undefined,
+): string => {
+  // Unwrap `{ summary, chapters[] }` → the inner chapter array. Anything
+  // that isn't an array AND isn't an object carrying an array under
+  // `chapters` is treated as "no chapters" and returns "" — never throw,
+  // because this helper runs inside the publish pipeline and an exception
+  // would surface as the request hangs (Express 4 used to swallow async
+  // rejections; the patch in apps/api/src/lib/async-handler.ts catches
+  // them now, but we still want a missing shape to be a no-op rather than
+  // a 500).
+  const list: unknown = Array.isArray(chapters)
+    ? chapters
+    : chapters && typeof chapters === "object"
+      ? (chapters as { chapters?: unknown }).chapters
+      : null;
+  if (!Array.isArray(list) || list.length < 3) return "";
+
+  const lines = (list as { startMs: number; title: string }[]).map((ch) => {
+    const totalSec = Math.floor(ch.startMs / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    const timestamp = h > 0
+      ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
+      : `${m}:${String(s).padStart(2, "0")}`;
+    return `${timestamp} ${ch.title}`;
+  });
+
+  return `\n\n${lines.join("\n")}`;
+};
+
 /**
  * Shape the `status` block the Data API expects. `publishAt` is
  * included only when set, since YouTube rejects an explicit `publishAt`

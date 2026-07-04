@@ -129,46 +129,60 @@ export function YouTubeConnectCard({ className }: { className?: string }) {
   const channelThumbnailUrl = connectionQuery.data?.channelThumbnailUrl ?? null;
 
   if (connectionQuery.isLoading) {
-    return <Skeleton className="h-20 bg-card" />;
+    return (
+      <div className="flex items-center gap-4 rounded-xl border border-[color:var(--line)] bg-[color:var(--surface)] p-4">
+        <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-3.5 w-40" />
+          <Skeleton className="h-3 w-56" />
+        </div>
+      </div>
+    );
   }
 
   if (status === "connected") {
     return (
       <Card
-        className={cn("border-status-ready/30 bg-status-ready/5", className)}
+        className={cn(
+          "border-[color:var(--status-ready)]/30 bg-[color:var(--status-ready)]/5",
+          className,
+        )}
       >
-        <CardContent className="flex items-center gap-4 p-4">
+        <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
           {channelThumbnailUrl ? (
             <Image
               src={channelThumbnailUrl}
               alt=""
-              width={48}
-              height={48}
-              className="h-12 w-12 rounded-full object-cover"
+              width={40}
+              height={40}
+              className="h-10 w-10 rounded-full object-cover"
               unoptimized
             />
           ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-              <Youtube className="h-6 w-6 text-red-600" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--muted)]">
+              <Youtube className="h-5 w-5 text-[color:var(--ink-muted)]" />
             </div>
           )}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <Check className="h-4 w-4 text-status-ready" />
-              <span className="text-sm font-medium text-foreground">
+              <Check
+                className="h-4 w-4 text-[color:var(--status-ready)]"
+                aria-hidden="true"
+              />
+              <CardTitle className="text-sm font-medium">
                 {channelTitle ?? "YouTube channel"} connected
-              </span>
+              </CardTitle>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <CardDescription className="text-xs">
               You&apos;re ready to publish videos.
-            </p>
+            </CardDescription>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleDisconnect}
             disabled={isBusy}
-            className="text-muted-foreground hover:text-destructive"
+            className="text-[color:var(--ink-muted)] hover:text-[color:var(--status-error)]"
           >
             {disconnectMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -177,19 +191,24 @@ export function YouTubeConnectCard({ className }: { className?: string }) {
             )}
             Disconnect
           </Button>
-        </CardContent>
+        </CardHeader>
       </Card>
     );
   }
 
   if (status === "needs_reauth") {
     return (
-      <Card className={cn("border-amber-500/30 bg-amber-500/5", className)}>
+      <Card
+        className={cn(
+          "border-[color:var(--status-error)]/30 bg-[color:var(--status-error)]/5",
+          className,
+        )}
+      >
         <CardHeader className="pb-3">
           <div className="flex items-start gap-3">
             <span
               aria-hidden="true"
-              className="mt-1 h-2 w-2 shrink-0 rounded-full bg-amber-500"
+              className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[color:var(--status-error)]"
             />
             <div className="flex-1">
               <CardTitle className="text-base">
@@ -212,7 +231,7 @@ export function YouTubeConnectCard({ className }: { className?: string }) {
             Reconnect channel
           </Button>
           {error && (
-            <p className="mt-2 flex items-center gap-1 text-xs text-destructive">
+            <p className="mt-2 flex items-center gap-1 text-xs text-[color:var(--status-error)]">
               <AlertCircle className="h-3 w-3" />
               {error}
             </p>
@@ -224,12 +243,17 @@ export function YouTubeConnectCard({ className }: { className?: string }) {
 
   // Disconnected state
   return (
-    <Card className={cn("border-amber-500/30 bg-amber-500/5", className)}>
+    <Card
+      className={cn(
+        "border-[color:var(--status-processing)]/30 bg-[color:var(--status-processing)]/5",
+        className,
+      )}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start gap-3">
           <span
             aria-hidden="true"
-            className="mt-1 h-2 w-2 shrink-0 rounded-full bg-amber-500"
+            className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[color:var(--status-processing)]"
           />
           <div className="flex-1">
             <CardTitle className="text-base">
@@ -252,7 +276,7 @@ export function YouTubeConnectCard({ className }: { className?: string }) {
           Connect your channel
         </Button>
         {error && (
-          <p className="mt-2 flex items-center gap-1 text-xs text-destructive">
+          <p className="mt-2 flex items-center gap-1 text-xs text-[color:var(--status-error)]">
             <AlertCircle className="h-3 w-3" />
             {error}
           </p>

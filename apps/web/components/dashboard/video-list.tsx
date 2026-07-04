@@ -69,16 +69,16 @@ export function VideoList({
     return (
       <section
         aria-labelledby="videos-empty-title"
-        className="rounded-xl border border-dashed border-border bg-card/40 p-8 sm:p-12"
+        className="rounded-xl border border-dashed border-[color:var(--line)] bg-[color:var(--surface)] p-8 sm:p-12"
       >
         <div className="flex flex-col items-start gap-3">
           <h2
             id="videos-empty-title"
-            className="text-lg font-semibold tracking-tight"
+            className="text-xl font-semibold tracking-tight text-[color:var(--ink)]"
           >
             No videos yet
           </h2>
-          <p className="max-w-prose text-sm text-muted-foreground">
+          <p className="max-w-prose text-sm text-[color:var(--ink-muted)]">
             Upload a finished video. ClipFlow stores it, then publishes
             to your YouTube channel — immediately or on a schedule.
           </p>
@@ -89,9 +89,9 @@ export function VideoList({
             {...(disabledReason ? { disabledReason } : {})}
           />
           {emptyHint ? (
-            <p className="text-xs text-muted-foreground">{emptyHint}</p>
+            <p className="text-xs text-[color:var(--ink-muted)]">{emptyHint}</p>
           ) : (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-[color:var(--ink-muted)]">
               {channelConnected
                 ? "Up to 5 GB per video. MP4, MOV, or WebM."
                 : "Connect your YouTube channel above to get started."}
@@ -105,7 +105,7 @@ export function VideoList({
   return (
     <>
       <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-[color:var(--ink-muted)]">
           {videos.length} video{videos.length === 1 ? "" : "s"}
         </p>
         <CreateVideoDialog

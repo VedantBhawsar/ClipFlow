@@ -768,3 +768,126 @@ Closed the loop on the user-driven publish trigger for `READY_FOR_REVIEW` (and r
 | 21:37 | Edited apps/api/src/index.ts | 7→8 lines | ~50 |
 | 21:37 | Edited packages/types/src/index.ts | expanded (+19 lines) | ~212 |
 | 21:38 | Created apps/worker/src/jobs/post-publish.ts | — | ~2728 |
+
+## Session: 2026-07-03 11:46
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-03 22:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-03 22:05
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-03 22:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:12 | Created ../../../.claude/plans/memoized-floating-dijkstra.md | — | ~2880 |
+| 22:33 | Created apps/web/lib/video-status.ts | — | ~1246 |
+| 22:33 | Edited apps/web/components/dashboard/sidebar.tsx | CSS: color, color | ~49 |
+| 22:33 | Edited apps/web/components/dashboard/sidebar.tsx | 10→10 lines | ~187 |
+| 22:33 | Edited apps/web/components/dashboard/sidebar.tsx | added optional chaining | ~120 |
+| 22:33 | Edited apps/web/components/dashboard/sidebar.tsx | CSS: color | ~34 |
+| 22:34 | Edited apps/web/components/dashboard/sidebar.tsx | CSS: color, color | ~120 |
+| 22:34 | Edited apps/web/components/dashboard/youtube-connect-card.tsx | modified if() | ~1334 |
+| 22:34 | Edited apps/web/components/dashboard/youtube-connect-card.tsx | CSS: color, color | ~117 |
+| 22:34 | Created apps/web/components/dashboard/video-card.tsx | — | ~1851 |
+| 22:34 | Created apps/web/components/dashboard/status-pill.tsx | — | ~512 |
+| 22:34 | Created apps/web/components/dashboard/detail-row.tsx | — | ~355 |
+| 22:35 | Created apps/web/app/dashboard/published/[id]/page.tsx | — | ~4244 |
+| 22:35 | Edited apps/web/components/dashboard/published-video-card.tsx | 90→90 lines | ~969 |
+| 22:35 | Edited apps/web/components/dashboard/published-video-card.tsx | modified PrivacyPill() | ~345 |
+| 22:36 | Edited apps/web/components/dashboard/published-video-list.tsx | 69→69 lines | ~790 |
+| 22:36 | Edited apps/web/components/dashboard/published-video-list.tsx | modified ListSkeleton() | ~651 |
+| 22:36 | Edited apps/web/components/dashboard/published-video-list.tsx | modified PrivacySegmented() | ~313 |
+| 22:36 | Edited apps/web/components/dashboard/published-video-list.tsx | 38→38 lines | ~386 |
+
+## Session: 2026-07-03 22:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:38 | Created apps/web/app/dashboard/dashboard-content.tsx | — | ~2836 |
+| 22:38 | Edited apps/web/components/dashboard/video-list.tsx | modified if() | ~513 |
+| 22:39 | Created apps/web/components/dashboard/dashboard-stats.tsx | — | ~1956 |
+| 22:39 | Created apps/web/components/dashboard/sidebar-content.tsx | — | ~2045 |
+| 22:39 | Created apps/web/components/dashboard/mobile-nav.tsx | — | ~697 |
+| 22:39 | Created apps/web/components/dashboard/sidebar.tsx | — | ~200 |
+| 22:39 | Created apps/web/app/dashboard/layout.tsx | — | ~582 |
+| 22:40 | Edited apps/web/app/dashboard/published/[id]/cancel-button.tsx | "text-muted-foreground hov" → "text-[color:var(--ink-mut" | ~23 |
+| 22:42 | Verified pnpm lint | — | clean (0 warnings) | — |
+| 22:42 | Verified pnpm test:ci components/dashboard | — | 17/17 passed | — |
+| 22:42 | Verified grep for raw Tailwind colors on touched files | — | all clean | — |
+| 22:42 | Updated .wolf/anatomy.md | — | refresh entries | — |
+| 22:43 | Session end: 8 writes across 8 files (dashboard-content.tsx, video-list.tsx, dashboard-stats.tsx, sidebar-content.tsx, mobile-nav.tsx) | 10 reads | ~24354 tok |
+
+## Session: 2026-07-04 08:47
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 08:50 | Edited packages/youtube-upload/src/publish-video.ts | expanded (+6 lines) | ~184 |
+| 08:50 | Edited packages/youtube-upload/src/publish-video.ts | added 4 condition(s) | ~450 |
+| 08:51 | Edited packages/youtube-upload/src/youtube-api.ts | expanded (+18 lines) | ~540 |
+| 08:52 | Edited packages/youtube-upload/src/youtube-api.test.ts | expanded (+40 lines) | ~572 |
+| 08:55 | Diagnosed user-reported "worker can't upload chapters to YouTube" — chaptersJson persisted as {summary, chapters[]} but publish-video.ts cast it as bare array, so formatChaptersForDescription walked .summary + .chapters and emitted NaN:NaN lines that YouTube silently ignored. Two-layer fix landed (extractChapters helper + shape-tolerant helper). 12/12 tests pass, tsc clean on api+worker. Logged bug-125, updated cerebrum chaptersJson entries. | packages/youtube-upload/src/publish-video.ts, packages/youtube-upload/src/youtube-api.ts, packages/youtube-upload/src/youtube-api.test.ts, .wolf/buglog.json, .wolf/cerebrum.md | resolved | ~2.4k |
+| 08:55 | Session end: 4 writes across 3 files (publish-video.ts, youtube-api.ts, youtube-api.test.ts) | 10 reads | ~31211 tok |
+
+## Session: 2026-07-04 08:57
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-04 08:57
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:01 | Created apps/api/src/lib/async-handler.ts | — | ~1328 |
+| 09:01 | Created apps/api/src/lib/async-handler.ts | — | ~1007 |
+| 09:01 | Edited apps/api/src/app.ts | 8→13 lines | ~189 |
+
+## Session: 2026-07-04 09:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:02 | Edited apps/api/src/app.ts | expanded (+6 lines) | ~145 |
+| 09:02 | Edited apps/api/src/app.ts | reduced (-6 lines) | ~42 |
+| 09:02 | Edited apps/api/src/index.ts | added 1 import(s) | ~174 |
+| 09:02 | Edited apps/api/src/index.ts | expanded (+10 lines) | ~226 |
+| 09:03 | Created ../../../../../tmp/append-bug-128.cjs | — | ~555 |
+| 09:04 | Created apps/api/src/lib/async-handler.ts | Express 4 async-error monkey-patch (Layer.prototype.handle_request) | ~720 |
+| 09:04 | Edited apps/api/src/app.ts | wired side-effect import of async-handler after `import express` | ~60 |
+| 09:04 | Edited apps/api/src/index.ts | unhandledRejection now uses util.inspect so Prisma errors dont collapse to {} | ~80 |
+| 09:05 | Updated .wolf/buglog.json | appended bug-128 (publish endpoint hang, Express 4 async-error class) | ~110 |
+| 09:05 | Updated .wolf/cerebrum.md | added 3 entries: Key Learning x2, Decision Log, Do-Not-Repeat for async-handler ordering | ~330 |
+| 09:05 | api test:ci | 163 tests pass; pre-existing preferences.service.test.ts type errors unrelated | ~0 |
+| 09:04 | Session end: 5 writes across 3 files (app.ts, index.ts, append-bug-128.cjs) | 1 reads | ~3433 tok |
+| 09:05 | Edited apps/api/src/modules/videos/videos.service.ts | expanded (+7 lines) | ~66 |
+| 09:05 | Edited apps/api/src/modules/videos/videos.service.ts | added 2 condition(s) | ~805 |
+| 09:05 | Edited apps/api/src/modules/videos/videos.service.ts | added error handling | ~99 |
+| 09:06 | Edited apps/api/src/modules/videos/videos.service.ts | modified catch() | ~272 |
+| 09:06 | Edited apps/api/src/modules/videos/videos.service.ts | modified if() | ~189 |
+| 09:06 | Edited apps/api/src/modules/videos/videos.controller.ts | 6→4 lines | ~50 |
+| 09:06 | Edited apps/web/lib/api-client.ts | modified constructor() | ~429 |
+| 09:06 | Edited apps/web/lib/api-client.ts | added nullish coalescing | ~288 |
+| 09:09 | Edited apps/api/src/modules/videos/videos.service.test.ts | expanded (+9 lines) | ~314 |
+| 09:09 | Edited apps/api/src/modules/videos/videos.service.test.ts | expanded (+8 lines) | ~328 |
+| 09:10 | Session: mapped PermanentPublishError/TransientPublishError → AppError in videos.service; removed 8 stray console.logs; added ApiError class in api-client.ts | 3 files | 163 api tests pass; web typecheck clean | ~600 |
+| 09:12 | Session end: 15 writes across 7 files (app.ts, index.ts, append-bug-128.cjs, videos.service.ts, videos.controller.ts) | 6 reads | ~29459 tok |
+| 09:37 | Edited packages/youtube-upload/src/youtube-api.ts | expanded (+11 lines) | ~750 |
+| 09:37 | Edited packages/youtube-upload/src/youtube-api.test.ts | expanded (+52 lines) | ~616 |
+| 09:38 | Created ../../../../../tmp/append-bug-138.cjs | — | ~613 |
+| 09:39 | Ran pnpm --filter @clipflow/youtube-upload build | rebuilt dist; runtime now picks up shape-tolerant formatChaptersForDescription | ~0 |
+| 09:39 | @clipflow/youtube-upload test:ci | 14/14 pass (incl. 2 new regressions for object-as-chapters and bare non-array) | ~0 |
+| 09:40 | Updated .wolf/buglog.json | appended bug-138 (chapters.map not-a-function hang — both layers fixed) | ~110 |
+| 09:40 | Updated .wolf/cerebrum.md | added Do-Not-Repeat: always rebuild dist after editing a shared workspace packages src | ~330 |
+| 09:38 | Session end: 18 writes across 10 files (app.ts, index.ts, append-bug-128.cjs, videos.service.ts, videos.controller.ts) | 10 reads | ~37835 tok |
+
+## Session: 2026-07-04 09:44
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|

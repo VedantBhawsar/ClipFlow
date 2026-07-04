@@ -4,12 +4,10 @@ import { ArrowLeft, ExternalLink, AlertCircle } from "lucide-react";
 import type {
   Video,
   VideoPrivacyStatus,
-  VideoStatus,
 } from "@clipflow/types";
 
 import {
   StatusTimeline,
-  type TimelineStatus,
 } from "@/components/dashboard/status-timeline";
 import { VideoDetailLiveProgress } from "@/components/dashboard/video-detail-live-progress";
 import { VideoReviewPanel } from "@/components/review/video-review-panel";
@@ -19,11 +17,17 @@ import { UnpublishButton } from "@/app/dashboard/published/[id]/unpublish-button
 import { CancelButton } from "@/app/dashboard/published/[id]/cancel-button";
 import { EditDetailsButton } from "@/app/dashboard/published/[id]/edit-details-button";
 import { PublishButton } from "@/app/dashboard/published/[id]/publish-button";
+import { StatusPill } from "@/components/dashboard/status-pill";
+import { DetailRow, EmptyValue } from "@/components/dashboard/detail-row";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/auth";
 import { serverFetch, ServerApiError } from "@/lib/api-client";
 import BackButton from "@/components/shared/BackButton";
-import { cn } from "@/lib/utils";
+import {
+  STATUS_LABEL,
+  isFailedStatus,
+  mapTimelineStatus,
+} from "@/lib/video-status";
 import {
   formatBytes,
   formatCommentPolicy,
@@ -39,70 +43,6 @@ interface PageProps {
 export const metadata: Metadata = {
   title: "Video — ClipFlow",
   description: "Video details and publishing controls.",
-};
-
-/**
- * User-facing labels for each backend `VideoStatus`. Design.md
- * Section 4 (voice + copy): active voice, plain verbs, no jargon.
- * Every status has a text label — never signal state by color alone.
- */
-const STATUS_LABEL: Record<VideoStatus, string> = {
-  UPLOADED: "Awaiting upload",
-  READY: "Ready to process",
-  EXTRACTING: "Extracting audio & frames",
-  TRANSCRIBING: "Transcribing",
-  GENERATING: "Generating chapters & thumbnails",
-  READY_FOR_REVIEW: "Ready for your review",
-  SCHEDULED: "Scheduled",
-  PUBLISHING: "Publishing",
-  PUBLISHED: "Published",
-  PUBLISH_FAILED: "Publish failed",
-  FAILED: "Processing failed",
-};
-
-/**
- * Which token drives the status label chip. Uses `--status-*` variables
- * from Design.md Section 2 — no ad-hoc palette.
- */
-const STATUS_TONE: Record<VideoStatus, "processing" | "ready" | "scheduled" | "error" | "neutral"> = {
-  UPLOADED: "neutral",
-  READY: "neutral",
-  EXTRACTING: "processing",
-  TRANSCRIBING: "processing",
-  GENERATING: "processing",
-  READY_FOR_REVIEW: "ready",
-  SCHEDULED: "scheduled",
-  PUBLISHING: "processing",
-  PUBLISHED: "ready",
-  PUBLISH_FAILED: "error",
-  FAILED: "error",
-};
-
-/**
- * Same mapping the dashboard's `VideoCard` uses — keep the visual
- * language consistent across row and detail page so the timeline reads
- * the same way in both views.
- */
-const mapStatus = (status: Video["status"]): TimelineStatus => {
-  switch (status) {
-    case "UPLOADED":
-    case "READY":
-      return "uploaded";
-    case "EXTRACTING":
-    case "TRANSCRIBING":
-    case "GENERATING":
-      return "processing";
-    case "READY_FOR_REVIEW":
-      return "ready_for_review";
-    case "SCHEDULED":
-    case "PUBLISHING":
-    case "PUBLISH_FAILED":
-      return "scheduled";
-    case "PUBLISHED":
-      return "published";
-    case "FAILED":
-      return "processing";
-  }
 };
 
 /**
@@ -140,8 +80,8 @@ export default async function VideoDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  const timelineStatus = mapStatus(video.status);
-  const hasError = video.status === "FAILED" || video.status === "PUBLISH_FAILED";
+  const timelineStatus = mapTimelineStatus(video.status);
+  const hasError = isFailedStatus(video.status);
   const publishedThumbnail = video.youtubeVideoId
     ? `https://i.ytimg.com/vi/${video.youtubeVideoId}/hqdefault.jpg`
     : null;
@@ -368,76 +308,6 @@ async function fetchVideo(token: string, id: string): Promise<Video> {
 }
 
 // ---------- sub-components ----------
-
-/**
- * Status pill using Design.md's token palette — no ad-hoc colors.
- * Text label is always present so state is not communicated by color
- * alone (Section 6).
- */
-function StatusPill({ status }: { status: VideoStatus }) {
-  const tone = STATUS_TONE[status];
-  const cls = {
-    processing:
-      "bg-[color:var(--status-processing)]/12 text-[color:var(--status-processing)]",
-    ready:
-      "bg-[color:var(--status-ready)]/12 text-[color:var(--status-ready)]",
-    scheduled:
-      "bg-[color:var(--status-scheduled)]/12 text-[color:var(--status-scheduled)]",
-    error:
-      "bg-[color:var(--status-error)]/12 text-[color:var(--status-error)]",
-    neutral:
-      "bg-[color:var(--muted)] text-[color:var(--ink-muted)]",
-  }[tone];
-
-  return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium",
-        cls,
-      )}
-    >
-      <span
-        className={cn(
-          "inline-block h-1.5 w-1.5 rounded-full bg-current",
-          tone === "processing" && "motion-safe:animate-pulse",
-        )}
-        aria-hidden="true"
-      />
-      {STATUS_LABEL[status]}
-    </span>
-  );
-}
-
-function DetailRow({
-  label,
-  children,
-  span,
-  muted,
-}: {
-  label: string;
-  children: React.ReactNode;
-  span?: 2;
-  muted?: boolean;
-}) {
-  return (
-    <div className={cn("space-y-1", span === 2 && "sm:col-span-2")}>
-      <dt className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--ink-muted)]">
-        {label}
-      </dt>
-      <dd
-        className={cn(
-          muted ? "text-[color:var(--ink-muted)]" : "text-[color:var(--ink)]",
-        )}
-      >
-        {children}
-      </dd>
-    </div>
-  );
-}
-
-function EmptyValue() {
-  return <span className="text-[color:var(--ink-muted)]">—</span>;
-}
 
 function ActionPanel({ video }: { video: Video }) {
   const canCancel = [

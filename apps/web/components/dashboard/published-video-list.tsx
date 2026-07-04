@@ -149,11 +149,11 @@ export function PublishedVideoList() {
           the dashboard uses for content sections. The row is a flex
           container so the search grows to fill, the filters sit to
           its right, and the count line wraps below on narrow screens. */}
-      <div className="rounded-xl border border-border bg-card p-4">
+      <div className="rounded-xl border border-[color:var(--line)] bg-[color:var(--surface)] p-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative w-full sm:max-w-xs">
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--ink-muted)]"
               aria-hidden="true"
             />
             <Input
@@ -184,7 +184,7 @@ export function PublishedVideoList() {
             </SelectContent>
           </Select>
 
-          <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="ml-auto flex items-center gap-2 text-xs text-[color:var(--ink-muted)]">
             {isSearching ? (
               <Loader2
                 className="inline h-3 w-3 animate-spin"
@@ -206,7 +206,7 @@ export function PublishedVideoList() {
                   setDateRange("all");
                   setPage(1);
                 }}
-                className="rounded-sm text-xs font-medium text-muted-foreground underline-offset-2 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="rounded-sm text-xs font-medium text-[color:var(--ink-muted)] underline-offset-2 transition-colors hover:text-[color:var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 Clear filters
               </button>
@@ -281,7 +281,7 @@ function PrivacySegmented({
     <div
       role="radiogroup"
       aria-label="Filter by privacy"
-      className="inline-flex h-9 items-center rounded-md border border-border bg-background p-0.5"
+      className="inline-flex h-9 items-center rounded-md border border-[color:var(--line)] bg-[color:var(--bg)] p-0.5"
     >
       {PRIVACY_OPTIONS.map((opt) => {
         const active = value === opt.value;
@@ -296,8 +296,8 @@ function PrivacySegmented({
               "h-8 rounded-sm px-2.5 text-xs font-medium transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               active
-                ? "bg-muted text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
+                ? "bg-[color:var(--surface)] text-[color:var(--ink)] shadow-sm"
+                : "text-[color:var(--ink-muted)] hover:text-[color:var(--ink)]",
             )}
           >
             {opt.label}
@@ -314,7 +314,7 @@ function ListSkeleton() {
       {Array.from({ length: 4 }).map((_, i) => (
         <div
           key={i}
-          className="flex items-center gap-4 rounded-xl border border-border bg-card p-4"
+          className="flex items-center gap-4 rounded-xl border border-[color:var(--line)] bg-[color:var(--surface)] p-4"
         >
           <Skeleton className="h-16 w-28 shrink-0 rounded-md" />
           <div className="flex-1 space-y-2">
@@ -332,16 +332,16 @@ function EmptyLibrary() {
   return (
     <section
       aria-labelledby="published-empty-title"
-      className="rounded-xl border border-dashed border-border bg-card/40 p-8 sm:p-12"
+      className="rounded-xl border border-dashed border-[color:var(--line)] bg-[color:var(--surface)] p-8 sm:p-12"
     >
       <div className="flex flex-col items-start gap-3">
         <h2
           id="published-empty-title"
-          className="text-lg font-semibold tracking-tight"
+          className="text-xl font-semibold tracking-tight text-[color:var(--ink)]"
         >
           No published videos yet
         </h2>
-        <p className="max-w-prose text-sm text-muted-foreground">
+        <p className="max-w-prose text-sm text-[color:var(--ink-muted)]">
           Once a video finishes publishing on YouTube it&apos;ll appear
           here — titled, dated, and ready to revisit.
         </p>
@@ -354,16 +354,16 @@ function EmptySearch({ onClear }: { onClear: () => void }) {
   return (
     <section
       aria-labelledby="published-search-empty-title"
-      className="rounded-xl border border-dashed border-border bg-card/40 p-8 sm:p-12"
+      className="rounded-xl border border-dashed border-[color:var(--line)] bg-[color:var(--surface)] p-8 sm:p-12"
     >
       <div className="flex flex-col items-start gap-3">
         <h2
           id="published-search-empty-title"
-          className="text-lg font-semibold tracking-tight"
+          className="text-xl font-semibold tracking-tight text-[color:var(--ink)]"
         >
           No matches
         </h2>
-        <p className="max-w-prose text-sm text-muted-foreground">
+        <p className="max-w-prose text-sm text-[color:var(--ink-muted)]">
           No published videos match the current search and filters. Try
           a different word, or clear the filters to see your full
           library.
@@ -418,12 +418,12 @@ function Pagination({
   return (
     <nav
       aria-label="Pagination"
-      className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-4 text-xs text-muted-foreground"
+      className="flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--line)]/60 pt-4 text-xs text-[color:var(--ink-muted)]"
     >
       <span>
-        Showing <span className="text-foreground">{firstItem}</span>–
-        <span className="text-foreground">{lastItem}</span> of{" "}
-        <span className="text-foreground">{total}</span>
+        Showing <span className="text-[color:var(--ink)]">{firstItem}</span>–
+        <span className="text-[color:var(--ink)]">{lastItem}</span> of{" "}
+        <span className="text-[color:var(--ink)]">{total}</span>
       </span>
       <div className="flex items-center gap-2">
         <Button
@@ -438,8 +438,8 @@ function Pagination({
           Prev
         </Button>
         <span>
-          Page <span className="text-foreground">{page}</span> of{" "}
-          <span className="text-foreground">{totalPages}</span>
+          Page <span className="text-[color:var(--ink)]">{page}</span> of{" "}
+          <span className="text-[color:var(--ink)]">{totalPages}</span>
         </span>
         <Button
           type="button"

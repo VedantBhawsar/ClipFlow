@@ -51,7 +51,14 @@ import {
   getS3Client,
   headObject,
 } from "@clipflow/s3";
-import { publishVideo as publishVideoOnYouTube, unpublishVideo as unpublishVideoOnYouTube, uploadVideoThumbnail } from "@clipflow/youtube-upload";
+import {
+  publishVideo as publishVideoOnYouTube,
+  unpublishVideo as unpublishVideoOnYouTube,
+  uploadVideoThumbnail,
+  PermanentPublishError,
+  TransientPublishError,
+  type PermanentReasonCode,
+} from "@clipflow/youtube-upload";
 import { pino } from "pino";
 import { AppError } from "../../errors/AppError.js";
 import { prisma } from "../../lib/prisma.js";
@@ -77,6 +84,66 @@ const ALLOWED_DELETE_STATUSES: ReadonlySet<VideoStatus> = new Set([
   "SCHEDULED",
   "PUBLISH_FAILED",
 ]);
+
+/**
+ * HTTP status + machine code for every `PermanentReasonCode` from the
+ * youtube-upload package. Kept out of the central error middleware so
+ * that middleware stays domain-agnostic and only sees `AppError`s.
+ *
+ * Status choices:
+ *   - 400 for client-fixable bad input (metadata).
+ *   - 403 for authorization refused by YouTube (channel-level).
+ *   - 404 for missing rows.
+ *   - 409 for state conflicts (already unpublished, etc.).
+ *   - 412 for prerequisite failures (channel not connected / needs reauth).
+ *   - 429 for quota.
+ *   - 502 for a malformed response coming back from YouTube.
+ */
+const PERMANENT_REASON_TO_APP: Record<
+  PermanentReasonCode,
+  { status: number; code: string }
+> = {
+  QUOTA_EXCEEDED: { status: 429, code: "YOUTUBE_QUOTA_EXCEEDED" },
+  INVALID_METADATA: { status: 400, code: "YOUTUBE_INVALID_METADATA" },
+  FORBIDDEN: { status: 403, code: "YOUTUBE_FORBIDDEN" },
+  CHANNEL_NOT_CONNECTED: { status: 412, code: "CHANNEL_NOT_CONNECTED" },
+  CHANNEL_NEEDS_REAUTH: { status: 412, code: "CHANNEL_NEEDS_REAUTH" },
+  VIDEO_NOT_FOUND: { status: 404, code: "VIDEO_NOT_FOUND" },
+  VIDEO_NOT_PUBLISHED: { status: 409, code: "VIDEO_NOT_PUBLISHED" },
+  MALFORMED_RESPONSE: { status: 502, code: "YOUTUBE_MALFORMED_RESPONSE" },
+};
+
+/**
+ * Translate the domain errors from `@clipflow/youtube-upload` into
+ * `AppError`s so the central error middleware can serialize them into
+ * the standard `{ success: false, message, error }` envelope with a
+ * meaningful status + code. Without this wrapper these errors fall
+ * through as "unknown", producing a generic 500 that hides the real
+ * reason (quota, needs-reauth, invalid metadata, …) from the client.
+ *
+ * Any other error type is re-thrown unchanged so the middleware can
+ * still convert genuine bugs into a generic 500.
+ */
+const mapYouTubeErrorToAppError = (err: unknown): never => {
+  if (err instanceof PermanentPublishError) {
+    const mapped = PERMANENT_REASON_TO_APP[err.reasonCode];
+    throw new AppError(mapped.status, mapped.code, err.message, {
+      reasonCode: err.reasonCode,
+      ...(err.httpStatus !== undefined ? { upstreamStatus: err.httpStatus } : {}),
+    });
+  }
+  if (err instanceof TransientPublishError) {
+    // 503 signals to the client "try again shortly" — this is the API
+    // equivalent of BullMQ's retry policy for the worker path.
+    throw new AppError(
+      503,
+      "YOUTUBE_TEMPORARILY_UNAVAILABLE",
+      err.message || "YouTube is temporarily unavailable. Please try again.",
+      err.httpStatus !== undefined ? { upstreamStatus: err.httpStatus } : undefined,
+    );
+  }
+  throw err;
+};
 
 /**
  * YouTube's hard limit on `thumbnails.set` uploads. Mirrored in
@@ -855,10 +922,14 @@ export const unpublishVideo = async (
   // module. The YouTube-side publish check (VIDEO_NOT_PUBLISHED) is
   // delegated to `unpublishVideo` in the upload package.
   await loadVideoForOwner(userId, videoId);
-  await unpublishVideoOnYouTube(
-    { videoId },
-    { prisma, env, logger: buildConsoleLogger("api") },
-  );
+  try {
+    await unpublishVideoOnYouTube(
+      { videoId },
+      { prisma, env, logger: buildConsoleLogger("api") },
+    );
+  } catch (err) {
+    mapYouTubeErrorToAppError(err);
+  }
   const updated = await prisma.video.findUniqueOrThrow({ where: { id: videoId } });
   return toVideoDto(updated);
 };
@@ -879,10 +950,19 @@ export const publishVideoNow = async (
 ): Promise<Video> => {
   requireDatabase();
   await loadVideoForOwner(userId, videoId);
-  const result = await publishVideoOnYouTube(
-    { videoId },
-    { prisma, env, logger: buildConsoleLogger("api") },
-  );
+  let result: Awaited<ReturnType<typeof publishVideoOnYouTube>>;
+  try {
+    result = await publishVideoOnYouTube(
+      { videoId },
+      { prisma, env, logger: buildConsoleLogger("api") },
+    );
+  } catch (err) {
+    mapYouTubeErrorToAppError(err);
+    // Unreachable — mapYouTubeErrorToAppError always throws. The
+    // explicit throw keeps TS happy that `result` is definitely
+    // assigned below.
+    throw err;
+  }
   // Best-effort thumbnail upload — the video is already live.
   if (result.youtubeVideoId) {
     try {
@@ -934,7 +1014,6 @@ export const publishVideo = async (
       "Video can't be published from its current status.",
     );
   }
-
   if (input.scheduledPublishAt) {
     // Scheduled path — flip the row, enqueue a delayed job, return the
     // updated DTO. The job itself runs from the worker, which picks

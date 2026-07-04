@@ -40,7 +40,7 @@ export function CancelButton({ videoId }: CancelButtonProps) {
       size="sm"
       onClick={handleClick}
       disabled={mutation.isPending}
-      className="text-muted-foreground hover:text-destructive"
+      className="text-[color:var(--ink-muted)] hover:text-[color:var(--status-error)]"
     >
       {mutation.isPending ? (
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />

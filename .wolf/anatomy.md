@@ -1,11 +1,13 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-02T15:38:02.029Z
-> Files: 351 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-04T04:08:05.063Z
+> Files: 359 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../tmp/
 
 - `add_bugs.jq` — Declares on (~818 tok)
+- `append-bug-128.cjs` — Declares fs (~555 tok)
+- `append-bug-138.cjs` — Declares fs (~613 tok)
 
 ## ../../../../../tmp/pw-capture/
 
@@ -13,6 +15,7 @@
 
 ## ../../../.claude/plans/
 
+- `memoized-floating-dijkstra.md` — ClipFlow Dashboard UI Polish — Plan (~2700 tok)
 - `quirky-giggling-blanket.md` — Plan: In-place editing for video metadata + chapters (~2106 tok)
 - `witty-snuggling-seal.md` — Plan: Add Publish / Schedule UI for READY_FOR_REVIEW videos (~4526 tok)
 - `zazzy-plotting-peacock.md` — Audio + Frame Extraction (`video-ingest` queue) (~3360 tok)
@@ -68,8 +71,8 @@
 
 ## apps/api/src/
 
-- `app.ts` — Express app factory. (~1479 tok)
-- `index.ts` — Entrypoint. (~2252 tok)
+- `app.ts` — Express app factory. (~1564 tok)
+- `index.ts` — Entrypoint. (~2421 tok)
 - `server.ts` — HTTP server lifecycle. (~844 tok)
 
 ## apps/api/src/config/
@@ -82,6 +85,7 @@
 
 ## apps/api/src/lib/
 
+- `async-handler.ts` — Patch Express 4's `Layer.handle_request` so a rejection in an async (~1007 tok)
 - `cache.ts` — Cache abstraction. (~2524 tok)
 - `crypto.ts` — AES-256-GCM at-rest encryption helper. (~102 tok)
 - `db-guard.ts` — Database availability guard. (~210 tok)
@@ -151,8 +155,8 @@
 - `videos.controller.ts` — Videos controller. (~3657 tok)
 - `videos.routes.ts` — Videos route definitions. (~1514 tok)
 - `videos.schemas.ts` — Zod schemas for the videos module. (~4468 tok)
-- `videos.service.test.ts` — Tests for the videos service. (~10483 tok)
-- `videos.service.ts` — Videos service — owns all DB + S3 + YouTube-publish enqueue logic (~10686 tok)
+- `videos.service.test.ts` — Tests for the videos service. (~10721 tok)
+- `videos.service.ts` — Videos service — owns all DB + S3 + YouTube-publish enqueue logic (~11564 tok)
 - `videos.types.ts` — Module-internal types for the videos module. (~615 tok)
 
 ## apps/api/src/modules/youtube/
@@ -214,8 +218,8 @@
 
 ## apps/web/app/dashboard/
 
-- `dashboard-content.tsx` — Dashboard home (client component). (~2411 tok)
-- `layout.tsx` — Dashboard chrome. The sidebar is rendered server-side and the (~314 tok)
+- `dashboard-content.tsx` — Dashboard home (client component). Welcome header with data-driven subline, YouTube connect card, DashboardStats, in-progress list. Imports IN_FLIGHT/FINAL_STATUSES + isFailedStatus from `lib/video-status.ts`. (~2836 tok)
+- `layout.tsx` — Dashboard chrome. Desktop fixed sidebar (`lg+`) + sticky mobile top bar (`<lg`) with `<MobileNav>`. Body scroll on mobile, `min-h-svh`, content capped at `max-w-5xl`. (~582 tok)
 - `page.tsx` — Dashboard route entry. Stays a server component so we can export (~190 tok)
 
 ## apps/web/app/dashboard/published/
@@ -224,9 +228,9 @@
 
 ## apps/web/app/dashboard/published/[id]/
 
-- `cancel-button.tsx` — Cancel action for the video detail page. Calls (~430 tok)
+- `cancel-button.tsx` — Cancel action for the video detail page. Calls (~436 tok)
 - `edit-details-button.tsx` — Thin client island that keeps the Sheet open-state and renders the (~344 tok)
-- `page.tsx` — User-facing labels for each backend `VideoStatus`. Design.md (~5247 tok)
+- `page.tsx` — `/dashboard/published/:id` — full detail view for a single video. (~4244 tok)
 - `publish-button.test.tsx` — Tests for `<PublishButton>` + the `<PublishSheet>` it opens. (~3072 tok)
 - `publish-button.tsx` — Header "Publish" button for a `READY_FOR_REVIEW` (or (~304 tok)
 - `unpublish-button.tsx` — Unpublish action for the video detail page. Calls (~426 tok)
@@ -296,24 +300,27 @@
 ## apps/web/components/dashboard/
 
 - `create-video-dialog.tsx` — Optional custom thumbnail. JPEG / PNG only, 2 MB max — matches (~14698 tok)
-- `empty-state.test.tsx` (~328 tok)
-- `empty-state.tsx` — Whether the user has connected a YouTube channel. When `false`, (~607 tok)
+- `dashboard-stats.tsx` — Three small stat cards (In flight / Ready to publish / Failed) summarizing the in-progress pipeline. Tabular mono values, tone ribbons, "Ready to publish" deep-links to first ready row. (~1956 tok)
+- `detail-row.tsx` — Definition-list row used by the video detail page's metadata block. `span={2}` for free-form fields, `muted` for technical block. (~355 tok)
+- `mobile-nav.tsx` — Mobile navigation — left-edge Sheet drawer containing the same `<SidebarContent>`. Trigger button visible at `<lg`. Auto-closes on route change via `usePathname()`. VisuallyHidden title for a11y. (~697 tok)
 - `processing-substeps.tsx` — Sub-stage breakdown for the "Processing" bucket of the 5-stage (~1804 tok)
 - `publish-sheet.tsx` — Which fields the sheet needs off the `Video` row. The page passes (~2743 tok)
-- `published-video-card.tsx` — One row in the `/dashboard/published` library. (~1874 tok)
-- `published-video-list.tsx` — Date-range buckets shown in the Select. Each maps to a `since` ISO (~4280 tok)
+- `published-video-card.tsx` — One row in the `/dashboard/published` library. Tags + filename + privacy pill + audience flags. Token-only — "private" uses `--status-scheduled` deliberately. (~2035 tok)
+- `published-video-list.tsx` — `/dashboard/published` — interactive library view with client-side search + filters + pagination. Token-only empty states (`--surface` + dashed `--line`). (~4376 tok)
+- `sidebar-content.tsx` — Shared sidebar body reused by desktop `<Sidebar>` and mobile `<MobileNav>`. Nav items, channel indicator, profile link, sign-out. `onNavigate` callback to dismiss the drawer. (~2045 tok)
 - `sidebar.test.tsx` — mockUseSession (~1377 tok)
-- `sidebar.tsx` — Show as a real link vs. a "coming soon" placeholder. (~1986 tok)
+- `sidebar.tsx` — Desktop dashboard sidebar shell (`hidden lg:flex`) wrapping `<SidebarContent>`. (~200 tok)
+- `status-pill.tsx` — Status chip using Design.md's `--status-*` tokens — no ad-hoc colors. Processing tone gets a `motion-safe:animate-pulse` dot. (~512 tok)
 - `status-timeline.tsx` — Visual pipeline stages shown in the timeline strip — the signature (~1429 tok)
-- `video-card.tsx` — Latest SSE events for real-time progress display (~2406 tok)
+- `video-card.tsx` — Dashboard row — thumbnail + title + status timeline + actions. Imports `mapTimelineStatus`/`isFailedStatus` from `lib/video-status.ts`. (~1851 tok)
 - `video-detail-live-progress.tsx` — Ambient real-time progress strip for the detail page. Per Design.md (~627 tok)
 - `video-details-dialog.tsx` — Which fields can be patched via PATCH /api/videos/:id. (~4494 tok)
-- `video-list.tsx` — The already-fetched videos to render. In the SSR dashboard flow (~1238 tok)
+- `video-list.tsx` — Dashboard / published-page videos section. Presentational + actions. Owns the per-row delete mutation and post-mutation `router.refresh()`. (~1262 tok)
 - `video-metadata-editor.test.tsx` — Tests for `<VideoMetadataEditor>` — the in-place title/description/tags (~1916 tok)
 - `video-metadata-editor.test.tsx` — Tests for the in-place title/description/tags editor. (~4300 tok)
 - `video-metadata-editor.tsx` — In-place editor for the user-supplied metadata on the review screen (~2854 tok)
 - `video-metadata-editor.tsx` — In-place title/description/tags editor for the review screen. Per-section dirty state + Save. Calls useUpdateVideo + router.refresh. (~3550 tok)
-- `youtube-connect-card.tsx` — Persistent channel-connection card. Per Design.md, channel-connection (~2614 tok)
+- `youtube-connect-card.tsx` — Persistent channel-connection card. Three states symmetric (`CardHeader + CardContent`). Tokens only — needs_reauth uses `--status-error`. (~2837 tok)
 
 ## apps/web/components/landing/
 
@@ -407,7 +414,7 @@
 
 ## apps/web/lib/
 
-- `api-client.ts` — Typed API surface for talking to the Express backend. (~4004 tok)
+- `api-client.ts` — Typed API surface for talking to the Express backend. (~4337 tok)
 - `auth-guard.test.tsx` — mockReplace (~700 tok)
 - `auth-guard.tsx` — Where to send unauthenticated users. Defaults to /signin. (~521 tok)
 - `env.ts` — Centralized access to NEXT_PUBLIC_* env vars. (~184 tok)
@@ -418,6 +425,7 @@
 - `query-client.ts` — Create a fresh QueryClient with the app's defaults. (~773 tok)
 - `query-keys.ts` — Centralized, type-safe query key factory. (~596 tok)
 - `utils.ts` — Conditionally join class names then run them through tailwind-merge (~98 tok)
+- `video-status.ts` — Single source of truth for video-status presentation. (~1246 tok)
 - `voice.test.ts` — Tests for the voice formatters. Lifted from the video detail page (~849 tok)
 - `voice.ts` — User-facing formatters (Voice + Copy, Design.md Section 4). (~800 tok)
 
@@ -627,10 +635,10 @@
 
 - `errors.ts` — Typed errors thrown by `publishVideo` and its collaborators. The (~588 tok)
 - `index.ts` — Declares PublishVideoContext (~218 tok)
-- `publish-video.ts` — Publish a Video row to YouTube. Used by both the API (immediate path (~3664 tok)
+- `publish-video.ts` — Publish a Video row to YouTube. Used by both the API (immediate path (~4292 tok)
 - `token-refresh.ts` — Token refresh for a stored YouTube connection. (~945 tok)
-- `youtube-api.test.ts` — Unit tests for the internal-license → YouTube-API license translator. (~559 tok)
-- `youtube-api.ts` — YouTube Data API v3 — two-step resumable upload for videos.insert (~3839 tok)
+- `youtube-api.test.ts` — Unit tests for the internal-license → YouTube-API license translator. (~2000 tok)
+- `youtube-api.ts` — YouTube Data API v3 — two-step resumable upload for videos.insert (~5124 tok)
 
 ## scripts/
 

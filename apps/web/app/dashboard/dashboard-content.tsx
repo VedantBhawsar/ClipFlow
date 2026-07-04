@@ -5,14 +5,20 @@ import { Settings as SettingsIcon } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 import { YouTubeConnectCard } from "@/components/dashboard/youtube-connect-card";
+import { DashboardStats } from "@/components/dashboard/dashboard-stats";
 import { VideoList } from "@/components/dashboard/video-list";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useVideos } from "@/hooks/use-videos";
 import { useVideoSSE } from "@/hooks/use-video-sse";
 import { useYouTubeConnection } from "@/hooks/use-youtube-connection";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
+
+import {
+  FINAL_STATUSES,
+  IN_FLIGHT_STATUSES,
+  isFailedStatus,
+} from "@/lib/video-status";
 
 /**
  * Dashboard home (client component).
@@ -51,26 +57,6 @@ import { useEffect, useMemo } from "react";
  * the components that actually need it — `useYouTubeConnection()`
  * here and the same hook in the sidebar.
  */
-
-/**
- * Statuses where the pipeline is still in motion. Any of these count
- * as "an in-progress video exists" for the purposes of the polling
- * fallback — if at least one row matches, we keep refetching so a
- * status flip (transcription → generating → ready-for-review) never
- * gets stranded by a failed SSE event.
- */
-const IN_FLIGHT_STATUSES = new Set([
-  "UPLOADED",
-  "READY",
-  "EXTRACTING",
-  "TRANSCRIBING",
-  "GENERATING",
-  "READY_FOR_REVIEW",
-  "SCHEDULED",
-  "PUBLISHING",
-  "PUBLISH_FAILED",
-  "FAILED",
-]);
 
 /** Poll cadence for the safety-net refetch. 15 s feels "live" without
  *  hammering the server; this is the fallback that only kicks in when
@@ -135,34 +121,79 @@ export function DashboardContent() {
   const firstName = displayName.split(/\s+/)[0] || "creator";
   const channelConnected = youtubeConnection?.status === "connected";
 
+  // Derive the counts that drive both the welcome subline and the
+  // <DashboardStats /> row. The "in flight" set is the canonical
+  // "still moving" rule; "ready to publish" is the SETTLED-VS-IN-FLIGHT
+  // distinction — a video that's finished processing but the user
+  // hasn't queued yet (READY_FOR_REVIEW); "failed" is the two error
+  // statuses that always need a human.
+  const counts = useMemo(() => {
+    let inFlight = 0;
+    let readyToPublish = 0;
+    let failed = 0;
+    for (const v of videos) {
+      if (FINAL_STATUSES.has(v.status)) continue;
+      if (isFailedStatus(v.status)) failed += 1;
+      else if (v.status === "READY_FOR_REVIEW") readyToPublish += 1;
+      else inFlight += 1;
+    }
+    return { inFlight, readyToPublish, failed };
+  }, [videos]);
+
+  // Welcome subline is data-driven so it's always honest. "Caught up"
+  // for the cleared state avoids the "we miss you" tone of a literal
+  // "you've got 0 in flight" reading on a quiet day.
+  const subline = !videosQuery.isLoading && counts.inFlight === 0 && counts.readyToPublish === 0 && counts.failed === 0
+    ? "All caught up — nothing in flight."
+    : `You've got ${counts.inFlight} in flight, ${counts.readyToPublish} ready to publish${counts.failed ? `, ${counts.failed} need attention` : ""}.`;
+
   return (
     <div className="space-y-8">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Welcome back, {firstName}.
-        </h1>
-        <div className="flex items-center gap-2">
-          <p className="text-sm text-muted-foreground">
-            Your publishing pipeline, one glance.
-          </p>
-          <LiveDot connected={sse.connected} />
+      <header className="space-y-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <h1 className="text-[28px] font-medium tracking-tight text-[color:var(--ink)]">
+              Welcome back, {firstName}.
+            </h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm text-[color:var(--ink-muted)]">
+                {subline}
+              </p>
+              <LiveDot connected={sse.connected} />
+            </div>
+          </div>
+          <Link
+            href="/dashboard/settings"
+            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-[color:var(--ink-muted)] transition-colors hover:bg-[color:var(--surface)] hover:text-[color:var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            <SettingsIcon className="h-3.5 w-3.5" aria-hidden="true" />
+            Settings
+          </Link>
         </div>
       </header>
 
       <YouTubeConnectCard />
 
+      <DashboardStats
+        inFlight={counts.inFlight}
+        readyToPublish={counts.readyToPublish}
+        failed={counts.failed}
+        firstReadyId={videos.find((v) => v.status === "READY_FOR_REVIEW")?.id}
+        loading={videosQuery.isLoading}
+      />
+
       <section aria-labelledby="videos-heading" className="space-y-4">
         <div className="flex items-baseline justify-between">
           <h2
             id="videos-heading"
-            className="text-sm font-semibold text-foreground"
+            className="text-sm font-semibold uppercase tracking-wide text-[color:var(--ink-muted)]"
           >
             In progress
           </h2>
         </div>
 
         {videosQuery.isLoading ? (
-          <Skeleton className="h-32 bg-card" />
+          <Skeleton className="h-32 bg-[color:var(--surface)]" />
         ) : (
           <VideoList
             videos={videos}
@@ -176,46 +207,33 @@ export function DashboardContent() {
           />
         )}
       </section>
-
-      <section
-        aria-labelledby="settings-quick-action"
-        className="rounded-lg border border-border bg-card p-4"
-      >
-        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-0.5">
-            <h2
-              id="settings-quick-action"
-              className="text-sm font-semibold text-foreground"
-            >
-              Customize your experience
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              Notifications, scheduling defaults, generation style, and
-              more — all in one place.
-            </p>
-          </div>
-          <Button asChild variant="outline">
-            <Link href="/dashboard/settings/profile">
-              <SettingsIcon aria-hidden="true" />
-              Open settings
-            </Link>
-          </Button>
-        </div>
-      </section>
     </div>
   );
 }
 
+/**
+ * Live SSE indicator. Tokens only — `motion-safe:animate-pulse` so the
+ * "live" feel opts out under prefers-reduced-motion (Design.md §5).
+ *
+ * Two visual states: connected (ready tone, pulsing dot) and offline
+ * (muted, static). Both states carry a text label so the state isn't
+ * communicated by color alone.
+ */
 function LiveDot({ connected }: { connected: boolean }) {
   return (
     <span
       className={`inline-flex items-center gap-1.5 text-xs ${
-        connected ? "text-green-600" : "text-muted-foreground"
+        connected
+          ? "text-[color:var(--status-ready)]"
+          : "text-[color:var(--ink-muted)]"
       }`}
     >
       <span
+        aria-hidden="true"
         className={`inline-block h-2 w-2 rounded-full ${
-          connected ? "bg-green-500" : "bg-gray-300"
+          connected
+            ? "bg-[color:var(--status-ready)] motion-safe:animate-pulse"
+            : "bg-[color:var(--line)]"
         }`}
       />
       {connected ? "Live" : "Offline"}
