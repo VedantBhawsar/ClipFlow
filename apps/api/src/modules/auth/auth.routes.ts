@@ -28,6 +28,14 @@ import {
   refreshSchema,
   registerSchema,
 } from "./auth.schemas.js";
+import {
+  forgotPasswordController,
+  resetPasswordController,
+} from "./password-reset.controller.js";
+import {
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from "./password-reset.schemas.js";
 import "./auth.types.js";
 
 export const buildAuthRouter = (env: Env): Router => {
@@ -46,18 +54,27 @@ export const buildAuthRouter = (env: Env): Router => {
     validate({ body: loginSchema }),
     loginController(env),
   );
-  // Refresh is rate-limited like login/register — prevents brute-force
-  // attacks against the refresh-token hash space.
   router.post(
     "/refresh",
     authLimiter,
     validate({ body: refreshSchema }),
     refreshController(env),
   );
-  // Logout is intentionally NOT rate-limited (it's idempotent and
-  // authenticated via the refresh token in the body).
   router.post("/logout", validate({ body: logoutSchema }), logoutController);
   router.post("/google", validate({ body: googleAuthSchema }), googleController);
+
+  router.post(
+    "/forgot-password",
+    authLimiter,
+    validate({ body: forgotPasswordSchema }),
+    forgotPasswordController(env),
+  );
+  router.post(
+    "/reset-password",
+    authLimiter,
+    validate({ body: resetPasswordSchema }),
+    resetPasswordController(),
+  );
 
   return router;
 };

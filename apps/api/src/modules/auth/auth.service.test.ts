@@ -75,6 +75,11 @@ const mockEnv: Env = {
   LLM_MODEL: "claude-3-5-haiku-latest",
   TRANSCRIBE_POLL_MS: 2000,
   TRANSCRIBE_TIMEOUT_MS: 15 * 60_000,
+  SMTP_HOST: undefined,
+  SMTP_PORT: 587,
+  SMTP_USER: undefined,
+  SMTP_PASS: undefined,
+  SMTP_FROM: "ClipFlow <noreply@clipflow.app>",
 };
 
 const mockUser = {

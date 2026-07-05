@@ -148,7 +148,7 @@ export function YouTubeConnectCard({ className }: { className?: string }) {
           className,
         )}
       >
-        <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center gap-3 space-y-0">
           {channelThumbnailUrl ? (
             <Image
               src={channelThumbnailUrl}

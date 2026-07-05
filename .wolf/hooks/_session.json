@@ -1,16 +1,10 @@
 {
-  "session_id": "session-2026-07-04-0944",
-  "started": "2026-07-04T04:14:49.564Z",
-  "files_read": {
-    "/Users/vedant/Documents/projects/ClipFlow/packages/db/schema.prisma": {
-      "count": 1,
-      "tokens": 4208,
-      "first_read": "2026-07-04T04:16:54.551Z"
-    }
-  },
+  "session_id": "session-2026-07-05-1528",
+  "started": "2026-07-05T09:58:17.084Z",
+  "files_read": {},
   "files_written": [],
   "edit_counts": {},
-  "anatomy_hits": 1,
+  "anatomy_hits": 0,
   "anatomy_misses": 0,
   "repeated_reads_warned": 0,
   "cerebrum_warnings": 0,

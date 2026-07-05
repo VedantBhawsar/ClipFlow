@@ -175,6 +175,17 @@ export interface LogoutRequest {
   refreshToken?: string;
 }
 
+// ---------- Password reset ----------
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  password: string;
+}
+
 // ---------- Onboarding ----------
 
 export interface UserProfile {

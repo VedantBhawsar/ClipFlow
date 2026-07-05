@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-06-26T04:13:47.972Z",
   "lifetime": {
-    "total_tokens_estimated": 834571,
-    "total_reads": 292,
+    "total_tokens_estimated": 837445,
+    "total_reads": 293,
     "total_writes": 259,
-    "total_sessions": 60,
-    "anatomy_hits": 234,
+    "total_sessions": 67,
+    "anatomy_hits": 235,
     "anatomy_misses": 13,
     "repeated_reads_blocked": 50,
-    "estimated_savings_vs_bare_cli": 307984
+    "estimated_savings_vs_bare_cli": 308184
   },
   "sessions": [
     {
@@ -3680,6 +3680,28 @@
         "writes_count": 18,
         "repeated_reads_blocked": 6,
         "anatomy_lookups": 8
+      }
+    },
+    {
+      "id": "session-2026-07-04-1004",
+      "started": "2026-07-04T04:34:43.381Z",
+      "ended": "2026-07-04T04:38:19.412Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/docs/PRD.md",
+          "tokens_estimated": 2874,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [],
+      "totals": {
+        "input_tokens_estimated": 2874,
+        "output_tokens_estimated": 0,
+        "reads_count": 1,
+        "writes_count": 0,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 1
       }
     }
   ],

@@ -29,6 +29,7 @@ import type {
   ChangePasswordRequest,
   CreateVideoRequest,
   CreateVideoResponse,
+  ForgotPasswordRequest,
   ListPublishedVideosParams,
   ListVideosParams,
   LoginRequest,
@@ -40,6 +41,7 @@ import type {
   RefreshRequest,
   RefreshResponse,
   RegisterRequest,
+  ResetPasswordRequest,
   SettingsResponse,
   UpdatePreferencesRequest,
   UpdateProfileRequest,
@@ -182,6 +184,8 @@ export interface ApiClient {
   login(body: LoginRequest): Promise<AuthResponse>;
   logout(body: LogoutRequest): Promise<void>;
   refresh(body: RefreshRequest): Promise<RefreshResponse>;
+  forgotPassword(body: ForgotPasswordRequest): Promise<void>;
+  resetPassword(body: ResetPasswordRequest): Promise<void>;
 
   getOnboardingStatus(): Promise<OnboardingStatusResponse>;
   submitOnboardingProfile(body: UpdateProfileRequest): Promise<UserProfile>;
@@ -325,6 +329,12 @@ export function createApiClient(accessToken: string | null): ApiClient {
     },
     refresh(body) {
       return request("POST", "/api/auth/refresh", body);
+    },
+    forgotPassword(body) {
+      return request<void>("POST", "/api/auth/forgot-password", body);
+    },
+    resetPassword(body) {
+      return request<void>("POST", "/api/auth/reset-password", body);
     },
 
     getOnboardingStatus() {

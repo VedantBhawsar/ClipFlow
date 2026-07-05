@@ -116,7 +116,8 @@ model User {
   preferences    UserPreferences?
   youtubeChannel YouTubeChannel?
   videos         Video[]
-  refreshTokens  RefreshToken[]
+  refreshTokens        RefreshToken[]
+  passwordResetTokens  PasswordResetToken[]
 
   @@map("users")
 @@index([id, email])
@@ -169,6 +170,34 @@ model RefreshToken {
   @@index([expiresAt])
 
   @@map("refresh_tokens")
+}
+
+// ---------- Password reset tokens ----------
+
+/// One row per password reset request. Created when a user requests a
+/// password reset; verified and consumed when they submit the new password
+/// with a valid token. Tokens expire after a fixed window (1 hour) and
+/// are single-use — usedAt marks consumption so the same token can't be
+/// replayed.
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// SHA-256 hash of the raw reset token. The raw token is sent in the
+  /// reset-link URL and never persisted.
+  tokenHash String   @unique
+
+  expiresAt DateTime
+  /// Set when the token is consumed via a successful password reset.
+  /// Null until used — once set the token cannot be reused.
+  usedAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }
 
 // ---------- UserProfile ----------

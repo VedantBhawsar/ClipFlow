@@ -97,7 +97,15 @@ export function SignInForm() {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="signin-password">Password</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="signin-password">Password</Label>
+          <Link
+            href="/forgot-password"
+            className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            Forgot password?
+          </Link>
+        </div>
         <PasswordInput
           id="signin-password"
           autoComplete="current-password"

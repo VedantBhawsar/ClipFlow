@@ -121,6 +121,18 @@ const envSchema = z.object({
     .positive()
     .default(15 * 60_000),
 
+  // SMTP (email delivery for password reset, notifications)
+  // All SMTP vars are optional — when absent the email service silently
+  // skips sending, which is fine for local dev without a mail server.
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  /// Default "From" address. Falls back to a generic noreply address
+  /// when absent; set this to something like "ClipFlow <noreply@yourdomain.com>"
+  /// in production.
+  SMTP_FROM: z.string().default("ClipFlow <noreply@clipflow.app>"),
+
   // Rate limiting (per-IP defaults; tighten per-route later)
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
