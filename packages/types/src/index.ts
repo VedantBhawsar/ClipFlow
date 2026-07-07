@@ -664,10 +664,17 @@ export interface Video {
   fileSizeBytes: number;
   contentType: string;
   s3KeyOriginal: string;
-  /** Custom thumbnail S3 key. The publish path forwards this to YouTube. */
+  /** Custom thumbnail S3 key. The publish path forwards this to YouTube
+   *  when no AI candidate has been picked (see `selectedThumbnailId`). */
   s3KeyThumbnail: string | null;
   /** Original content type of the uploaded thumbnail. */
   thumbnailContentType: string | null;
+  /** AI thumbnail the user picked on the review screen. Takes
+   *  precedence over `s3KeyThumbnail` in the publish path. */
+  selectedThumbnailId: string | null;
+  /** AI-generated candidates + the user's own upload (if any), each
+   *  with a presigned GET URL ready for `<img src>`. */
+  thumbnails: ThumbnailWithUrl[];
   /** Probed video duration in seconds (set by EXTRACTING worker). */
   durationSeconds: number | null;
   /** S3 key for the extracted audio (set by EXTRACTING worker). */
@@ -720,3 +727,104 @@ export interface SseErrorEvent {
 }
 
 export type SseVideoEvent = SseStatusUpdateEvent | SseProgressEvent | SseErrorEvent;
+
+// ---------- Thumbnail generation ----------
+
+export const THUMBNAIL_SOURCES = ["AI_GENERATED", "USER_UPLOADED"] as const;
+export type ThumbnailSource = (typeof THUMBNAIL_SOURCES)[number];
+
+export const THUMBNAIL_GEN_STATUSES = ["PENDING", "PROCESSING", "COMPLETED", "FAILED"] as const;
+export type ThumbnailGenStatus = (typeof THUMBNAIL_GEN_STATUSES)[number];
+
+/**
+ * One generated thumbnail candidate for a video.
+ */
+export interface ThumbnailDto {
+  id: string;
+  videoId: string;
+  s3Key: string;
+  source: ThumbnailSource;
+  generationIndex: number;
+  width: number | null;
+  height: number | null;
+  fileSizeBytes: number | null;
+  createdAt: string;
+}
+
+/**
+ * Thumbnail row + a fresh presigned GET URL for browser display.
+ *
+ * The API mints the URL on every `GET /api/videos/:id` call (15-min
+ * expiry, mirroring the playback-URL pattern). The web layer doesn't
+ * need to know about S3 presigning — it can drop the `url` straight
+ * into an `<img src>`.
+ *
+ * `label` is precomputed server-side so the UI doesn't have to
+ * translate `ThumbnailSource` ("AI candidate 1", "Your upload", etc.).
+ */
+export interface ThumbnailWithUrl {
+  id: string;
+  source: ThumbnailSource;
+  generationIndex: number;
+  width: number | null;
+  height: number | null;
+  /** Short user-facing description ("AI candidate 1", "Your upload"). */
+  label: string;
+  /** Presigned GET URL. Always populated when present in the API. */
+  url: string;
+  createdAt: string;
+}
+
+/**
+ * A thumbnail generation attempt with full context (prompt, models, references).
+ */
+export interface ThumbnailGenerationDto {
+  id: string;
+  videoId: string;
+  status: ThumbnailGenStatus;
+  promptText: string;
+  modelUsed: string;
+  chapterRefs: Array<{ startMs: number; title: string }> | null;
+  frameRefs: string[] | null;
+  channelStyleId: string | null;
+  generatedIds: string[];
+  errorCode: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+/**
+ * Cached vision analysis of a creator's existing YouTube thumbnails.
+ */
+export interface ChannelThumbnailStyleDto {
+  id: string;
+  dominantColors: string[] | null;
+  textPlacement: string | null;
+  compositionStyle: string | null;
+  facePresence: string | null;
+  brandElements: string[] | null;
+  analysisRaw: string | null;
+  styleOverride: ThumbnailStyle;
+  thumbnailCount: number;
+  lastAnalyzedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Request body for PATCH /api/thumbnail-style (manual style override).
+ */
+export interface UpdateThumbnailStyleRequest {
+  styleOverride: ThumbnailStyle;
+}
+
+/**
+ * Request body for POST /api/videos/:id/thumbnails/regenerate.
+ */
+export interface RegenerateThumbnailsRequest {
+  /** Optional: specific chapter timestamps to focus on. Empty = all chapters. */
+  chapterTimestamps?: number[];
+  /** Optional: override the generation prompt. */
+  customPrompt?: string;
+}

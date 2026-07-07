@@ -2265,6 +2265,378 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-07-04T04:08:00.000Z"
+    },
+    {
+      "id": "bug-139",
+      "timestamp": "2026-07-07T20:02:00.000Z",
+      "error_message": "vitest fetch() ENOTFOUND when analyzeImages test passes image URLs",
+      "file": "apps/worker/src/lib/image-gen/image-gen-client.test.ts",
+      "root_cause": "Tests passed real-looking URLs to client.analyzeImages(); the client's fetchImageAsBase64 helper hit the network instead of returning a stub buffer.",
+      "fix": "Wrapped the describe block with vi.stubGlobal('fetch', ...) returning a fake arrayBuffer; vi.unstubAllGlobals() in afterEach.",
+      "tags": [
+        "test",
+        "fetch",
+        "stubGlobal",
+        "image-gen"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T20:02:00.000Z"
+    },
+    {
+      "id": "bug-140",
+      "timestamp": "2026-07-07T14:56:15.504Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "apps/worker/scripts/test-image-gen.ts",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T14:56:15.504Z"
+    },
+    {
+      "id": "bug-141",
+      "timestamp": "2026-07-07T15:07:01.975Z",
+      "error_message": "Wrong operator: || should be &&",
+      "file": "apps/worker/src/lib/image-gen/image-gen-client.ts",
+      "root_cause": "Used \"||\" instead of \"&&\"",
+      "fix": "Changed operator || → &&",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T15:07:01.975Z"
+    },
+    {
+      "id": "bug-142",
+      "timestamp": "2026-07-07T15:07:42.755Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/worker/src/lib/image-gen/image-gen-client.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T15:07:42.755Z"
+    },
+    {
+      "id": "bug-143",
+      "timestamp": "2026-07-07T15:07:56.128Z",
+      "error_message": "Type error",
+      "file": "apps/worker/src/lib/image-gen/image-gen-client.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T15:07:56.128Z"
+    },
+    {
+      "id": "bug-144",
+      "timestamp": "2026-07-07T15:08:32.764Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/worker/src/lib/image-gen/image-gen-client.test.ts",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 49→75 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T15:08:32.764Z"
+    },
+    {
+      "id": "bug-145",
+      "timestamp": "2026-07-07T15:09:28.938Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "apps/worker/src/lib/image-gen/image-gen-client.test.ts",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T15:09:28.938Z"
+    },
+    {
+      "id": "bug-146",
+      "timestamp": "2026-07-07T20:42:00.000Z",
+      "error_message": "Replicate API rejected: 'Prefer: wait=x header must specify a value between 1 and 60'",
+      "file": "apps/worker/src/lib/image-gen/image-gen-client.ts",
+      "root_cause": "Replicate's API caps the Prefer: wait=X header at 1-60 seconds. The `replicate` SDK translates `wait.timeout` directly into that header (lib/predictions.js:32: `Prefer: wait=${n}`), so passing `timeout: 60000` produces `Prefer: wait=60000` which violates the constraint. The SDK still polls client-side beyond the timeout, so the right value is the API ceiling (60), not the desired total wait.",
+      "fix": "Changed `wait: { mode: \"block\", interval: 1000, timeout: 60_000 }` → `wait: { mode: \"block\", interval: 1000, timeout: 60 }`. Updated the comment to call out that `timeout` is what goes into the Prefer header (capped at 60), and that the SDK handles client-side polling beyond that.",
+      "tags": [
+        "replicate",
+        "sdk",
+        "header",
+        "prefer",
+        "image-gen"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T20:42:00.000Z"
+    },
+    {
+      "id": "bug-147",
+      "timestamp": "2026-07-07T15:36:50.350Z",
+      "error_message": "Missing guard clause",
+      "file": "apps/api/src/modules/videos/videos.types.ts",
+      "root_cause": "No early return/throw for edge case: source === \"USER_UPLOADED\"",
+      "fix": "Added guard clause: if (source === \"USER_UPLOADED\")",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T15:36:50.350Z"
+    },
+    {
+      "id": "bug-148",
+      "timestamp": "2026-07-07T15:37:17.769Z",
+      "error_message": "Type error",
+      "file": "apps/api/src/modules/videos/videos.service.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T15:37:17.769Z"
+    },
+    {
+      "id": "bug-149",
+      "timestamp": "2026-07-07T15:38:23.429Z",
+      "error_message": "Missing guard clause",
+      "file": "apps/api/src/modules/videos/videos.service.ts",
+      "root_cause": "No early return/throw for edge case: a.source !== b.source",
+      "fix": "Added guard clause: if (a.source !== b.source)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T15:38:23.429Z"
+    },
+    {
+      "id": "bug-150",
+      "timestamp": "2026-07-07T15:40:08.104Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/api/src/modules/videos/videos.controller.ts",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 12→16 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T15:40:08.104Z"
+    },
+    {
+      "id": "bug-151",
+      "timestamp": "2026-07-07T15:44:00.179Z",
+      "error_message": "Missing guard clause",
+      "file": "packages/youtube-upload/src/publish-video.ts",
+      "root_cause": "No early return/throw for edge case: !video",
+      "fix": "Added guard clause: if (!video)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T15:44:00.179Z"
+    },
+    {
+      "id": "bug-152",
+      "timestamp": "2026-07-07T15:44:31.663Z",
+      "error_message": "Significant refactor of ",
+      "file": "packages/youtube-upload/src/publish-video.ts",
+      "root_cause": "13 lines replaced/restructured",
+      "fix": "Rewrote 42→54 lines (13 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T15:44:31.663Z"
+    },
+    {
+      "id": "bug-153",
+      "timestamp": "2026-07-07T15:45:24.986Z",
+      "error_message": "Type error",
+      "file": "apps/web/lib/api-client.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T15:45:24.986Z"
+    },
+    {
+      "id": "bug-154",
+      "timestamp": "2026-07-07T15:46:12.094Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/web/hooks/use-videos.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T15:46:12.094Z"
+    },
+    {
+      "id": "bug-155",
+      "timestamp": "2026-07-07T15:47:49.002Z",
+      "error_message": "Type error",
+      "file": "apps/web/app/dashboard/published/[id]/page.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T15:47:49.002Z"
+    },
+    {
+      "id": "bug-156",
+      "timestamp": "2026-07-07T15:47:56.233Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/web/app/dashboard/published/[id]/page.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T15:47:56.233Z"
+    },
+    {
+      "id": "bug-157",
+      "timestamp": "2026-07-07T15:48:25.929Z",
+      "error_message": "Wrong operator: ?? should be ===",
+      "file": "apps/web/app/dashboard/published/[id]/page.tsx",
+      "root_cause": "Used \"??\" instead of \"===\"",
+      "fix": "Changed operator ?? → ===",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T15:48:25.929Z"
+    },
+    {
+      "id": "bug-158",
+      "timestamp": "2026-07-07T15:52:40.414Z",
+      "error_message": "Function not marked async",
+      "file": "apps/api/src/modules/videos/videos.service.test.ts",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T15:52:40.414Z"
+    },
+    {
+      "id": "bug-159",
+      "timestamp": "2026-07-07T15:53:23.731Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/api/src/modules/videos/videos.service.test.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T15:53:23.731Z"
+    },
+    {
+      "id": "bug-160",
+      "timestamp": "2026-07-07T21:28:00.000Z",
+      "error_message": "apps/worker/src/jobs/generate.test.ts: 3 tests failing because generate.ts no longer flips status to READY_FOR_REVIEW (it now enqueues a separate thumbnails job to do that flip).",
+      "file": "apps/worker/src/jobs/generate.ts",
+      "root_cause": "Pre-existing in-progress refactor on disk (not part of this session's work). The generate job stopped setting status: 'READY_FOR_REVIEW' on the chapter update and now relies on the follow-up thumbnails job to flip the row. The matching tests still assert the old single-step flow.",
+      "fix": "Out of scope — these tests need to be updated together with the new thumbnails job. Confirmed failures are pre-existing (stashed diff reproduces them).",
+      "tags": [
+        "worker",
+        "pre-existing",
+        "test-failure",
+        "refactor-in-progress"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T21:28:00.000Z"
+    },
+    {
+      "id": "bug-161",
+      "timestamp": "2026-07-07T21:28:00.000Z",
+      "error_message": "apps/web/app/dashboard/settings/security/change-password-form.test.tsx: 4 tests failing with getByLabelText. Pre-existing in main; not introduced by this session.",
+      "file": "apps/web/app/dashboard/settings/security/change-password-form.test.tsx",
+      "root_cause": "Pre-existing — confirmed by stashing my changes and re-running the same test file (still 4 failures).",
+      "fix": "Out of scope for this session.",
+      "tags": [
+        "web",
+        "pre-existing",
+        "test-failure"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-07T21:28:00.000Z"
     }
   ]
 }

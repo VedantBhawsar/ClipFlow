@@ -4,6 +4,7 @@ import { ArrowLeft, ExternalLink, AlertCircle } from "lucide-react";
 import type {
   Video,
   VideoPrivacyStatus,
+  VideoStatus,
 } from "@clipflow/types";
 
 import {
@@ -11,7 +12,7 @@ import {
 } from "@/components/dashboard/status-timeline";
 import { VideoDetailLiveProgress } from "@/components/dashboard/video-detail-live-progress";
 import { VideoReviewPanel } from "@/components/review/video-review-panel";
-import { ThumbnailReview } from "@/components/review/thumbnail-review";
+import { ThumbnailReviewPanel } from "@/components/review/thumbnail-review-panel";
 import type { ThumbnailOption } from "@/components/review/thumbnail-card";
 import { UnpublishButton } from "@/app/dashboard/published/[id]/unpublish-button";
 import { CancelButton } from "@/app/dashboard/published/[id]/cancel-button";
@@ -69,6 +70,8 @@ export default async function VideoDetailPage({ params }: PageProps) {
   let video: Video | null = null;
   try {
     video = await fetchVideo(token, id);
+
+    console.log("video" , video)
   } catch (err) {
     if (err instanceof ServerApiError && err.status === 404) {
       notFound();
@@ -86,8 +89,16 @@ export default async function VideoDetailPage({ params }: PageProps) {
     ? `https://i.ytimg.com/vi/${video.youtubeVideoId}/hqdefault.jpg`
     : null;
   const thumbnailOptions = buildThumbnailOptions(video, publishedThumbnail);
-  const selectedThumbnailId =
-    thumbnailOptions.find((t) => t.src != null)?.id ?? thumbnailOptions[0]?.id;
+  // The user can only pick / regenerate while the video is in a
+  // review-window state. Once it's published (or stuck mid-flight),
+  // the grid is read-only context.
+  const interactiveThumbnailStatuses: ReadonlySet<VideoStatus> = new Set([
+    "READY_FOR_REVIEW",
+    "PUBLISH_FAILED",
+  ]);
+  const thumbnailsInteractive = interactiveThumbnailStatuses.has(
+    video.status as VideoStatus,
+  );
   const inFlight = video.status !== "PUBLISHED";
 
   return (
@@ -189,12 +200,13 @@ export default async function VideoDetailPage({ params }: PageProps) {
 
       {/* Thumbnails grid — always visible on the detail page. The
           selected tile is the one actually going to YouTube. */}
-      <ThumbnailReview
+      <ThumbnailReviewPanel
+        videoId={video.id}
         options={thumbnailOptions}
-        selectedId={selectedThumbnailId}
+        initialSelectedId={video.selectedThumbnailId ?? null}
         regenerationsUsed={0}
         regenerationsAllowed={5}
-        disabled
+        disabled={!thumbnailsInteractive}
       />
 
       {/* Details — text-heavy content, capped at the ~960px column
@@ -375,13 +387,16 @@ function ActionPanel({ video }: { video: Video }) {
 /**
  * Build the thumbnail candidate slots shown in the review grid.
  *
- * The v1 data model persists a single custom thumbnail (`s3KeyThumbnail`)
- * plus, once published, YouTube's own generated frame — we render both
- * as the "selected" and "AI candidate" slots respectively, and pad the
- * grid with empty slots so the layout is always the same 4-up grid
- * across statuses. Empty slots carry the copy Design.md Section 4
- * calls for ("Regenerate to fill") instead of showing a raw placeholder
- * image.
+ * Reads from `video.thumbnails[]` (populated by the API's `getVideo`
+ * with fresh presigned GET URLs + user-facing labels). The grid is
+ * padded to 4 slots with empty placeholders so the layout stays the
+ * same across statuses — Design.md Section 4 calls for "Regenerate
+ * to fill" copy on empty slots rather than raw placeholder images.
+ *
+ * For PUBLISHED videos without any persisted thumbnail row (rare:
+ * would mean the row was published before the thumbnail feature
+ * shipped), we fall back to YouTube's auto-generated poster so the
+ * grid still shows one tile instead of four empty ones.
  *
  * The 5-regeneration cap is v1's default tier limit; when tier data
  * lives in the DB (v1.5 billing slice), the page will pass real values.
@@ -392,16 +407,22 @@ function buildThumbnailOptions(
 ): ThumbnailOption[] {
   const options: ThumbnailOption[] = [];
 
-  if (video.s3KeyThumbnail) {
+  // First pass: every persisted thumbnail row (USER_UPLOADED +
+  // AI_GENERATED). The server already sorted them with the user's
+  // upload on top and AI candidates numbered 1..N.
+  for (const t of video.thumbnails) {
     options.push({
-      id: "user-upload",
-      src: publishedThumbnail ?? null,
-      alt: `Your custom thumbnail for "${video.title}"`,
-      label: "Your upload",
+      id: t.id,
+      src: t.url,
+      alt: `Thumbnail candidate for "${video.title}"`,
+      label: t.label,
     });
   }
 
-  if (publishedThumbnail && !video.s3KeyThumbnail) {
+  // Fallback for PUBLISHED rows with no thumbnail row (legacy or
+  // pre-feature). YouTube's auto-generated frame is what the watch
+  // page is showing today — at least render that one tile.
+  if (options.length === 0 && publishedThumbnail) {
     options.push({
       id: "youtube-generated",
       src: publishedThumbnail,
@@ -410,6 +431,8 @@ function buildThumbnailOptions(
     });
   }
 
+  // Pad to a stable 4-tile grid so the layout doesn't jump between
+  // statuses.
   while (options.length < 4) {
     options.push({
       id: `slot-${options.length}`,

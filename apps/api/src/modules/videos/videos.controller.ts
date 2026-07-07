@@ -193,11 +193,12 @@ export const getVideoController = async (
   res: Response,
 ): Promise<void> => {
   const userId = requireUser(req);
+  const env = requireEnv(req);
   const id = (req.params as { id?: string }).id;
   if (!id) {
     throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
   }
-  const result = await videosService.getVideo(userId, id);
+  const result = await videosService.getVideo(userId, id, env);
   sendOk(res, result, "Video retrieved.");
 };
 
@@ -368,13 +369,17 @@ export const streamVideoController = async (
   res: Response,
 ): Promise<void> => {
   const userId = requireUser(req);
+  const env = requireEnv(req);
   const videoId = (req.params as { id?: string }).id;
   if (!videoId) {
     throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
   }
 
-  // Verify ownership before streaming
-  await videosService.getVideo(userId, videoId);
+  // Verify ownership before streaming. We don't need the DTO back
+  // here — the SSE handler owns its own envelope — but the
+  // ownership check still has to run, and throwing inside the
+  // service is what enforces it.
+  await videosService.getVideo(userId, videoId, env);
 
   res.writeHead(200, {
     "Content-Type": "text/event-stream",

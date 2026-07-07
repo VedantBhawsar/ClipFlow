@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-04T04:08:05.063Z
-> Files: 359 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-07T16:07:25.876Z
+> Files: 368 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../tmp/
 
@@ -17,7 +17,9 @@
 
 - `memoized-floating-dijkstra.md` — ClipFlow Dashboard UI Polish — Plan (~2700 tok)
 - `quirky-giggling-blanket.md` — Plan: In-place editing for video metadata + chapters (~2106 tok)
+- `radiant-prancing-quail.md` — Plan: Migrate image-gen-client to `@google/genai` SDK (~1818 tok)
 - `witty-snuggling-seal.md` — Plan: Add Publish / Schedule UI for READY_FOR_REVIEW videos (~4526 tok)
+- `wondrous-meandering-diffie.md` — Plan: Show AI-generated thumbnails on the video detail page and wire selection (~1979 tok)
 - `zazzy-plotting-peacock.md` — Audio + Frame Extraction (`video-ingest` queue) (~3360 tok)
 
 ## ../../../.claude/projects/-Users-vedant-Documents-projects-ClipFlow/
@@ -28,7 +30,7 @@
 
 - `.dockerignore` (~136 tok)
 - `.DS_Store` (~1640 tok)
-- `.gitignore` — Git ignore rules (~107 tok)
+- `.gitignore` — Git ignore rules (~136 tok)
 - `.npmrc` (~0 tok)
 - `CLAUDE.md` — OpenWolf (~3549 tok)
 - `docker-compose.yml` — Docker Compose services (~1816 tok)
@@ -37,7 +39,7 @@
 - `pnpm-lock.yaml` — pnpm lock file (~100120 tok)
 - `pnpm-workspace.yaml` (~12 tok)
 - `README.md` — Project documentation (~7104 tok)
-- `turbo.json` — ", ".next/**", "!.next/cache/**", "!.next/dev/**"] (~489 tok)
+- `turbo.json` — ", ".next/**", "!.next/cache/**", "!.next/dev/**"] (~560 tok)
 - `z.mjs` — Declares args (~84 tok)
 
 ## .claude/
@@ -152,12 +154,12 @@
 
 ## apps/api/src/modules/videos/
 
-- `videos.controller.ts` — Videos controller. (~3657 tok)
+- `videos.controller.ts` — Videos controller. (~3730 tok)
 - `videos.routes.ts` — Videos route definitions. (~1514 tok)
 - `videos.schemas.ts` — Zod schemas for the videos module. (~4468 tok)
-- `videos.service.test.ts` — Tests for the videos service. (~10721 tok)
-- `videos.service.ts` — Videos service — owns all DB + S3 + YouTube-publish enqueue logic (~11564 tok)
-- `videos.types.ts` — Module-internal types for the videos module. (~615 tok)
+- `videos.service.test.ts` — Tests for the videos service. (~12754 tok)
+- `videos.service.ts` — Videos service — owns all DB + S3 + YouTube-publish enqueue logic (~12339 tok)
+- `videos.types.ts` — Module-internal types for the videos module. (~1301 tok)
 
 ## apps/api/src/modules/youtube/
 
@@ -230,7 +232,7 @@
 
 - `cancel-button.tsx` — Cancel action for the video detail page. Calls (~436 tok)
 - `edit-details-button.tsx` — Thin client island that keeps the Sheet open-state and renders the (~344 tok)
-- `page.tsx` — `/dashboard/published/:id` — full detail view for a single video. (~4244 tok)
+- `page.tsx` — `/dashboard/published/:id` — full detail view for a single video. (~4536 tok)
 - `publish-button.test.tsx` — Tests for `<PublishButton>` + the `<PublishSheet>` it opens. (~3072 tok)
 - `publish-button.tsx` — Header "Publish" button for a `READY_FOR_REVIEW` (or (~304 tok)
 - `unpublish-button.tsx` — Unpublish action for the video detail page. Calls (~426 tok)
@@ -357,6 +359,8 @@
 - `chapters-review.test.tsx` — Tests for the controlled `<ChaptersReview>` component. (~1689 tok)
 - `chapters-review.tsx` — Fired whenever the user mutates the chapter list or summary. (~4682 tok)
 - `thumbnail-card.tsx` — Shape for a single thumbnail candidate rendered by (~1242 tok)
+- `thumbnail-review-panel.test.tsx` — Tests for `<ThumbnailReviewPanel>` — the client-side wrapper around (~1406 tok)
+- `thumbnail-review-panel.tsx` — Client-side wrapper around `<ThumbnailReview>` that owns the (~1370 tok)
 - `thumbnail-review.tsx` — id of the currently active option — falls back to `options[0]`. (~953 tok)
 - `video-review-panel.tsx` — Review screen for the AI-generated chapter list + summary. Owned by (~1647 tok)
 
@@ -409,12 +413,12 @@
 - `use-update-preferences.ts` — Partial update of the authenticated user's preferences. The server (~330 tok)
 - `use-update-profile.ts` — Update the authenticated user's profile. Two flavors: (~474 tok)
 - `use-video-sse.ts` — Subscribe to SSE events for video processing. (~847 tok)
-- `use-videos.ts` — TanStack Query hooks + an XHR-based upload helper for the (~3432 tok)
+- `use-videos.ts` — TanStack Query hooks + an XHR-based upload helper for the (~4391 tok)
 - `use-youtube-connection.ts` — Narrow YouTube-connection read for /settings/connected. The (~203 tok)
 
 ## apps/web/lib/
 
-- `api-client.ts` — Typed API surface for talking to the Express backend. (~4337 tok)
+- `api-client.ts` — Typed API surface for talking to the Express backend. (~4868 tok)
 - `auth-guard.test.tsx` — mockReplace (~700 tok)
 - `auth-guard.tsx` — Where to send unauthenticated users. Defaults to /signin. (~521 tok)
 - `env.ts` — Centralized access to NEXT_PUBLIC_* env vars. (~184 tok)
@@ -423,7 +427,7 @@
 - `onboarding-guard.tsx` — "require-incomplete": only render for users who haven't finished (~616 tok)
 - `profile-options.ts` — Static option lists for the onboarding wizard + settings profile form. (~432 tok)
 - `query-client.ts` — Create a fresh QueryClient with the app's defaults. (~773 tok)
-- `query-keys.ts` — Centralized, type-safe query key factory. (~596 tok)
+- `query-keys.ts` — Centralized, type-safe query key factory. (~722 tok)
 - `utils.ts` — Conditionally join class names then run them through tailwind-merge (~98 tok)
 - `video-status.ts` — Single source of truth for video-status presentation. (~1246 tok)
 - `voice.test.ts` — Tests for the voice formatters. Lifted from the video detail page (~849 tok)
@@ -434,9 +438,13 @@
 - `.dockerignore` — Build artifacts (~80 tok)
 - `Dockerfile` — Docker container definition (~1163 tok)
 - `eslint.config.mjs` — ESLint flat configuration (~34 tok)
-- `package.json` — Node.js package manifest (~311 tok)
+- `package.json` — Node.js package manifest (~344 tok)
 - `tsconfig.json` — TypeScript configuration (~57 tok)
 - `vitest.config.ts` — /*.test.ts"], (~45 tok)
+
+## apps/worker/scripts/
+
+- `test-image-gen.ts` — Smoke test for `ImageGenClient`. Hits the real Gemini (or Replicate) endpoint with a default prompt ("a red apple on a white background") and writes the resulting image(s) to `.image-gen-smoke/<timestamp>.png`. Accepts `--prompt "..."` and `--provider gemini|replicate` CLI overrides. Loads `.env`, validates via `@clipflow/config.loadEnv`, classifies failures with `classifyImageGenError`, exits non-zero on any error. NOT part of vitest (vitest include is `src/**/*.test.ts`). Run via `pnpm --filter worker test:image-gen`. (~1600 tok)
 
 ## apps/worker/src/
 
@@ -466,6 +474,13 @@
 - `ffmpeg-errors.ts` — Classify FFmpeg errors into permanent vs transient. (~1170 tok)
 - `ffmpeg.test.ts` — Unit tests for FFmpeg arg construction and error classification. (~1490 tok)
 - `ffmpeg.ts` — Thin FFmpeg wrapper for the `video-ingest` BullMQ job. (~1478 tok)
+
+## apps/worker/src/lib/image-gen/
+
+- `image-gen-client.test.ts` — Unit tests for `ImageGenClient` (Gemini path via `@google/genai` and (~5797 tok)
+- `image-gen-client.ts` — Negative prompt (Replicate only — ignored by Gemini). (~4004 tok)
+- `image-gen-errors.ts` — `ImageGenError` class + `classifyImageGenError(err)` returning `{kind: "permanent"|"transient", reasonCode, message}`. `mapSdkApiError(err)` translates `@google/genai` `ApiError` shapes (numeric `.status` field) to ImageGenError codes (401/403→AUTH, 404→MODEL_NOT_FOUND, 429→RATE_LIMIT, >=500→UPSTREAM). Shape-based detection (bug-141), not `instanceof`. (~1100 tok)
+- `index.ts` — Declares ImageGenOptions (~129 tok)
 
 ## apps/worker/src/lib/llm/
 
@@ -508,7 +523,7 @@
 
 ## packages/config/src/
 
-- `index.ts` — Zod schemas: envSchema, publicEnvSchema (~1986 tok)
+- `index.ts` — Zod schemas: envSchema, publicEnvSchema (~2623 tok)
 
 ## packages/crypto/
 
@@ -615,7 +630,7 @@
 
 ## packages/types/src/
 
-- `index.ts` — ---------- Enums (mirror Prisma enums in packages/db) ---------- (~6546 tok)
+- `index.ts` — ---------- Enums (mirror Prisma enums in packages/db) ---------- (~7544 tok)
 
 ## packages/typescript-config/
 
@@ -635,7 +650,7 @@
 
 - `errors.ts` — Typed errors thrown by `publishVideo` and its collaborators. The (~588 tok)
 - `index.ts` — Declares PublishVideoContext (~218 tok)
-- `publish-video.ts` — Publish a Video row to YouTube. Used by both the API (immediate path (~4292 tok)
+- `publish-video.ts` — Publish a Video row to YouTube. Used by both the API (immediate path (~4838 tok)
 - `token-refresh.ts` — Token refresh for a stored YouTube connection. (~945 tok)
 - `youtube-api.test.ts` — Unit tests for the internal-license → YouTube-API license translator. (~2000 tok)
 - `youtube-api.ts` — YouTube Data API v3 — two-step resumable upload for videos.insert (~5124 tok)

@@ -22,6 +22,8 @@ import type {
   ListVideosParams,
   PaginatedVideos,
   PublishVideoRequest,
+  RegenerateThumbnailsRequest,
+  ThumbnailDto,
   UpdateVideoRequest,
   Video,
 } from "@clipflow/types";
@@ -345,4 +347,100 @@ function uploadViaPresignedPost(
       xhr.abort();
     },
   };
+}
+
+// ---------- Thumbnail hooks ----------
+//
+// These are the client side of the thumbnail review panel on the
+// video detail page. Most callers won't need `useListThumbnails` —
+// the detail DTO already carries `video.thumbnails[]` with fresh
+// presigned URLs. The hook exists so the regenerate flow can
+// refetch thumbnails independently of the full video row, and so a
+// future side-panel (e.g. a dedicated /thumbnails page) can read
+// them in isolation.
+
+/**
+ * List every persisted thumbnail for a video. The server returns
+ * presigned GET URLs attached to each row, so the consumer can
+ * render them directly without a second round-trip.
+ *
+ * `enabled: !!api` mirrors the rest of the file's session-gating
+ * convention — see `useVideos` for the rationale.
+ */
+export function useListThumbnails(videoId: string | null | undefined) {
+  const api = useApi();
+  return useQuery<ThumbnailDto[]>({
+    queryKey: queryKeys.videos.thumbnails(videoId ?? ""),
+    queryFn: () => api.listThumbnails(videoId!),
+    enabled: !!api && !!videoId,
+  });
+}
+
+/**
+ * Mark an existing thumbnail as the video's selected one.
+ *
+ * On success we don't trust the mutation's response alone — we
+ * invalidate every cache slot that could show the row so the
+ * detail page and the list views both refetch with the new
+ * `selectedThumbnailId` (and the freshly presigned URLs on
+ * `thumbnails[]`).
+ *
+ * The hook returns the standard `useMutation` shape; the panel
+ * uses the optimistic-update pattern documented on
+ * `<ThumbnailReviewPanel>` rather than waiting for the server
+ * round-trip.
+ */
+export function useSelectThumbnail() {
+  const api = useApi();
+  const qc = useQueryClient();
+  return useMutation<
+    ThumbnailDto,
+    Error,
+    { videoId: string; thumbnailId: string }
+  >({
+    mutationFn: ({ videoId, thumbnailId }) =>
+      api.selectThumbnail(videoId, thumbnailId),
+    onSuccess: (_thumbnail, { videoId }) => {
+      void qc.invalidateQueries({ queryKey: ["videos", "list"] });
+      void qc.invalidateQueries({ queryKey: ["videos", "published"] });
+      void qc.invalidateQueries({
+        queryKey: queryKeys.videos.detail(videoId),
+      });
+      void qc.invalidateQueries({
+        queryKey: queryKeys.videos.thumbnails(videoId),
+      });
+    },
+  });
+}
+
+/**
+ * Enqueue a fresh thumbnail generation. The job runs in the
+ * worker; the SSE stream on the detail page will fire status
+ * updates when the new rows land, and TanStack will refetch the
+ * invalidated slots.
+ *
+ * Same invalidation set as `useSelectThumbnail` — anything that
+ * could show the row needs a refresh.
+ */
+export function useRegenerateThumbnails() {
+  const api = useApi();
+  const qc = useQueryClient();
+  return useMutation<
+    { generationId: string },
+    Error,
+    { videoId: string; body?: RegenerateThumbnailsRequest }
+  >({
+    mutationFn: ({ videoId, body }) =>
+      api.regenerateThumbnails(videoId, body),
+    onSuccess: (_result, { videoId }) => {
+      void qc.invalidateQueries({ queryKey: ["videos", "list"] });
+      void qc.invalidateQueries({ queryKey: ["videos", "published"] });
+      void qc.invalidateQueries({
+        queryKey: queryKeys.videos.detail(videoId),
+      });
+      void qc.invalidateQueries({
+        queryKey: queryKeys.videos.thumbnails(videoId),
+      });
+    },
+  });
 }

@@ -28,12 +28,16 @@ export const YOUTUBE_PUBLISH_QUEUE = "youtube-publish";
 export const VIDEO_INGEST_QUEUE = "video-ingest";
 export const TRANSCRIPTION_QUEUE = "transcription";
 export const GENERATE_QUEUE = "generate";
+export const THUMBNAILS_QUEUE = "thumbnails";
+export const CHANNEL_STYLE_QUEUE = "channel-style-analyze";
 
 let cachedConnection: RedisType | null = null;
 let cachedPublishQueue: Queue | null = null;
 let cachedIngestQueue: Queue | null = null;
 let cachedTranscriptionQueue: Queue | null = null;
 let cachedGenerateQueue: Queue | null = null;
+let cachedThumbnailsQueue: Queue | null = null;
+let cachedChannelStyleQueue: Queue | null = null;
 
 /**
  * Build (or return) the shared Redis connection. Idempotent — first
@@ -116,6 +120,38 @@ export const getGenerateQueue = (env: Env): Queue | null => {
     prefix: env.BULLMQ_PREFIX,
   });
   return cachedGenerateQueue;
+};
+
+/**
+ * Get (or build) the singleton thumbnails queue. Shares the same Redis
+ * connection as the other queues.
+ */
+export const getThumbnailsQueue = (env: Env): Queue | null => {
+  if (!env.REDIS_URL) return null;
+  if (cachedThumbnailsQueue) return cachedThumbnailsQueue;
+  const conn = getConnection(env);
+  if (!conn) return null;
+  cachedThumbnailsQueue = new Queue(THUMBNAILS_QUEUE, {
+    connection: conn,
+    prefix: env.BULLMQ_PREFIX,
+  });
+  return cachedThumbnailsQueue;
+};
+
+/**
+ * Get (or build) the singleton channel-style-analyze queue. Shares the same Redis
+ * connection as the other queues.
+ */
+export const getChannelStyleQueue = (env: Env): Queue | null => {
+  if (!env.REDIS_URL) return null;
+  if (cachedChannelStyleQueue) return cachedChannelStyleQueue;
+  const conn = getConnection(env);
+  if (!conn) return null;
+  cachedChannelStyleQueue = new Queue(CHANNEL_STYLE_QUEUE, {
+    connection: conn,
+    prefix: env.BULLMQ_PREFIX,
+  });
+  return cachedChannelStyleQueue;
 };
 
 /**
@@ -288,6 +324,52 @@ export const enqueueGenerateJob = async (
 };
 
 /**
+ * Enqueue a `thumbnails` job for a Video. Uses a deterministic
+ * `jobId` (`thumbnails-${videoId}`) so re-enqueues dedupe.
+ */
+export const enqueueThumbnailsJob = async (
+  videoId: string,
+  env: Env,
+): Promise<void> => {
+  const queue = getThumbnailsQueue(env);
+  if (!queue) {
+    throw new AppError(
+      503,
+      "QUEUE_UNAVAILABLE",
+      "REDIS_URL is not configured; cannot enqueue thumbnail jobs.",
+    );
+  }
+  await queue.add(
+    "thumbnails",
+    { videoId },
+    { jobId: `thumbnails-${videoId}` },
+  );
+};
+
+/**
+ * Enqueue a `channel-style-analyze` job for a User. Uses a deterministic
+ * `jobId` (`channel-style-${userId}`) so re-enqueues dedupe.
+ */
+export const enqueueChannelStyleJob = async (
+  userId: string,
+  env: Env,
+): Promise<void> => {
+  const queue = getChannelStyleQueue(env);
+  if (!queue) {
+    throw new AppError(
+      503,
+      "QUEUE_UNAVAILABLE",
+      "REDIS_URL is not configured; cannot enqueue channel-style analysis jobs.",
+    );
+  }
+  await queue.add(
+    "channel-style-analyze",
+    { userId },
+    { jobId: `channel-style-${userId}` },
+  );
+};
+
+/**
  * Close all queues and the shared Redis connection on graceful
  * shutdown. Order: close queues before disconnecting the connection.
  *
@@ -311,6 +393,14 @@ export const closePublishQueue = async (): Promise<void> => {
   if (cachedGenerateQueue) {
     await cachedGenerateQueue.close();
     cachedGenerateQueue = null;
+  }
+  if (cachedThumbnailsQueue) {
+    await cachedThumbnailsQueue.close();
+    cachedThumbnailsQueue = null;
+  }
+  if (cachedChannelStyleQueue) {
+    await cachedChannelStyleQueue.close();
+    cachedChannelStyleQueue = null;
   }
   if (cachedConnection) {
     cachedConnection.disconnect();

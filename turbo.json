@@ -64,7 +64,15 @@
         "YOUTUBE_PRESIGNED_POST_TTL",
         "NODE_ENV",
         "AUTH_SECRET",
-        "NEXTAUTH_SECRET"
+        "NEXTAUTH_SECRET",
+        "IMAGE_GEN_PROVIDER",
+        "GEMINI_API_KEY",
+        "GEMINI_IMAGE_MODEL",
+        "GEMINI_VISION_MODEL",
+        "REPLICATE_API_TOKEN",
+        "REPLICATE_IMAGE_MODEL",
+        "THUMBNAILS_PER_VIDEO",
+        "THUMBNAIL_VISION_ENABLED"
       ]
     }
   }

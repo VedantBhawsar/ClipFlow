@@ -46,5 +46,12 @@ export const queryKeys = {
       ["videos", "published", params] as const,
     /** Single video by id. */
     detail: (id: string) => ["videos", "detail", id] as const,
+    /** Thumbnail list for a single video (used by the review panel
+     *  when it wants to refetch independently of the video detail
+     *  DTO). Most callers just read the `thumbnails[]` already
+     *  baked into the detail DTO and don't need this — the slot
+     *  exists so the regenerate hook can invalidate it without
+     *  forcing a full detail refetch. */
+    thumbnails: (id: string) => ["videos", "thumbnails", id] as const,
   },
 } as const;

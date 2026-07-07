@@ -76,6 +76,13 @@ export interface ProcessContext {
   env: Env;
   logger: Logger;
   events?: EventPublisher;
+  /**
+   * Enqueue a follow-up `thumbnails` job for the given video.
+   * Set by the worker at boot after the thumbnails queue is
+   * constructed. Optional so unit tests that exercise only the
+   * generate path can pass a no-op / vi.fn() mock.
+   */
+  enqueueThumbnails?: (videoId: string) => Promise<void>;
 }
 
 const TMP_PREFIX = join(tmpdir(), "clipflow-generate-");
@@ -398,23 +405,12 @@ export const processGenerateJob = async (
         // declared above; the cast here is the only place Prisma sees
         // it, so we keep it narrow.
         chaptersJson: toChaptersJson(validated.output) as unknown as object,
-        status: "READY_FOR_REVIEW",
-        // Clear any prior failureReason now that we've reached
-        // READY_FOR_REVIEW — the user shouldn't see a stale error
-        // message alongside a successful generation.
+        // Stay at GENERATING — the thumbnails job will flip to
+        // READY_FOR_REVIEW when both chapters AND thumbnails are done.
+        // The thumbnails job is enqueued below.
         failureReason: null,
       },
     });
-
-    if (canPublish) {
-      void ctx.events!.publish({
-        type: "STATUS_UPDATE",
-        videoId,
-        userId: userId!,
-        status: "READY_FOR_REVIEW",
-        timestamp: nowIso(),
-      });
-    }
 
     ctx.logger.info(
       {
@@ -422,8 +418,35 @@ export const processGenerateJob = async (
         chapterCount: validated.output.chapters.length,
         summaryLen: validated.output.summary.length,
       },
-      "Generate job completed",
+      "Generate job completed — enqueuing thumbnails",
     );
+
+    // ---- Enqueue the thumbnails follow-up ----
+    //
+    // Done AFTER the DB update so a crash between enqueue and DB
+    // update doesn't leave a stranded job. The deterministic jobId
+    // (`thumbnails-${videoId}`) dedupes against any stale recovery
+    // re-enqueue.
+    if (ctx.enqueueThumbnails) {
+      try {
+        await ctx.enqueueThumbnails(videoId);
+        ctx.logger.info({ videoId }, "Enqueued thumbnails follow-up job");
+      } catch (enqueueErr) {
+        ctx.logger.error(
+          {
+            videoId,
+            err: enqueueErr instanceof Error ? enqueueErr.message : String(enqueueErr),
+          },
+          "Failed to enqueue thumbnails follow-up; rethrowing for retry",
+        );
+        throw enqueueErr;
+      }
+    } else {
+      ctx.logger.info(
+        { videoId },
+        "Thumbnails enqueue not wired — keep row at GENERATING for next slice",
+      );
+    }
   } catch (err) {
     ctx.logger.error(
       {

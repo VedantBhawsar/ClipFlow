@@ -14,8 +14,10 @@ import { Redis } from "ioredis";
 import { loadWorkerEnv } from "./env.js";
 import { buildLogger } from "./config/logger.js";
 import {
+  buildChannelStyleQueue,
   buildGenerateQueue,
   buildPublishQueue,
+  buildThumbnailsQueue,
   buildTranscriptionQueue,
   buildVideoIngestQueue,
 } from "./config/queue.js";
@@ -161,26 +163,42 @@ const main = async (): Promise<void> => {
     process.exit(1);
   }
 
-  // Build all four queues — they share the same Redis connection.
+  // Build all six queues — they share the same Redis connection.
   //
   // Order matters:
-  //   - generate queue is built BEFORE transcription so we can hand
-  //     the transcription worker a closure that enqueues into the
-  //     generate queue (transcription's tail enqueues the generate
-  //     job after flipping the row to GENERATING).
+  //   - thumbnails queue is built BEFORE generate so we can hand
+  //     the generate worker a closure that enqueues into the
+  //     thumbnails queue (generate's tail enqueues the thumbnails
+  //     job after persisting chapters).
+  //   - generate queue is built BEFORE transcription for the same
+  //     reason (transcription's tail enqueues generate).
   //   - transcription queue is built BEFORE ingest for the same
-  //     reason — ingest's tail enqueues the transcription job.
+  //     reason (ingest's tail enqueues transcription).
   const { queue: publishQueue, worker: publishWorker } = buildPublishQueue(
     redisConnection!,
     env,
     logger,
     eventPublisher ?? undefined,
   );
+  const { queue: thumbnailsQueue, worker: thumbnailsWorker } = buildThumbnailsQueue(
+    redisConnection!,
+    env,
+    logger,
+    eventPublisher ?? undefined,
+  );
+  const enqueueThumbnails = async (videoId: string): Promise<void> => {
+    await thumbnailsQueue.add(
+      "thumbnails",
+      { videoId },
+      { jobId: `thumbnails-${videoId}` },
+    );
+  };
   const { queue: generateQueue, worker: generateWorker } = buildGenerateQueue(
     redisConnection!,
     env,
     logger,
     eventPublisher ?? undefined,
+    enqueueThumbnails,
   );
   const enqueueGenerate = async (videoId: string): Promise<void> => {
     await generateQueue.add(
@@ -211,6 +229,23 @@ const main = async (): Promise<void> => {
     eventPublisher ?? undefined,
     enqueueTranscription,
   );
+
+  // Channel style analysis queue — used by the YouTube connect flow
+  // (enqueue after OAuth callback succeeds) and by the settings page
+  // (manual "re-analyze" trigger).
+  const { queue: channelStyleQueue, worker: channelStyleWorker } = buildChannelStyleQueue(
+    redisConnection!,
+    env,
+    logger,
+    eventPublisher ?? undefined,
+  );
+  const enqueueChannelStyleAnalysis = async (userId: string): Promise<void> => {
+    await channelStyleQueue.add(
+      "channel-style-analyze",
+      { userId },
+      { jobId: `channel-style-${userId}` },
+    );
+  };
 
   // Pass 1: reconcile any rows orphaned in PUBLISHING by a previous
   // worker crash. Doing this BEFORE the ingest pass means a
@@ -243,7 +278,18 @@ const main = async (): Promise<void> => {
     logger,
   );
 
-  // Pass 5: re-enqueue READY/SCHEDULED rows whose publish time has
+  // Pass 5: reconcile any rows orphaned in GENERATING where chapters exist
+  // but thumbnails never enqueued. If chaptersJson is set, re-enqueue the
+  // thumbnails job. Note: we pass through to the standard generate orphans
+  // handler which resets to UPLOADED if chapters are missing — but if chapters
+  // exist AND status is still GENERATING, we need the thumbnails job.
+  // The thumbnails job itself checks for chaptersJson presence.
+  const thumbnailsOrphans = await recoverOrphanedGenerateJobs(
+    generateQueue,
+    logger, // Re-use the generate orphans logic — it handles GENERATING rows
+  );
+
+  // Pass 6: re-enqueue READY/SCHEDULED rows whose publish time has
   // come and gone.
   const recovered = await recoverMissedScheduledJobs(publishQueue, logger);
 
@@ -253,22 +299,27 @@ const main = async (): Promise<void> => {
       ingestOrphans,
       transcriptionOrphans,
       generateOrphans,
+      thumbnailsOrphans,
       recovered,
     },
     "Startup recovery complete",
   );
 
-  const shutdown = async (signal: string): Promise<void> => {
+    const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, "Shutdown signal received; draining…");
     try {
       await publishWorker.close();
       await ingestWorker.close();
       await transcriptionWorker.close();
       await generateWorker.close();
+      await thumbnailsWorker.close();
+      await channelStyleWorker.close();
       await publishQueue.close();
       await ingestQueue.close();
       await transcriptionQueue.close();
       await generateQueue.close();
+      await thumbnailsQueue.close();
+      await channelStyleQueue.close();
       redisConnection!.disconnect();
       await eventPublisher?.dispose();
       await prisma.$disconnect();

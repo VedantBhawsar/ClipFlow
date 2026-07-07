@@ -26,6 +26,7 @@ import { buildHealthRouter } from "./modules/health/health.routes.js";
 import { buildPreferencesRouter } from "./modules/preferences/preferences.routes.js";
 import { buildSettingsRouter } from "./modules/settings/settings.routes.js";
 import { buildVideosRouter } from "./modules/videos/videos.routes.js";
+import { buildThumbnailsRouter, buildThumbnailStyleRouter } from "./modules/thumbnails/thumbnails.routes.js";
 import { buildYouTubeRouter } from "./modules/youtube/youtube.routes.js";
 
 /**
@@ -130,7 +131,13 @@ export const createApp = ({ env, logger }: CreateAppOptions): Application => {
   app.use("/api/settings", buildSettingsRouter(env));
   app.use("/api/settings", buildPreferencesRouter(env));
   app.use("/api/youtube", buildYouTubeRouter(env));
+  // Thumbnail-specific routes under /api/videos/:id/thumbnails — MUST be
+  // mounted BEFORE the generic videos router so `/:id/thumbnails` matches
+  // before `/:id` catches it.
+  app.use("/api/videos", buildThumbnailsRouter(env));
   app.use("/api/videos", buildVideosRouter(env));
+  // User-level thumbnail style profile (not per-video).
+  app.use("/api/thumbnail-style", buildThumbnailStyleRouter(env));
 
   // 404 + error handler must be last.
   app.use(notFoundHandler);

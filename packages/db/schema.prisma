@@ -42,6 +42,18 @@ datasource db {
 
 // ---------- Enums ----------
 
+enum ThumbnailSource {
+  AI_GENERATED
+  USER_UPLOADED
+}
+
+enum ThumbnailGenStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 enum AuthProvider {
   EMAIL
   GOOGLE
@@ -118,6 +130,7 @@ model User {
   videos         Video[]
   refreshTokens        RefreshToken[]
   passwordResetTokens  PasswordResetToken[]
+  thumbnailStyle      ChannelThumbnailStyle?
 
   @@map("users")
 @@index([id, email])
@@ -446,6 +459,9 @@ model Video {
   updatedAt       DateTime      @updatedAt
   publishedAt     DateTime?
 
+  thumbnails      Thumbnail[]
+  thumbnailGenerations ThumbnailGeneration[]
+
   @@index([userId, status])
   // Dashboard's "my videos, newest first" list. The composite (userId,
   // createdAt DESC) lets Postgres satisfy both the filter and the
@@ -453,5 +469,113 @@ model Video {
   @@index([userId, createdAt(sort: Desc)])
   @@index([scheduledPublishAt])
   @@index([status, scheduledPublishAt])
+  /// The user-selected thumbnail for this video. Null until the user
+  /// picks one during review. Application-resolved (no Prisma relation
+  /// needed — the service layer handles consistency).
+  selectedThumbnailId String?  @unique
+
   @@map("videos")
+}
+
+// ---------- Thumbnail ----------
+
+/// One generated thumbnail candidate for a video. Multiple thumbnails
+/// per video (tier-capped at generation time). The `generationIndex`
+/// tracks which attempt produced this thumbnail, so the UI can show
+/// "3 of 5 regenerations used" per the tier limit.
+model Thumbnail {
+  id              String          @id @default(cuid())
+  videoId         String
+  video           Video           @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  s3Key           String
+  source          ThumbnailSource @default(AI_GENERATED)
+  generationIndex Int             @default(0)
+
+  /// Optional metadata for display
+  width           Int?
+  height          Int?
+  fileSizeBytes   Int?
+
+  createdAt       DateTime        @default(now())
+
+  @@index([videoId])
+  @@map("thumbnails")
+}
+
+// ---------- ThumbnailGeneration ----------
+
+/// Logs every thumbnail generation attempt — what prompt was used,
+/// which model, which chapter/frame references, and the outcome.
+/// Enables debugging failed generations and showing usage to the user.
+model ThumbnailGeneration {
+  id              String            @id @default(cuid())
+  videoId         String
+  video           Video             @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  status          ThumbnailGenStatus @default(PENDING)
+
+  /// The full prompt sent to the image generation model
+  promptText      String            @db.Text
+  /// Which model was used (e.g. "gemini-2.0-flash", "replicate-flux-1.1")
+  modelUsed       String
+
+  /// References to chapters used for picking frames (JSON array of { startMs, title })
+  chapterRefs     Json?
+  /// S3 keys of the source frames used as composition base
+  frameRefs       Json?
+  /// Which channel style profile was used (nullable if not yet analyzed)
+  channelStyleId  String?
+
+  /// IDs of the Thumbnail rows produced by this generation
+  generatedIds    String[]
+
+  /// Error details when status = FAILED
+  errorCode       String?
+  errorMessage    String?           @db.Text
+
+  createdAt       DateTime          @default(now())
+  completedAt     DateTime?
+
+  @@index([videoId])
+  @@map("thumbnail_generations")
+}
+
+// ---------- ChannelThumbnailStyle ----------
+
+/// Cached analysis of a creator's existing YouTube thumbnails.
+/// Populated by the `channel-style-analyze` worker job, which sends
+/// recent thumbnails to Gemini Vision for pattern extraction.
+/// The `styleOverride` lets the user manually override the detected style.
+model ChannelThumbnailStyle {
+  id              String                @id @default(cuid())
+  userId          String                @unique
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Vision analysis results
+  /// Array of hex color strings representing the dominant palette
+  dominantColors  Json?
+  /// "top" | "bottom" | "center" | "left" | "right" | "mixed"
+  textPlacement   String?
+  /// "face-focused" | "text-heavy" | "minimalist" | "busy" | "split"
+  compositionStyle String?
+  /// "always" | "often" | "sometimes" | "rarely"
+  facePresence    String?
+  /// Array of detected brand elements (logos, watermarks, recurring graphics)
+  brandElements   Json?
+
+  /// Raw analysis text from Gemini (free-form observations)
+  analysisRaw     String?             @db.Text
+
+  /// Manual user override — AUTO means "use detected style"
+  styleOverride   ThumbnailStyleOverride @default(AUTO)
+
+  /// How many thumbnails were analyzed in the last run
+  thumbnailCount  Int                 @default(0)
+  lastAnalyzedAt  DateTime?
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@map("channel_thumbnail_styles")
 }

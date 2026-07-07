@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-06-26T04:13:47.972Z",
   "lifetime": {
-    "total_tokens_estimated": 837445,
-    "total_reads": 293,
-    "total_writes": 259,
-    "total_sessions": 67,
-    "anatomy_hits": 235,
-    "anatomy_misses": 13,
-    "repeated_reads_blocked": 50,
-    "estimated_savings_vs_bare_cli": 308184
+    "total_tokens_estimated": 868130,
+    "total_reads": 312,
+    "total_writes": 288,
+    "total_sessions": 74,
+    "anatomy_hits": 251,
+    "anatomy_misses": 16,
+    "repeated_reads_blocked": 60,
+    "estimated_savings_vs_bare_cli": 332899
   },
   "sessions": [
     {
@@ -3702,6 +3702,316 @@
         "writes_count": 0,
         "repeated_reads_blocked": 0,
         "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-07-07-2000",
+      "started": "2026-07-07T14:30:59.183Z",
+      "ended": "2026-07-07T14:37:23.970Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.test.ts",
+          "tokens_estimated": 3087,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.test.ts",
+          "tokens_estimated": 63,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.test.ts",
+          "tokens_estimated": 166,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.test.ts",
+          "tokens_estimated": 90,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 3087,
+        "output_tokens_estimated": 319,
+        "reads_count": 1,
+        "writes_count": 3,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 1
+      }
+    },
+    {
+      "id": "session-2026-07-07-2000",
+      "started": "2026-07-07T14:30:59.183Z",
+      "ended": "2026-07-07T14:57:43.246Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.test.ts",
+          "tokens_estimated": 3087,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/config/src/index.ts",
+          "tokens_estimated": 2623,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/env.ts",
+          "tokens_estimated": 504,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/index.ts",
+          "tokens_estimated": 129,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/package.json",
+          "tokens_estimated": 123,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/turbo.json",
+          "tokens_estimated": 489,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/.gitignore",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.test.ts",
+          "tokens_estimated": 63,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.test.ts",
+          "tokens_estimated": 166,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.test.ts",
+          "tokens_estimated": 90,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/scripts/test-image-gen.ts",
+          "tokens_estimated": 1339,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/package.json",
+          "tokens_estimated": 29,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/turbo.json",
+          "tokens_estimated": 261,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/scripts/test-image-gen.ts",
+          "tokens_estimated": 200,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/.gitignore",
+          "tokens_estimated": 31,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 6955,
+        "output_tokens_estimated": 2179,
+        "reads_count": 7,
+        "writes_count": 8,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 7
+      }
+    },
+    {
+      "id": "session-2026-07-07-2000",
+      "started": "2026-07-07T14:30:59.183Z",
+      "ended": "2026-07-07T15:13:00.602Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.test.ts",
+          "tokens_estimated": 3389,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/config/src/index.ts",
+          "tokens_estimated": 2623,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/env.ts",
+          "tokens_estimated": 504,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/index.ts",
+          "tokens_estimated": 129,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/package.json",
+          "tokens_estimated": 123,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/turbo.json",
+          "tokens_estimated": 489,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/.gitignore",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/node_modules/replicate/index.d.ts",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.ts",
+          "tokens_estimated": 2653,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/node_modules/replicate/lib/predictions.js",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/node_modules/replicate/index.js",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.test.ts",
+          "tokens_estimated": 63,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.test.ts",
+          "tokens_estimated": 166,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.test.ts",
+          "tokens_estimated": 90,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/scripts/test-image-gen.ts",
+          "tokens_estimated": 1339,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/package.json",
+          "tokens_estimated": 29,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/turbo.json",
+          "tokens_estimated": 261,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/scripts/test-image-gen.ts",
+          "tokens_estimated": 200,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/.gitignore",
+          "tokens_estimated": 31,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.ts",
+          "tokens_estimated": 56,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.ts",
+          "tokens_estimated": 315,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.ts",
+          "tokens_estimated": 513,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.ts",
+          "tokens_estimated": 1347,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.ts",
+          "tokens_estimated": 168,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.test.ts",
+          "tokens_estimated": 704,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.test.ts",
+          "tokens_estimated": 66,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.test.ts",
+          "tokens_estimated": 2473,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.ts",
+          "tokens_estimated": 228,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/image-gen/image-gen-client.ts",
+          "tokens_estimated": 186,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 9910,
+        "output_tokens_estimated": 8235,
+        "reads_count": 11,
+        "writes_count": 18,
+        "repeated_reads_blocked": 10,
+        "anatomy_lookups": 8
       }
     }
   ],

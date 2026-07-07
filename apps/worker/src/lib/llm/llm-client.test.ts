@@ -97,6 +97,16 @@ const baseEnv: Env = {
   LLM_MODEL: "meta/llama-3.1-70b-instruct",
   TRANSCRIBE_POLL_MS: 2_000,
   TRANSCRIBE_TIMEOUT_MS: 15 * 60_000,
+  SMTP_PORT: 587,
+  SMTP_FROM: "noreply@clipflow.com",
+  IMAGE_GEN_PROVIDER: "gemini",
+  GEMINI_API_KEY: "test-gemini-key-min-20-chars",
+  GEMINI_IMAGE_MODEL: "gemini-2.0-flash-exp-image-generation",
+  GEMINI_VISION_MODEL: "gemini-2.0-flash-001",
+  REPLICATE_API_TOKEN: undefined,
+  REPLICATE_IMAGE_MODEL: "black-forest-labs/flux-pro",
+  THUMBNAILS_PER_VIDEO: 5,
+  THUMBNAIL_VISION_ENABLED: true,
 };
 
 beforeEach(() => {

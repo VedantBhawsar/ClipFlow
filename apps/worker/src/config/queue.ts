@@ -32,6 +32,14 @@ import {
   processGenerateJob,
   type GenerateJobData,
 } from "../jobs/generate.js";
+import {
+  processThumbnailsJob,
+  type ThumbnailsJobData,
+} from "../jobs/thumbnails.js";
+import {
+  processChannelStyleAnalyzeJob,
+  type ChannelStyleJobData,
+} from "../jobs/channel-style-analyze.js";
 import { prisma } from "@clipflow/db";
 import type { EventPublisher } from "../lib/events.js";
 
@@ -39,6 +47,8 @@ export const YOUTUBE_PUBLISH_QUEUE = "youtube-publish";
 export const VIDEO_INGEST_QUEUE = "video-ingest";
 export const TRANSCRIPTION_QUEUE = "transcription";
 export const GENERATE_QUEUE = "generate";
+export const THUMBNAILS_QUEUE = "thumbnails";
+export const CHANNEL_STYLE_QUEUE = "channel-style-analyze";
 
 export interface BuiltPublishQueue {
   queue: Queue<PublishJobData>;
@@ -59,6 +69,16 @@ export interface BuiltTranscriptionQueue {
 export interface BuiltGenerateQueue {
   queue: Queue<GenerateJobData>;
   worker: Worker<GenerateJobData>;
+}
+
+export interface BuiltThumbnailsQueue {
+  queue: Queue<ThumbnailsJobData>;
+  worker: Worker<ThumbnailsJobData>;
+}
+
+export interface BuiltChannelStyleQueue {
+  queue: Queue<ChannelStyleJobData>;
+  worker: Worker<ChannelStyleJobData>;
 }
 
 /**
@@ -297,6 +317,7 @@ export const buildGenerateQueue = (
   env: Env,
   logger: Logger,
   events?: EventPublisher,
+  enqueueThumbnails?: (videoId: string) => Promise<void>,
 ): BuiltGenerateQueue => {
   const queue = new Queue<GenerateJobData>(GENERATE_QUEUE, {
     connection,
@@ -311,7 +332,7 @@ export const buildGenerateQueue = (
 
   const worker = new Worker<GenerateJobData>(
     GENERATE_QUEUE,
-    async (job) => processGenerateJob(job, { env, logger, events }),
+    async (job) => processGenerateJob(job, { env, logger, events, enqueueThumbnails }),
     {
       connection,
       prefix: env.BULLMQ_PREFIX,
@@ -359,3 +380,113 @@ export type PublishJob = Job<PublishJobData>;
 export type IngestJob = Job<VideoIngestJobData>;
 export type TranscriptionJob = Job<TranscriptionJobData>;
 export type GenerateJob = Job<GenerateJobData>;
+export type ThumbnailsJob = Job<ThumbnailsJobData>;
+export type ChannelStyleJob = Job<ChannelStyleJobData>;
+
+// ---------- Thumbnails queue ----------
+
+/**
+ * Build the thumbnails queue + worker pair.
+ *
+ * Concurrency = 1 (image generation API calls + S3 uploads). Attempts
+ * = 3 with exponential backoff starting at 30 s.
+ *
+ * The `failed` listener ensures the ThumbnailGeneration row is marked
+ * as FAILED when BullMQ exhausts retries.
+ */
+export const buildThumbnailsQueue = (
+  connection: Redis,
+  env: Env,
+  logger: Logger,
+  events?: EventPublisher,
+): BuiltThumbnailsQueue => {
+  const queue = new Queue<ThumbnailsJobData>(THUMBNAILS_QUEUE, {
+    connection,
+    prefix: env.BULLMQ_PREFIX,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 30_000 },
+      removeOnComplete: { age: 86_400, count: 1000 },
+      removeOnFail: { age: 604_800 },
+    },
+  });
+
+  const worker = new Worker<ThumbnailsJobData>(
+    THUMBNAILS_QUEUE,
+    async (job) => processThumbnailsJob(job, { env, logger, events }),
+    { connection, prefix: env.BULLMQ_PREFIX, concurrency: 1 },
+  );
+
+  worker.on("failed", async (job, err) => {
+    logger.error(
+      { jobId: job?.id, videoId: job?.data.videoId, attemptsMade: job?.attemptsMade, err: err.message },
+      "Thumbnails job failed",
+    );
+
+    if (job?.attemptsMade !== undefined && job.attemptsMade >= 2) {
+      try {
+        await prisma.video.update({
+          where: { id: job.data.videoId },
+          data: {
+            status: "FAILED",
+            failureReason: `Thumbnails job exhausted after ${job.attemptsMade + 1} attempts: ${err.message}`,
+          },
+        });
+      } catch {
+        // Row may already be gone — ignore
+      }
+    }
+  });
+
+  worker.on("completed", (job) => {
+    logger.info({ jobId: job.id, videoId: job.data.videoId }, "Thumbnails job completed");
+  });
+
+  return { queue, worker };
+};
+
+// ---------- Channel Style Analysis queue ----------
+
+/**
+ * Build the channel-style-analyze queue + worker pair.
+ *
+ * Concurrency = 1 (Gemini Vision API calls + YouTube API calls).
+ * Attempts = 3 with exponential backoff starting at 30 s.
+ * Runs once per channel, not once per video.
+ */
+export const buildChannelStyleQueue = (
+  connection: Redis,
+  env: Env,
+  logger: Logger,
+  events?: EventPublisher,
+): BuiltChannelStyleQueue => {
+  const queue = new Queue<ChannelStyleJobData>(CHANNEL_STYLE_QUEUE, {
+    connection,
+    prefix: env.BULLMQ_PREFIX,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 30_000 },
+      removeOnComplete: { age: 86_400, count: 1000 },
+      removeOnFail: { age: 604_800 },
+    },
+  });
+
+  const worker = new Worker<ChannelStyleJobData>(
+    CHANNEL_STYLE_QUEUE,
+    async (job) => processChannelStyleAnalyzeJob(job, { env, logger, events }),
+    { connection, prefix: env.BULLMQ_PREFIX, concurrency: 1 },
+  );
+
+  worker.on("failed", async (job, err) => {
+    logger.error(
+      { jobId: job?.id, userId: job?.data.userId, attemptsMade: job?.attemptsMade, err: err.message },
+      "Channel style analysis job failed",
+    );
+  });
+
+  worker.on("completed", (job) => {
+    logger.info({ jobId: job.id, userId: job.data.userId }, "Channel style analysis completed");
+  });
+
+  return { queue, worker };
+};

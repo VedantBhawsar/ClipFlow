@@ -40,9 +40,11 @@ import type {
   PublishVideoRequest,
   RefreshRequest,
   RefreshResponse,
+  RegenerateThumbnailsRequest,
   RegisterRequest,
   ResetPasswordRequest,
   SettingsResponse,
+  ThumbnailDto,
   UpdatePreferencesRequest,
   UpdateProfileRequest,
   UpdateVideoRequest,
@@ -244,6 +246,30 @@ export interface ApiClient {
    * publish now. The server enforces the 15-min / 60-day window.
    */
   publishVideo(id: string, body?: PublishVideoRequest): Promise<Video>;
+
+  /**
+   * List every persisted thumbnail for a video (AI candidates + the
+   * user's own upload, if any). Server returns the rows with
+   * presigned GET URLs already attached so the web can drop them
+   * straight into `<img src>`.
+   */
+  listThumbnails(videoId: string): Promise<ThumbnailDto[]>;
+  /**
+   * Mark an existing thumbnail row as the video's selected one. The
+   * publish path uses this over the user's own upload (if any). The
+   * server only accepts ids that belong to the same video.
+   */
+  selectThumbnail(videoId: string, thumbnailId: string): Promise<ThumbnailDto>;
+  /**
+   * Enqueue a fresh thumbnail generation. The job runs in the
+   * worker; the SSE stream on the detail page will deliver the new
+   * rows when they land. Body is optional — the server defaults
+   * the prompt + model from `IMAGE_GEN_PROVIDER` env when omitted.
+   */
+  regenerateThumbnails(
+    videoId: string,
+    body?: RegenerateThumbnailsRequest,
+  ): Promise<{ generationId: string }>;
 }
 
 /**
@@ -431,6 +457,22 @@ export function createApiClient(accessToken: string | null): ApiClient {
     },
     publishVideo(id, body) {
       return request("POST", `/api/videos/${id}/publish`, body ?? {});
+    },
+    listThumbnails(videoId) {
+      return request("GET", `/api/videos/${videoId}/thumbnails`);
+    },
+    selectThumbnail(videoId, thumbnailId) {
+      return request(
+        "POST",
+        `/api/videos/${videoId}/thumbnails/${thumbnailId}/select`,
+      );
+    },
+    regenerateThumbnails(videoId, body) {
+      return request(
+        "POST",
+        `/api/videos/${videoId}/thumbnails/regenerate`,
+        body ?? {},
+      );
     },
   };
 }

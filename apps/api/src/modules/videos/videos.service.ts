@@ -39,6 +39,8 @@ import type { Env } from "@clipflow/config";
 import type {
   CreateVideoResponse,
   PaginatedVideos,
+  ThumbnailSource,
+  ThumbnailWithUrl,
   UploadUrlResponse,
   Video,
   VideoStatus,
@@ -65,7 +67,7 @@ import { prisma } from "../../lib/prisma.js";
 import { requireDatabase } from "../../lib/db-guard.js";
 import { cache } from "../../lib/cache.js";
 import { enqueueIngestJob, enqueuePublishJob } from "../../lib/queue.js";
-import { toVideoDto } from "./videos.types.js";
+import { buildThumbnailLabel, toVideoDto } from "./videos.types.js";
 import type {
   CreateVideoInput,
   ListPublishedVideosQuery,
@@ -777,11 +779,89 @@ export const listPublishedVideos = async (
 
 /**
  * Read a single committed video, scoped to the owner.
+ *
+ * The returned DTO includes every persisted AI-generated thumbnail
+ * (and the user's own upload, if any), each with a fresh 15-min
+ * presigned GET URL ready for the browser. The presigning is done
+ * here, not inside `toVideoDto`, so the type layer stays free of S3
+ * details — `toVideoDto` just walks a pre-baked `ThumbnailWithUrl[]`.
+ *
+ * We mint URLs in parallel (`Promise.all`) so a 4-thumbnail video
+ * doesn't take 4× the latency to respond.
  */
-export const getVideo = async (userId: string, videoId: string): Promise<Video> => {
+export const getVideo = async (
+  userId: string,
+  videoId: string,
+  env: Env,
+): Promise<Video> => {
   requireDatabase();
   const video = await loadVideoForOwner(userId, videoId);
-  return toVideoDto(video);
+  const s3Config = buildS3Config(env);
+  const client = getS3Client(s3Config);
+
+  const totalAi = video.thumbnails.filter(
+    (t) => t.source === "AI_GENERATED",
+  ).length;
+
+  // Sort by source then generationIndex + createdAt so "Your upload"
+  // floats to the top and AI candidates read 1..N in stable order.
+  const ordered = [...video.thumbnails].sort((a, b) => {
+    if (a.source !== b.source) {
+      return a.source === "USER_UPLOADED" ? -1 : 1;
+    }
+    if (a.generationIndex !== b.generationIndex) {
+      return a.generationIndex - b.generationIndex;
+    }
+    return a.createdAt.getTime() - b.createdAt.getTime();
+  });
+
+  const thumbnailsWithUrl: ThumbnailWithUrl[] = await Promise.all(
+    ordered.map(async (t) => {
+      const url = await createPresignedGetUrl(client, s3Config, t.s3Key, 900);
+      const aiIndex =
+        t.source === "AI_GENERATED"
+          ? aiCounterFor(ordered, t.id)
+          : 0;
+      return {
+        id: t.id,
+        source: t.source as ThumbnailSource,
+        generationIndex: t.generationIndex,
+        width: t.width,
+        height: t.height,
+        url,
+        label: buildThumbnailLabel(
+          t.source as Parameters<typeof buildThumbnailLabel>[0],
+          aiIndex,
+          totalAi,
+        ),
+        createdAt: t.createdAt.toISOString(),
+      };
+    }),
+  );
+
+  return toVideoDto({
+    ...video,
+    thumbnails: thumbnailsWithUrl,
+  });
+};
+
+/**
+ * 0-indexed position of an AI_GENERATED thumbnail among the AI
+ * candidates only — ignores USER_UPLOADED tiles that may sort above
+ * it. Lets the UI label a row "AI candidate 1 of 4" even when a
+ * user-uploaded tile is the first thing in the grid.
+ */
+const aiCounterFor = (
+  ordered: { id: string; source: string }[],
+  targetId: string,
+): number => {
+  let n = 0;
+  for (const t of ordered) {
+    if (t.source !== "AI_GENERATED") continue;
+    if (t.id === targetId) return n;
+    n++;
+  }
+  return n;
 };
 
 /**
@@ -1070,7 +1150,15 @@ const loadPendingUploadForOwner = async (
 };
 
 const loadVideoForOwner = async (userId: string, videoId: string) => {
-  const video = await prisma.video.findUnique({ where: { id: videoId } });
+  const video = await prisma.video.findUnique({
+    where: { id: videoId },
+    include: {
+      // Stable order so the detail page renders the same grid on
+      // every request. `createdAt asc` matches the worker's insertion
+      // order — the same row order the publish path reads.
+      thumbnails: { orderBy: { createdAt: "asc" } },
+    },
+  });
   if (!video) {
     throw new AppError(404, "VIDEO_NOT_FOUND", "Video not found.");
   }

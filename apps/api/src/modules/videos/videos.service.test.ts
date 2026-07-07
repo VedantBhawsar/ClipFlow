@@ -26,6 +26,12 @@ vi.mock("@clipflow/s3", () => ({
     fields: { key: "videos/u/pending/pu_x/original.mp4", "Content-Type": "video/mp4" },
     contentLengthMaxBytes: 5 * 1024 * 1024 * 1024,
   }),
+  createPresignedGetUrl: vi
+    .fn()
+    .mockImplementation(
+      async (_client: unknown, _cfg: unknown, key: string) =>
+        `https://s3.test/bucket/${key}?signed=1`,
+    ),
   headObject: vi.fn(),
   deleteObject: vi.fn().mockResolvedValue(undefined),
 }));
@@ -102,7 +108,7 @@ vi.mock("../../lib/logger.js", () => ({
 
 import { prisma } from "../../lib/prisma.js";
 import { cache } from "../../lib/cache.js";
-import { headObject, deleteObject, createPresignedPostUrl } from "@clipflow/s3";
+import { headObject, deleteObject, createPresignedPostUrl, createPresignedGetUrl } from "@clipflow/s3";
 import { enqueueIngestJob, enqueuePublishJob } from "../../lib/queue.js";
 import { unpublishVideo as unpublishOnYouTube, publishVideo as publishOnYouTube } from "@clipflow/youtube-upload";
 
@@ -120,6 +126,7 @@ const mockCacheDel = vi.mocked(cache.del);
 const mockHead = vi.mocked(headObject);
 const mockDeleteObject = vi.mocked(deleteObject);
 const mockPresign = vi.mocked(createPresignedPostUrl);
+const mockPresignGet = vi.mocked(createPresignedGetUrl);
 const mockEnqueue = vi.mocked(enqueueIngestJob);
 const mockEnqueuePublish = vi.mocked(enqueuePublishJob);
 
@@ -222,6 +229,7 @@ type StubVideo = {
   transcriptDurationMs: number | null;
   highlightsS3Prefix: string | null;
   highlightsCount: number | null;
+  selectedThumbnailId: string | null;
   /// `chaptersJson` is Prisma's `Json?` type, which narrows to `Prisma.JsonValue | null`
   /// in the generated client. Tests pass `null` until the v1.5 generate worker lands.
   chaptersJson: Prisma.JsonValue | null;
@@ -264,6 +272,7 @@ const stubCreatedVideo: StubVideo = {
   transcriptDurationMs: null,
   highlightsS3Prefix: null,
   highlightsCount: null,
+  selectedThumbnailId: null,
   chaptersJson: null,
   status: "UPLOADED",
   failureReason: null,
@@ -633,6 +642,212 @@ describe("videos.service", () => {
         skip: 0,
         take: 12,
       });
+    });
+  });
+
+  describe("getVideo", () => {
+    it("returns the video DTO with thumbnails[] and selectedThumbnailId", async () => {
+      const now = new Date("2026-07-01T12:00:00.000Z");
+      mockVideoFindUnique.mockResolvedValue({
+        id: "v_1",
+        userId: "user-1",
+        status: "READY_FOR_REVIEW",
+        title: "My Video",
+        description: null,
+        tags: [],
+        categoryId: "22",
+        privacyStatus: "private",
+        madeForKids: false,
+        ageRestriction: "none",
+        embeddable: true,
+        license: "standard",
+        publicStatsViewable: true,
+        commentPolicy: "all",
+        originalFilename: "source.mp4",
+        fileSizeBytes: 1_000_000n,
+        contentType: "video/mp4",
+        s3KeyOriginal: "videos/u/v_1/original.mp4",
+        s3KeyThumbnail: null,
+        thumbnailContentType: null,
+        selectedThumbnailId: "t_2",
+        durationSeconds: 90,
+        s3KeyAudio: null,
+        s3KeyFramesPrefix: "videos/u/v_1/frames/",
+        chaptersJson: null,
+        failureReason: null,
+        scheduledPublishAt: null,
+        youtubeVideoId: null,
+        createdAt: now,
+        updatedAt: now,
+        publishedAt: null,
+        thumbnails: [
+          {
+            id: "t_1",
+            videoId: "v_1",
+            s3Key: "videos/u/v_1/thumbnails/t_1.jpg",
+            source: "AI_GENERATED",
+            generationIndex: 0,
+            width: 1280,
+            height: 720,
+            fileSizeBytes: 90_000,
+            createdAt: new Date("2026-07-01T11:59:00.000Z"),
+          },
+          {
+            id: "t_2",
+            videoId: "v_1",
+            s3Key: "videos/u/v_1/thumbnails/t_2.jpg",
+            source: "AI_GENERATED",
+            generationIndex: 1,
+            width: 1280,
+            height: 720,
+            fileSizeBytes: 95_000,
+            createdAt: new Date("2026-07-01T11:59:10.000Z"),
+          },
+        ],
+      } as never);
+
+      const result = await videosService.getVideo("user-1", "v_1", {} as never);
+
+      expect(result.id).toBe("v_1");
+      expect(result.selectedThumbnailId).toBe("t_2");
+      expect(result.thumbnails).toHaveLength(2);
+      // Each thumbnail row must come with a presigned GET URL.
+      expect(result.thumbnails[0]?.url).toMatch(
+        /^https:\/\/s3\.test\/bucket\/.*t_1\.jpg/,
+      );
+      expect(result.thumbnails[1]?.url).toMatch(
+        /^https:\/\/s3\.test\/bucket\/.*t_2\.jpg/,
+      );
+      // AI labels are 1-indexed for humans.
+      expect(result.thumbnails[0]?.label).toBe("AI candidate 1 of 2");
+      expect(result.thumbnails[1]?.label).toBe("AI candidate 2 of 2");
+      // Presign ran once per thumbnail (not for the original video).
+      expect(mockPresignGet).toHaveBeenCalledTimes(2);
+    });
+
+    it("puts USER_UPLOADED thumbnails first, then AI candidates in creation order", async () => {
+      const now = new Date("2026-07-01T12:00:00.000Z");
+      mockVideoFindUnique.mockResolvedValue({
+        id: "v_1",
+        userId: "user-1",
+        status: "READY_FOR_REVIEW",
+        title: "My Video",
+        description: null,
+        tags: [],
+        categoryId: "22",
+        privacyStatus: "private",
+        madeForKids: false,
+        ageRestriction: "none",
+        embeddable: true,
+        license: "standard",
+        publicStatsViewable: true,
+        commentPolicy: "all",
+        originalFilename: "source.mp4",
+        fileSizeBytes: 1_000_000n,
+        contentType: "video/mp4",
+        s3KeyOriginal: "videos/u/v_1/original.mp4",
+        s3KeyThumbnail: "videos/u/v_1/user-thumb.jpg",
+        thumbnailContentType: "image/jpeg",
+        selectedThumbnailId: null,
+        durationSeconds: 90,
+        s3KeyAudio: null,
+        chaptersJson: null,
+        failureReason: null,
+        scheduledPublishAt: null,
+        youtubeVideoId: null,
+        createdAt: now,
+        updatedAt: now,
+        publishedAt: null,
+        thumbnails: [
+          {
+            id: "t_ai_2",
+            videoId: "v_1",
+            s3Key: "videos/u/v_1/thumbnails/ai_2.jpg",
+            source: "AI_GENERATED",
+            generationIndex: 1,
+            width: 1280,
+            height: 720,
+            fileSizeBytes: 90_000,
+            createdAt: new Date("2026-07-01T11:59:10.000Z"),
+          },
+          {
+            id: "t_user",
+            videoId: "v_1",
+            s3Key: "videos/u/v_1/user-thumb.jpg",
+            source: "USER_UPLOADED",
+            generationIndex: 0,
+            width: 1280,
+            height: 720,
+            fileSizeBytes: 80_000,
+            createdAt: new Date("2026-07-01T11:50:00.000Z"),
+          },
+          {
+            id: "t_ai_1",
+            videoId: "v_1",
+            s3Key: "videos/u/v_1/thumbnails/ai_1.jpg",
+            source: "AI_GENERATED",
+            generationIndex: 0,
+            width: 1280,
+            height: 720,
+            fileSizeBytes: 85_000,
+            createdAt: new Date("2026-07-01T11:59:00.000Z"),
+          },
+        ],
+      } as never);
+
+      const result = await videosService.getVideo("user-1", "v_1", {} as never);
+
+      expect(result.thumbnails.map((t) => t.id)).toEqual([
+        "t_user",
+        "t_ai_1",
+        "t_ai_2",
+      ]);
+      expect(result.thumbnails[0]?.label).toBe("Your upload");
+      // AI labels ignore the user-uploaded tile at the top.
+      expect(result.thumbnails[1]?.label).toBe("AI candidate 1 of 2");
+      expect(result.thumbnails[2]?.label).toBe("AI candidate 2 of 2");
+    });
+
+    it("returns an empty thumbnails[] when the video has no candidates", async () => {
+      const now = new Date("2026-07-01T12:00:00.000Z");
+      mockVideoFindUnique.mockResolvedValue({
+        id: "v_1",
+        userId: "user-1",
+        status: "GENERATING",
+        title: "My Video",
+        description: null,
+        tags: [],
+        categoryId: "22",
+        privacyStatus: "private",
+        madeForKids: false,
+        ageRestriction: "none",
+        embeddable: true,
+        license: "standard",
+        publicStatsViewable: true,
+        commentPolicy: "all",
+        originalFilename: "source.mp4",
+        fileSizeBytes: 1_000_000n,
+        contentType: "video/mp4",
+        s3KeyOriginal: "videos/u/v_1/original.mp4",
+        s3KeyThumbnail: null,
+        thumbnailContentType: null,
+        selectedThumbnailId: null,
+        durationSeconds: null,
+        s3KeyAudio: null,
+        chaptersJson: null,
+        failureReason: null,
+        scheduledPublishAt: null,
+        youtubeVideoId: null,
+        createdAt: now,
+        updatedAt: now,
+        publishedAt: null,
+        thumbnails: [],
+      } as never);
+
+      const result = await videosService.getVideo("user-1", "v_1", {} as never);
+
+      expect(result.thumbnails).toEqual([]);
+      expect(mockPresignGet).not.toHaveBeenCalled();
     });
   });
 

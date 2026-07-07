@@ -220,8 +220,19 @@ export const publishVideo = async (
  * early; the thumbnail still gets another attempt because the worker
  * calls this function unconditionally after `publishVideo` resolves.
  *
- * Silently skips when the video has no custom thumbnail
- * (`s3KeyThumbnail` is null) or the content type is not JPEG/PNG.
+ * Resolution order for the thumbnail bytes:
+ *   1. `Video.selectedThumbnailId` — the AI candidate the user picked
+ *      on the review screen. Content type is hard-coded `image/jpeg`
+ *      because the thumbnail worker always writes JPEG
+ *      (`apps/worker/src/jobs/thumbnails.ts` writes `image/jpeg`).
+ *   2. `Video.s3KeyThumbnail` + `Video.thumbnailContentType` — the
+ *      user's own upload from the create-video dialog. Used when no
+ *      AI selection exists.
+ *   3. Otherwise: no-op (the video keeps YouTube's auto-generated
+ *      thumbnail).
+ *
+ * Silently skips when neither source is set or the user's content
+ * type is not JPEG/PNG.
  *
  * @throws TransientPublishError — caller should retry.
  * @throws PermanentPublishError — caller should swallow and log.
@@ -236,16 +247,54 @@ export const uploadVideoThumbnail = async (
     where: { id: input.videoId },
     include: { youtubeChannel: true },
   });
-  if (!video || !video.s3KeyThumbnail || !video.thumbnailContentType) {
-    return;
+  if (!video) return;
+
+  // Resolve which S3 object + content type to upload. See the
+  // function-level doc for the order.
+  let s3Key: string | null = null;
+  let contentType: "image/jpeg" | "image/png" | null = null;
+  let source: "AI_GENERATED" | "USER_UPLOADED" | null = null;
+
+  if (video.selectedThumbnailId) {
+    // No Prisma relation — the schema explicitly leaves this join
+    // to the service layer. A single row lookup keyed by the
+    // already-unique `selectedThumbnailId` column.
+    const aiThumb = await prisma.thumbnail.findUnique({
+      where: { id: video.selectedThumbnailId },
+    });
+    if (aiThumb && aiThumb.videoId === video.id) {
+      s3Key = aiThumb.s3Key;
+      // The thumbnail worker writes JPEG for every AI candidate —
+      // see `apps/worker/src/jobs/thumbnails.ts` where the putObject
+      // call hard-codes "image/jpeg". No DB column to consult.
+      contentType = "image/jpeg";
+      source = "AI_GENERATED";
+    } else {
+      logger.warn(
+        { videoId: video.id, selectedThumbnailId: video.selectedThumbnailId },
+        "Selected thumbnail row missing or mismatched — falling back to user upload.",
+      );
+    }
   }
 
-  const thumbContentType = video.thumbnailContentType as "image/jpeg" | "image/png";
-  if (thumbContentType !== "image/jpeg" && thumbContentType !== "image/png") {
-    logger.warn(
-      { videoId: video.id, contentType: video.thumbnailContentType },
-      "Unsupported thumbnail content type — skipping.",
-    );
+  if (!s3Key && video.s3KeyThumbnail && video.thumbnailContentType) {
+    s3Key = video.s3KeyThumbnail;
+    const ct = video.thumbnailContentType;
+    if (ct === "image/jpeg" || ct === "image/png") {
+      contentType = ct;
+      source = "USER_UPLOADED";
+    } else {
+      logger.warn(
+        { videoId: video.id, contentType: video.thumbnailContentType },
+        "Unsupported thumbnail content type — skipping.",
+      );
+      return;
+    }
+  }
+
+  if (!s3Key || !contentType) {
+    // No custom thumbnail to push — YouTube's auto-generated one
+    // stays on the watch page.
     return;
   }
 
@@ -272,14 +321,14 @@ export const uploadVideoThumbnail = async (
   let thumbLength: number;
   let webThumb: ReadableStream<Uint8Array>;
   try {
-    const { body, contentLength } = await getObjectStream(client, s3, video.s3KeyThumbnail);
+    const { body, contentLength } = await getObjectStream(client, s3, s3Key);
     thumbLength = contentLength;
     webThumb = (
       body as unknown as { transformToWebStream(): ReadableStream<Uint8Array> }
     ).transformToWebStream();
   } catch (err) {
     logger.warn(
-      { videoId: video.id, s3Key: video.s3KeyThumbnail, err: String(err) },
+      { videoId: video.id, s3Key, err: String(err) },
       "Thumbnail S3 object not found — skipping.",
     );
     return;
@@ -290,11 +339,11 @@ export const uploadVideoThumbnail = async (
     youtubeVideoId: input.youtubeVideoId,
     body: webThumb,
     contentLength: thumbLength,
-    contentType: thumbContentType,
+    contentType,
   });
 
   logger.info(
-    { videoId: video.id, s3KeyThumbnail: video.s3KeyThumbnail },
+    { videoId: video.id, s3Key, source },
     "Custom thumbnail uploaded to YouTube.",
   );
 };

@@ -133,6 +133,33 @@ const envSchema = z.object({
   /// in production.
   SMTP_FROM: z.string().default("ClipFlow <noreply@clipflow.app>"),
 
+  // Image generation (thumbnails)
+  /// Which provider to use: "gemini" (default, free tier) or "replicate" (paid fallback).
+  IMAGE_GEN_PROVIDER: z.enum(["gemini", "replicate"]).default("gemini"),
+  /// Google Gemini API key. Required when IMAGE_GEN_PROVIDER=gemini.
+  GEMINI_API_KEY: z.string().min(1).optional(),
+  /// Gemini model for image generation. Native image output via
+  /// `generateContent` with `responseModalities: ["IMAGE","TEXT"]`.
+  /// Default: `gemini-2.5-flash-image` (the SDK-blessed native image gen
+  /// model; older `gemini-2.0-flash-exp` returns empty `inlineData` parts).
+  GEMINI_IMAGE_MODEL: z.string().default("gemini-2.5-flash-image"),
+  /// Gemini model for vision analysis (channel thumbnail style detection).
+  /// `gemini-2.5-flash` accepts image + text inputs and returns text.
+  GEMINI_VISION_MODEL: z.string().default("gemini-2.5-flash"),
+  /// Replicate API token. Required when IMAGE_GEN_PROVIDER=replicate.
+  REPLICATE_API_TOKEN: z.string().min(1).optional(),
+  /// Replicate model for image generation (e.g. flux, sdxl).
+  REPLICATE_IMAGE_MODEL: z.string().default("black-forest-labs/flux-1.1-pro"),
+  /// Default max thumbnails to generate per video. Per-plan caps override this.
+  THUMBNAILS_PER_VIDEO: z.coerce.number().int().positive().default(4),
+  /// When disabled, thumbnails are generated from prompt alone without
+  /// passing video frames as visual reference. Disable to save Gemini
+  /// vision API calls or when frames are unavailable.
+  THUMBNAIL_VISION_ENABLED: z
+    .string()
+    .transform((v) => v !== "false" && v !== "0")
+    .default("true"),
+
   // Rate limiting (per-IP defaults; tighten per-route later)
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),

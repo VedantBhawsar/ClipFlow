@@ -80,6 +80,14 @@ const mockEnv: Env = {
   SMTP_USER: undefined,
   SMTP_PASS: undefined,
   SMTP_FROM: "ClipFlow <noreply@clipflow.app>",
+  IMAGE_GEN_PROVIDER: "gemini",
+  GEMINI_API_KEY: "test-gemini-key-min-20-chars",
+  GEMINI_IMAGE_MODEL: "gemini-2.0-flash-exp-image-generation",
+  GEMINI_VISION_MODEL: "gemini-2.0-flash-001",
+  REPLICATE_API_TOKEN: undefined,
+  REPLICATE_IMAGE_MODEL: "black-forest-labs/flux-pro",
+  THUMBNAILS_PER_VIDEO: 5,
+  THUMBNAIL_VISION_ENABLED: true,
 };
 
 const mockUser = {

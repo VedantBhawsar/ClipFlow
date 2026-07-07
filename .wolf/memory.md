@@ -926,3 +926,145 @@ Closed the loop on the user-driven publish trigger for `READY_FOR_REVIEW` (and r
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+
+## Session: 2026-07-05 15:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|---------|
+| 20:42 | Migrated `image-gen-client.generateReplicate()` from hand-rolled REST fetch to the official `replicate` SDK (v1.4.0). Constructor now wires `new Replicate({ auth: token })`; `generateReplicate()` calls `replicate.run(identifier, { input, wait: { mode: "block", interval: 1000, timeout: 60 } })`. Output normaliser handles `FileOutput[]` / `string[]` / single-value shapes; each item is converted to a `data:image/<mime>;base64,…` URI via `.blob()` or URL-fetch + base64. Dropped `parseReplicateError` + `ReplicatePrediction` interface. Added `mapReplicateApiError` using shape-based detection (bug-141). | apps/worker/src/lib/image-gen/image-gen-client.ts | Code green; 39/39 unit tests pass (was 26). |
+| 20:42 | Extended `image-gen-client.test.ts` from 26 to 39 tests. New Replicate section covers: constructor auth check, SDK wiring (`{ auth: token }`), generateImage happy paths (FileOutput[] / single-value), prompt + aspect_ratio + num_outputs pass-through, num_outputs omitted when count=1, error mapping for SDK shapes with status 401/404/422/429/500, non-status Error fallback. Uses same `vi.hoisted` + class-based `vi.mock("replicate", ...)` pattern as the Gemini tests. | apps/worker/src/lib/image-gen/image-gen-client.test.ts | All 39 tests pass. |
+| 20:42 | Fixed Replicate SDK timeout bug (bug-146): the SDK translates `wait.timeout` directly into the `Prefer: wait=X` header, which Replicate's API caps at 1–60 seconds. Passing `timeout: 60000` produced `Prefer: wait=60000` and got rejected with 422. Reduced to `timeout: 60` (the API ceiling); SDK still polls client-side beyond that. Updated the comment in `image-gen-client.ts` to document the gotcha. Logged to `.wolf/buglog.json` as bug-146. | apps/worker/src/lib/image-gen/image-gen-client.ts, .wolf/buglog.json | Verified end-to-end: smoke test with `IMAGE_GEN_PROVIDER=replicate` + a fake token now reaches Replicate's API and gets a clean `REPLICATE_AUTH / 401` response. |
+| 20:42 | Updated `.wolf/cerebrum.md` — Key Learning about the `replicate` SDK migration (mirrors the Gemini one), and a Decision Log entry recording the hand-rolled REST → SDK switch + 60-line reduction in plumbing. | .wolf/cerebrum.md | Cerebrum aligned with current SDK-based architecture. |
+| 20:08 | Built `apps/worker/scripts/test-image-gen.ts` — standalone smoke test for `ImageGenClient`. Hits the real Gemini (or Replicate) endpoint and writes the resulting image(s) to `.image-gen-smoke/<timestamp>.png` so the user can visually verify image gen is actually happening. CLI: `--prompt "..."`, `--provider gemini|replicate`. Friendly missing-key error path via try/catch around `loadEnv`. Not picked up by vitest (include is `src/**/*.test.ts`). Added `test:image-gen` npm script + added image-gen env vars to turbo.json `dev` task (latent missing — turbo cache wasn't busting on GEMINI_API_KEY change). Added `.image-gen-smoke/` to .gitignore. Verified: check-types clean, lint unchanged, script boots + reaches real Gemini API and surfaces classified errors. | apps/worker/scripts/test-image-gen.ts, apps/worker/package.json, turbo.json, .gitignore, .wolf/anatomy.md | Smoke-test scaffolding ready; awaiting real GEMINI_API_KEY to confirm image bytes are non-placeholder. | ~2k |
+| 20:01 | Migrated `image-gen-client` to `@google/genai` SDK — full rewrite of `image-gen-client.ts` (REST fetch → SDK), added `mapSdkApiError` in `image-gen-errors.ts`, bumped Gemini model defaults to `gemini-2.5-flash-image` / `gemini-2.5-flash` in `packages/config` and both `.env.example`s, added `@google/genai` to apps/worker package.json (Dockerfile unchanged per bug-048). | apps/worker/src/lib/image-gen/{image-gen-client,image-gen-errors,index}.ts, packages/config/src/index.ts, apps/{worker,api}/.env.example, apps/worker/package.json | Code green; downstream jobs (thumbnails, channel-style-analyze) keep their import shape. | ~16k |
+| 20:02 | Added 26-test `image-gen-client.test.ts` covering constructor auth check, generateImage (success/no-data/safety/aspectRatio), analyzeImages (text join/no-text), parameterized `mapSdkApiError(401/403/404/429/5xx/418)`, `classifyImageGenError`. `vi.hoisted` mock declarations; class-based vi.mock factory for `GoogleGenAI` constructor (bug-140); shape-based SDK error detection (bug-141). | apps/worker/src/lib/image-gen/image-gen-client.test.ts | All 26 tests pass. `pnpm --filter worker check-types` green; 9 pre-existing test failures (ffmpeg/generate/video-ingest) untouched by this work. | ~8k |
+| 20:02 | Logged bug-139 (analyzeImages tests triggered real fetch before `vi.stubGlobal`). | .wolf/buglog.json | bug-139 appended (138→139). | ~0.1k |
+| 20:02 | Updated `.wolf/cerebrum.md` — new global Key Learning about the `@google/genai` SDK migration, a Decision Log entry, and three Do-Not-Repeat entries (bug-139/140/141). Updated `.wolf/anatomy.md` with the new image-gen-client.ts/.test.ts/image-gen-errors.ts descriptions. | .wolf/cerebrum.md, .wolf/anatomy.md | Anatomy + cerebrum aligned with current code. | ~0.1k |
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:46 | Created ../../../.claude/plans/radiant-prancing-quail.md | — | ~1939 |
+
+## Session: 2026-07-07 19:47
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-07 19:47
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:50 | Edited apps/worker/src/lib/image-gen/image-gen-errors.ts | added error handling | ~1265 |
+| 19:50 | Edited apps/worker/src/lib/image-gen/index.ts | 4→4 lines | ~128 |
+| 19:50 | Edited packages/config/src/index.ts | 9→13 lines | ~251 |
+| 19:53 | Created apps/worker/src/lib/image-gen/image-gen-client.ts | — | ~2891 |
+| 19:54 | Edited apps/worker/src/lib/image-gen/image-gen-errors.ts | modified if() | ~700 |
+| 19:55 | Created apps/worker/src/lib/image-gen/image-gen-client.test.ts | — | ~2812 |
+| 19:59 | Edited apps/worker/src/lib/image-gen/image-gen-client.test.ts | modified lastConstructorOpts() | ~260 |
+| 19:59 | Edited apps/worker/src/lib/image-gen/image-gen-client.test.ts | 4→5 lines | ~38 |
+| 19:59 | Edited apps/worker/src/lib/image-gen/image-gen-client.test.ts | toHaveBeenCalledWith() → toEqual() | ~57 |
+| 20:00 | Edited apps/worker/src/lib/image-gen/image-gen-client.test.ts | expanded (+16 lines) | ~426 |
+
+## Session: 2026-07-07 20:00
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:01 | Edited apps/worker/src/lib/image-gen/image-gen-client.test.ts | added 1 import(s) | ~63 |
+| 20:01 | Edited apps/worker/src/lib/image-gen/image-gen-client.test.ts | 16→18 lines | ~166 |
+| 20:01 | Edited apps/worker/src/lib/image-gen/image-gen-client.test.ts | 9→9 lines | ~90 |
+| 20:07 | Session end: 3 writes across 1 files (image-gen-client.test.ts) | 1 reads | ~3406 tok |
+| 20:24 | Created apps/worker/scripts/test-image-gen.ts | — | ~1339 |
+| 20:24 | Edited apps/worker/package.json | 2→3 lines | ~29 |
+| 20:25 | Edited turbo.json | expanded (+8 lines) | ~261 |
+| 20:26 | Edited apps/worker/scripts/test-image-gen.ts | added error handling | ~200 |
+| 20:26 | Edited .gitignore | 1→4 lines | ~29 |
+| 20:27 | Session end: 8 writes across 5 files (image-gen-client.test.ts, test-image-gen.ts, package.json, turbo.json, .gitignore) | 7 reads | ~9134 tok |
+| 20:36 | Edited apps/worker/src/lib/image-gen/image-gen-client.ts | added 1 import(s) | ~56 |
+| 20:36 | Edited apps/worker/src/lib/image-gen/image-gen-client.ts | added 1 condition(s) | ~315 |
+| 20:37 | Edited apps/worker/src/lib/image-gen/image-gen-client.ts | modified generateReplicate() | ~513 |
+| 20:37 | Edited apps/worker/src/lib/image-gen/image-gen-client.ts | added optional chaining | ~1347 |
+| 20:37 | Edited apps/worker/src/lib/image-gen/image-gen-client.ts | modified catch() | ~168 |
+| 20:38 | Edited apps/worker/src/lib/image-gen/image-gen-client.test.ts | modified lastConstructorOpts() | ~704 |
+| 20:38 | Edited apps/worker/src/lib/image-gen/image-gen-client.test.ts | 5→8 lines | ~66 |
+| 20:39 | Edited apps/worker/src/lib/image-gen/image-gen-client.test.ts | added error handling | ~2473 |
+| 20:40 | Edited apps/worker/src/lib/image-gen/image-gen-client.ts | modified catch() | ~228 |
+| 20:41 | Edited apps/worker/src/lib/image-gen/image-gen-client.ts | 11→13 lines | ~186 |
+| 20:43 | Session end: 18 writes across 6 files (image-gen-client.test.ts, test-image-gen.ts, package.json, turbo.json, .gitignore) | 11 reads | ~18145 tok |
+
+## Session: 2026-07-07 20:57
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-07 21:01
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:05 | Created ../../../.claude/plans/wondrous-meandering-diffie.md | — | ~2111 |
+| 21:06 | Edited packages/types/src/index.ts | expanded (+7 lines) | ~487 |
+| 21:06 | Edited packages/types/src/index.ts | expanded (+24 lines) | ~314 |
+| 21:06 | Edited apps/api/src/modules/videos/videos.types.ts | added 1 condition(s) | ~1038 |
+| 21:07 | Edited apps/api/src/modules/videos/videos.service.ts | added 3 condition(s) | ~864 |
+| 21:07 | Edited apps/api/src/modules/videos/videos.service.ts | 9→11 lines | ~72 |
+| 21:08 | Edited apps/api/src/modules/videos/videos.service.ts | inline fix | ~20 |
+| 21:08 | Edited apps/api/src/modules/videos/videos.service.ts | aiIndexFor() → aiCounterFor() | ~603 |
+| 21:08 | Edited apps/api/src/modules/videos/videos.service.ts | modified if() | ~201 |
+| 21:09 | Edited apps/api/src/modules/videos/videos.controller.ts | modified async() | ~127 |
+| 21:10 | Edited apps/api/src/modules/videos/videos.controller.ts | modified async() | ~170 |
+| 21:11 | Edited apps/api/src/modules/videos/videos.types.ts | 65→66 lines | ~626 |
+| 21:14 | Edited packages/youtube-upload/src/publish-video.ts | added 3 condition(s) | ~1274 |
+| 21:14 | Edited packages/youtube-upload/src/publish-video.ts | added 1 condition(s) | ~543 |
+| 21:14 | Edited packages/youtube-upload/src/publish-video.ts | 5→5 lines | ~32 |
+| 21:15 | Edited apps/web/lib/api-client.ts | 31→33 lines | ~198 |
+| 21:15 | Edited apps/web/lib/api-client.ts | modified getPlaybackUrl() | ~407 |
+| 21:15 | Edited apps/web/lib/api-client.ts | modified publishVideo() | ~158 |
+| 21:15 | Edited apps/web/lib/query-keys.ts | expanded (+7 lines) | ~387 |
+| 21:15 | Edited apps/web/hooks/use-videos.ts | 14→16 lines | ~126 |
+| 21:16 | Edited apps/web/hooks/use-videos.ts | added nullish coalescing | ~950 |
+| 21:17 | Created apps/web/components/review/thumbnail-review-panel.tsx | — | ~1370 |
+| 21:17 | Edited apps/web/app/dashboard/published/[id]/page.tsx | 15→16 lines | ~186 |
+| 21:17 | Edited apps/web/app/dashboard/published/[id]/page.tsx | CSS: interactiveThumbnailStatuses | ~264 |
+| 21:17 | Edited apps/web/app/dashboard/published/[id]/page.tsx | added nullish coalescing | ~114 |
+| 21:18 | Edited apps/web/app/dashboard/published/[id]/page.tsx | 17→12 lines | ~150 |
+| 21:18 | Edited apps/web/app/dashboard/published/[id]/page.tsx | thumbnail() → row() | ~587 |
+| 21:22 | Edited apps/api/src/modules/videos/videos.service.test.ts | expanded (+6 lines) | ~237 |
+| 21:22 | Edited apps/api/src/modules/videos/videos.service.test.ts | 5→5 lines | ~110 |
+| 21:23 | Edited apps/api/src/modules/videos/videos.service.test.ts | 3→4 lines | ~58 |
+| 21:23 | Edited apps/api/src/modules/videos/videos.service.test.ts | added optional chaining | ~1946 |
+| 21:24 | Created apps/web/components/review/thumbnail-review-panel.test.tsx | — | ~1812 |
+| 21:25 | Created apps/web/components/review/thumbnail-review-panel.test.tsx | — | ~1406 |
+
+## Session: 2026-07-07 (thumbnail gallery + selection)
+
+| Time | Action | Outcome | ~Tokens |
+|------|--------|---------|--------|
+| 21:11 | Extended `Video` DTO + added `ThumbnailWithUrl` interface | `packages/types/src/index.ts` — types layer | ~750 |
+| 21:11 | Updated `toVideoDto` to project `thumbnails[]` + `selectedThumbnailId`, added `buildThumbnailLabel` helper | `apps/api/src/modules/videos/videos.types.ts` | ~1100 |
+| 21:13 | `getVideo` now loads thumbnails relation + mints presigned GET URLs in parallel, sorted user-upload-then-AI | `apps/api/src/modules/videos/videos.service.ts` | ~2200 |
+| 21:14 | `uploadVideoThumbnail` now honors `selectedThumbnailId` before falling back to `s3KeyThumbnail` | `packages/youtube-upload/src/publish-video.ts` | ~1700 |
+| 21:15 | Added `listThumbnails`, `selectThumbnail`, `regenerateThumbnails` to ApiClient | `apps/web/lib/api-client.ts` | ~800 |
+| 21:15 | Added `queryKeys.videos.thumbnails(id)` slot | `apps/web/lib/query-keys.ts` | ~400 |
+| 21:16 | Added `useListThumbnails`, `useSelectThumbnail`, `useRegenerateThumbnails` hooks (mutations invalidate list + published + detail + thumbnails slots) | `apps/web/hooks/use-videos.ts` | ~1100 |
+| 21:17 | Created `<ThumbnailReviewPanel>` client wrapper with optimistic selection + regenerate toast | `apps/web/components/review/thumbnail-review-panel.tsx` | ~1400 |
+| 21:17 | Wired detail page: replaced static `<ThumbnailReview disabled>` with `<ThumbnailReviewPanel>`, `buildThumbnailOptions` now reads `video.thumbnails[]` | `apps/web/app/dashboard/published/[id]/page.tsx` | ~1300 |
+| 21:23 | Added 3 `getVideo` tests (with thumbnails + presigning + AI label ordering); mock for `createPresignedGetUrl` | `apps/api/src/modules/videos/videos.service.test.ts` | ~2400 |
+| 21:25 | Added `<ThumbnailReviewPanel>` test (selection + regenerate + disabled read-only) | `apps/web/components/review/thumbnail-review-panel.test.tsx` | ~1400 |
+
+**Verification**:
+- `pnpm check-types` clean across all 9 packages.
+- `pnpm --filter api test:ci` — 166/166 tests pass (3 new).
+- `pnpm --filter web test:ci components/ hooks/ lib/` — 111/111 tests pass.
+- Pre-existing failures remain: `worker/src/jobs/generate.test.ts` (3 — refactor-in-progress) and `web/.../change-password-form.test.tsx` (4 — pre-existing on main). Logged to buglog.json as bug-160 + bug-161.
+
+**Key design choices**:
+- Decoupled grid selection state into a `"use client"` wrapper so the server component can freely re-render (status updates / SSE refetch) without clobbering what the user clicked.
+- `selectedThumbnailId` is the source of truth on the DB row; the publish worker reads it and falls back to the legacy `s3KeyThumbnail` field for backward compatibility.
+- AI thumbnail content type is hard-coded `image/jpeg` in the worker — the thumbnail job writes only JPEG (see `apps/worker/src/jobs/thumbnails.ts` line 388).
+| 21:34 | Edited apps/api/src/modules/videos/videos.service.test.ts | 8→8 lines | ~64 |
+| 21:35 | Edited apps/api/src/modules/videos/videos.service.test.ts | 8→8 lines | ~70 |
+| 21:37 | Edited apps/api/src/modules/videos/videos.service.test.ts | 5→5 lines | ~44 |
