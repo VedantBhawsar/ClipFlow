@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ExternalLink, Loader2, AlertCircle } from "lucide-react";
+import { ExternalLink, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import type { Video, SseVideoEvent } from "@clipflow/types";
 
 import { StatusTimeline } from "@/components/dashboard/status-timeline";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { cn } from "@/lib/utils";
 import { isFailedStatus, mapTimelineStatus } from "@/lib/video-status";
+import { friendlyError } from "@/lib/friendly-error";
 
 interface VideoCardProps {
   video: Video;
@@ -17,6 +18,13 @@ interface VideoCardProps {
   isCancelling?: boolean;
   /** Latest SSE events for real-time progress display */
   sseEvents?: SseVideoEvent[];
+  /**
+   * Trigger a retry of a FAILED video. Server-side guards keep this
+   * idempotent — only FAILED rows accept the call.
+   */
+  onRetry?: (id: string) => void;
+  /** True while the retry mutation is in flight for THIS row. */
+  isRetrying?: boolean;
 }
 
 /**
@@ -28,8 +36,21 @@ interface VideoCardProps {
  * When `sseEvents` is provided the card picks the latest SSE event for
  * its video ID and renders a live progress bar (PROGRESS) or status
  * indicator (STATUS_UPDATE / ERROR) above the timeline.
+ *
+ * Error display policy: the raw `failureReason` (e.g. "Replicate error
+ * 402: payment required") is NEVER shown to the user. The
+ * `friendlyError()` helper maps it to a one-liner + optional hint
+ * (`friendly-error.ts` is the single source of truth for the
+ * translation). The raw string is still in the DB for support.
  */
-export function VideoCard({ video, onCancel, isCancelling, sseEvents }: VideoCardProps) {
+export function VideoCard({
+  video,
+  onCancel,
+  isCancelling,
+  sseEvents,
+  onRetry,
+  isRetrying,
+}: VideoCardProps) {
   const timelineStatus = mapTimelineStatus(video.status);
   const hasError = isFailedStatus(video.status);
   const thumbnailUrl = video.youtubeVideoId
@@ -39,12 +60,17 @@ export function VideoCard({ video, onCancel, isCancelling, sseEvents }: VideoCar
     "UPLOADED", "READY", "EXTRACTING", "TRANSCRIBING",
     "GENERATING", "SCHEDULED", "PUBLISH_FAILED", "FAILED",
   ].includes(video.status);
+  // `isProcessingFailed` is the FAILED-on-processing path (not the
+  // PUBLISH_FAILED path — those go through `/publish` to retry).
+  const canRetry = video.status === "FAILED" && !!onRetry;
 
   // Find the latest SSE event for this specific video
   const latestSseEvent = sseEvents?.reduceRight<SseVideoEvent | undefined>(
     (found, e) => found ?? (e.videoId === video.id ? e : undefined),
     undefined,
   );
+
+  const friendly = hasError ? friendlyError(video.failureReason) : null;
 
   return (
     <article
@@ -53,7 +79,7 @@ export function VideoCard({ video, onCancel, isCancelling, sseEvents }: VideoCar
         hasError && "border-[color:var(--status-error)]/30",
       )}
     >
-      <div className="flex items-center gap-4">
+      <div className="flex min-w-0 items-center gap-4">
         {thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -91,7 +117,12 @@ export function VideoCard({ video, onCancel, isCancelling, sseEvents }: VideoCar
             <StatusPill status={video.status} />
           </div>
 
-          {latestSseEvent?.type === "PROGRESS" ? (
+          {/* Live SSE progress bar — only shown while the row is
+              actually progressing. Once it's FAILED the bar would
+              just be a frozen snapshot of the last successful
+              progress, which is confusing alongside the failed
+              status pill + the friendly error message below. */}
+          {latestSseEvent?.type === "PROGRESS" && !hasError ? (
             <div className="space-y-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[color:var(--accent)]">{latestSseEvent.stage}</span>
@@ -108,17 +139,27 @@ export function VideoCard({ video, onCancel, isCancelling, sseEvents }: VideoCar
             </div>
           ) : null}
 
+          {/* Live SSE error (transient, mid-flight) — also run through
+              the friendly mapper so the live and the persisted errors
+              read consistently. */}
           {latestSseEvent?.type === "ERROR" ? (
-            <p className="truncate text-xs text-[color:var(--status-error)]">
-              Error: {latestSseEvent.error}
+            <p className="text-xs text-[color:var(--status-error)]">
+              {friendlyError(latestSseEvent.error).message}
             </p>
           ) : null}
 
           <StatusTimeline status={timelineStatus} hasError={hasError} />
-          {video.failureReason ? (
-            <p className="truncate text-xs text-[color:var(--status-error)]">
-              {video.failureReason}
-            </p>
+          {friendly ? (
+            <div className="min-w-0 space-y-1">
+              <p className="text-xs text-[color:var(--status-error)]">
+                {friendly.message}
+              </p>
+              {friendly.hint ? (
+                <p className="text-[11px] text-[color:var(--ink-muted)]">
+                  {friendly.hint}
+                </p>
+              ) : null}
+            </div>
           ) : null}
           {video.scheduledPublishAt && video.status === "SCHEDULED" ? (
             <p className="text-xs text-[color:var(--ink-muted)]">
@@ -131,7 +172,23 @@ export function VideoCard({ video, onCancel, isCancelling, sseEvents }: VideoCar
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2 ml-auto">
+      <div className="flex shrink-0 items-center gap-2 sm:ml-auto">
+        {canRetry ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onRetry?.(video.id)}
+            disabled={isRetrying}
+            aria-label={`Retry processing for ${video.title}`}
+          >
+            {isRetrying ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            )}
+            Retry
+          </Button>
+        ) : null}
         {video.youtubeVideoId ? (
           <Button asChild variant="outline" size="sm">
             <a

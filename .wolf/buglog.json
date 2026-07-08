@@ -2765,6 +2765,108 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-08T04:15:01.130Z"
+    },
+    {
+      "id": "bug-170",
+      "timestamp": "2026-07-08T13:10:35.604Z",
+      "error_message": "Missing await",
+      "file": "apps/api/src/modules/videos/videos.service.ts",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-08T13:10:35.604Z"
+    },
+    {
+      "id": "bug-171",
+      "timestamp": "2026-07-08T13:11:03.113Z",
+      "error_message": "Type error",
+      "file": "apps/web/hooks/use-videos.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-08T13:11:03.113Z"
+    },
+    {
+      "id": "bug-172",
+      "timestamp": "2026-07-08T13:12:20.222Z",
+      "error_message": "CSS fix: onSuccess",
+      "file": "apps/web/components/dashboard/video-list.tsx",
+      "root_cause": "onSuccess: () => router.refresh(), → () => {",
+      "fix": "Changed onSuccess: () => router.refresh(), → () => {",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-08T13:12:20.222Z"
+    },
+    {
+      "id": "bug-173",
+      "timestamp": "2026-07-08T13:12:33.782Z",
+      "error_message": "CSS fix: color",
+      "file": "apps/web/app/dashboard/published/[id]/page.tsx",
+      "root_cause": "color: var(--status-error)]\"> → var(--ink-muted)]\">",
+      "fix": "Changed color: var(--status-error)]\"> → var(--ink-muted)]\">",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-08T13:12:33.782Z"
+    },
+    {
+      "id": "bug-174",
+      "timestamp": "2026-07-08T13:43:00.000Z",
+      "error_message": "Raw upstream service error strings (Replicate 402 Payment Required, Gemini 429, AssemblyAI, FFmpeg, YouTube quota, etc.) shown verbatim to end users in VideoCard dashboard rows and published/[id]/page. Also no retry path for FAILED rows.",
+      "file": "apps/web/components/dashboard/video-card.tsx, apps/web/app/dashboard/published/[id]/page.tsx, apps/api/src/modules/videos/videos.service.ts, apps/api/src/modules/videos/videos.controller.ts, apps/api/src/modules/videos/videos.routes.ts, apps/web/lib/api-client.ts, apps/web/hooks/use-videos.ts, apps/web/components/dashboard/video-list.tsx, apps/web/lib/friendly-error.ts (new), apps/web/app/dashboard/published/[id]/retry-button.tsx (new)",
+      "root_cause": "VideoCard rendered `video.failureReason` directly to the user; no client-side mapper from raw upstream error strings to user-facing copy. SSE progress bar rendered alongside the FAILED status pill, confusingly showing a frozen 100% bar. No API route or UI affordance to retry a FAILED row.",
+      "fix": "Added apps/web/lib/friendly-error.ts regex-based mapping (raw → {message, hint?, raw}); replaced raw text in VideoCard and published/[id]/page with friendly message + hint; hid the SSE progress bar on FAILED rows; added POST /api/videos/:id/retry (resets FAILED→EXTRACTING, re-enqueues with deterministic ingest-${videoId} jobId for BullMQ dedupe); added api.retryVideo + useRetryVideo hook + <RetryButton> client component on both the dashboard card and the detail ActionPanel.",
+      "tags": [
+        "ui",
+        "error-display",
+        "retry",
+        "user-experience",
+        "user-reported",
+        "sse",
+        "friendly-error"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-08T13:43:00.000Z"
+    },
+    {
+      "id": "bug-175",
+      "timestamp": "2026-07-08T18:46:00.000Z",
+      "error_message": "Disconnecting YouTube account cascade-deletes all videos (DB + S3). Videos should persist — only publish/unpublish actions should be hidden.",
+      "file": "apps/api/src/modules/youtube/youtube.service.ts",
+      "root_cause": "disconnectYouTubeChannel called prisma.youTubeChannel.deleteMany(), which triggered the Prisma onDelete: Cascade on YouTubeChannel → Video relation, deleting every associated video row.",
+      "fix": "Changed to prisma.youTubeChannel.updateMany({ data: { status: \"DISCONNECTED\" } }) so the row persists with DISCONNECTED status. Videos remain in the DB. Existing requireConnectedChannel already checks status !== \"CONNECTED\", so publish/upload are already blocked. Added server-side YouTube connection fetch on video detail page to gate PublishButton and UnpublishButton behind channelConnected.",
+      "tags": [
+        "manual",
+        "youtube",
+        "disconnect",
+        "cascade-delete",
+        "data-loss"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-08T18:46:00.000Z"
     }
   ]
 }

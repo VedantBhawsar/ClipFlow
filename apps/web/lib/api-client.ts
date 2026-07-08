@@ -246,6 +246,12 @@ export interface ApiClient {
    * publish now. The server enforces the 15-min / 60-day window.
    */
   publishVideo(id: string, body?: PublishVideoRequest): Promise<Video>;
+  /**
+   * Retry a `FAILED` video. Resets the row to `EXTRACTING` and
+   * re-enqueues the ingest job. Server returns 409 `NOT_RETRYABLE`
+   * for any non-FAILED status.
+   */
+  retryVideo(id: string): Promise<Video>;
 
   /**
    * List every persisted thumbnail for a video (AI candidates + the
@@ -457,6 +463,9 @@ export function createApiClient(accessToken: string | null): ApiClient {
     },
     publishVideo(id, body) {
       return request("POST", `/api/videos/${id}/publish`, body ?? {});
+    },
+    retryVideo(id) {
+      return request("POST", `/api/videos/${id}/retry`);
     },
     listThumbnails(videoId) {
       return request("GET", `/api/videos/${videoId}/thumbnails`);

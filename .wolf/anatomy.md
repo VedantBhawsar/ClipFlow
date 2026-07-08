@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-08T04:15:01.121Z
-> Files: 383 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-08T13:13:09.552Z
+> Files: 385 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../tmp/
 
@@ -154,11 +154,11 @@
 
 ## apps/api/src/modules/videos/
 
-- `videos.controller.ts` — Videos controller. (~3730 tok)
-- `videos.routes.ts` — Videos route definitions. (~1514 tok)
+- `videos.controller.ts` — Videos controller. (~3989 tok)
+- `videos.routes.ts` — Videos route definitions. (~1578 tok)
 - `videos.schemas.ts` — Zod schemas for the videos module. (~4468 tok)
 - `videos.service.test.ts` — Tests for the videos service. (~12754 tok)
-- `videos.service.ts` — Videos service — owns all DB + S3 + YouTube-publish enqueue logic (~12339 tok)
+- `videos.service.ts` — Videos service — owns all DB + S3 + YouTube-publish enqueue logic (~12814 tok)
 - `videos.types.ts` — Module-internal types for the videos module. (~1301 tok)
 
 ## apps/api/src/modules/youtube/
@@ -232,9 +232,10 @@
 
 - `cancel-button.tsx` — Cancel action for the video detail page. Calls (~436 tok)
 - `edit-details-button.tsx` — Thin client island that keeps the Sheet open-state and renders the (~344 tok)
-- `page.tsx` — `/dashboard/published/:id` — full detail view for a single video. (~4536 tok)
+- `page.tsx` — `/dashboard/published/:id` — full detail view for a single video. (~4749 tok)
 - `publish-button.test.tsx` — Tests for `<PublishButton>` + the `<PublishSheet>` it opens. (~3072 tok)
 - `publish-button.tsx` — Header "Publish" button for a `READY_FOR_REVIEW` (or (~304 tok)
+- `retry-button.tsx` — Title used in the confirm prompt and the aria-label. (~625 tok)
 - `unpublish-button.tsx` — Unpublish action for the video detail page. Calls (~426 tok)
 
 ## apps/web/app/dashboard/settings/
@@ -314,10 +315,10 @@
 - `sidebar.tsx` — Desktop dashboard sidebar shell (`hidden lg:flex`) wrapping `<SidebarContent>`. (~200 tok)
 - `status-pill.tsx` — Status chip using Design.md's `--status-*` tokens — no ad-hoc colors. Processing tone gets a `motion-safe:animate-pulse` dot. (~512 tok)
 - `status-timeline.tsx` — Visual pipeline stages shown in the timeline strip — the signature (~1429 tok)
-- `video-card.tsx` — Dashboard row — thumbnail + title + status timeline + actions. Imports `mapTimelineStatus`/`isFailedStatus` from `lib/video-status.ts`. (~1851 tok)
+- `video-card.tsx` — Latest SSE events for real-time progress display (~2489 tok)
 - `video-detail-live-progress.tsx` — Ambient real-time progress strip for the detail page. Per Design.md (~627 tok)
 - `video-details-dialog.tsx` — Which fields can be patched via PATCH /api/videos/:id. (~4494 tok)
-- `video-list.tsx` — Dashboard / published-page videos section. Presentational + actions. Owns the per-row delete mutation and post-mutation `router.refresh()`. (~1262 tok)
+- `video-list.tsx` — The already-fetched videos to render. In the SSR dashboard flow (~1424 tok)
 - `video-metadata-editor.test.tsx` — Tests for `<VideoMetadataEditor>` — the in-place title/description/tags (~1916 tok)
 - `video-metadata-editor.test.tsx` — Tests for the in-place title/description/tags editor. (~4300 tok)
 - `video-metadata-editor.tsx` — In-place editor for the user-supplied metadata on the review screen (~2854 tok)
@@ -429,16 +430,17 @@
 - `use-update-preferences.ts` — Partial update of the authenticated user's preferences. The server (~330 tok)
 - `use-update-profile.ts` — Update the authenticated user's profile. Two flavors: (~474 tok)
 - `use-video-sse.ts` — Subscribe to SSE events for video processing. (~847 tok)
-- `use-videos.ts` — TanStack Query hooks + an XHR-based upload helper for the (~4391 tok)
+- `use-videos.ts` — TanStack Query hooks + an XHR-based upload helper for the (~4604 tok)
 - `use-youtube-connection.ts` — Narrow YouTube-connection read for /settings/connected. The (~203 tok)
 
 ## apps/web/lib/
 
-- `api-client.ts` — Typed API surface for talking to the Express backend. (~4868 tok)
+- `api-client.ts` — Typed API surface for talking to the Express backend. (~4955 tok)
 - `auth-guard.test.tsx` — mockReplace (~700 tok)
 - `auth-guard.tsx` — Where to send unauthenticated users. Defaults to /signin. (~521 tok)
 - `env.ts` — Centralized access to NEXT_PUBLIC_* env vars. (~184 tok)
 - `format.ts` — Small formatting helpers used across the dashboard / video list / review (~718 tok)
+- `friendly-error.ts` — Translate raw upstream error strings (Replicate / Gemini / AssemblyAI / (~1779 tok)
 - `onboarding-guard.test.tsx` — mockReplace (~1034 tok)
 - `onboarding-guard.tsx` — "require-incomplete": only render for users who haven't finished (~616 tok)
 - `profile-options.ts` — Static option lists for the onboarding wizard + settings profile form. (~432 tok)

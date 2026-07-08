@@ -17,6 +17,7 @@
  *   DELETE /api/videos/:id                     → committed: cancel
  *   POST   /api/videos/:id/publish             → committed: publish (now or scheduled)
  *   POST   /api/videos/:id/unpublish           → committed: unpublish
+ *   POST   /api/videos/:id/retry               → committed: retry a FAILED row
  *   GET    /api/videos/:id/playback-url        → committed: presigned GET URL
  *
  * The pending/committed split is enforced by separate zod schemas
@@ -43,6 +44,7 @@ import {
   listPublishedVideosController,
   listVideosController,
   publishVideoController,
+  retryVideoController,
   streamUserVideosController,
   streamVideoController,
   unpublishVideoController,
@@ -176,6 +178,13 @@ export const buildVideosRouter = (env: Env): Router => {
     auth,
     validate({ params: videoIdParamsSchema }),
     unpublishVideoController,
+  );
+
+  router.post(
+    "/:id/retry",
+    auth,
+    validate({ params: videoIdParamsSchema }),
+    retryVideoController,
   );
 
   return router;

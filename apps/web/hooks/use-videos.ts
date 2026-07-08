@@ -173,6 +173,26 @@ export function useUnpublishVideo() {
 }
 
 /**
+ * Retry a `FAILED` video. Resets the row to `EXTRACTING` and
+ * re-enqueues the ingest job in the worker. On success we invalidate
+ * the same cache slots as `usePublishVideo` — the dashboard list
+ * and the single-video detail slot — so the row re-renders with the
+ * new `EXTRACTING` status and the safety-net polling picks up the
+ * subsequent worker progress.
+ */
+export function useRetryVideo() {
+  const api = useApi();
+  const qc = useQueryClient();
+  return useMutation<Video, Error, string>({
+    mutationFn: (id) => api.retryVideo(id),
+    onSuccess: (video) => {
+      void qc.invalidateQueries({ queryKey: ["videos", "list"] });
+      void qc.invalidateQueries({ queryKey: queryKeys.videos.detail(video.id) });
+    },
+  });
+}
+
+/**
  * Publish a `READY_FOR_REVIEW` (or `PUBLISH_FAILED` retry) video.
  * Empty `body` publishes immediately; a `scheduledPublishAt` ISO
  * 8601 string schedules the row and enqueues a delayed BullMQ job.

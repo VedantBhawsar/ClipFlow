@@ -682,6 +682,12 @@ Details column capped at max-w-[60rem]; review panel keeps two-column layout as 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 20:45 | Edited ../../../.claude/plans/witty-snuggling-seal.md | added optional chaining | ~4828 |
+
+## Session: 2026-07-08 18:46
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:46 | Changed disconnect from delete to status=DISCONNECTED; updated test; updated schema comment; added server-side channelConnected fetch + gated publish/unpublish buttons on video detail page | youtube.service.ts, youtube.service.test.ts, schema.prisma, page.tsx | api tests 14/14, web publish-button tests 9/9, typecheck clean | ~4.2k |
 | 20:51 | Edited packages/types/src/index.ts | expanded (+25 lines) | ~644 |
 | 20:51 | Edited apps/api/src/modules/videos/videos.schemas.ts | added 4 condition(s) | ~596 |
 | 20:51 | Edited apps/api/src/modules/videos/videos.service.ts | 8→9 lines | ~78 |
@@ -1138,3 +1144,67 @@ Closed the loop on the user-driven publish trigger for `READY_FOR_REVIEW` (and r
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+
+## Session: 2026-07-08 18:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-08 18:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-08 18:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-08 18:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-08 18:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-08 18:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-08 18:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-08 18:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:40 | Created apps/web/lib/friendly-error.ts | — | ~1779 |
+| 18:40 | Edited apps/api/src/modules/videos/videos.service.ts | added 1 condition(s) | ~494 |
+| 18:40 | Edited apps/api/src/modules/videos/videos.controller.ts | added 1 condition(s) | ~502 |
+| 18:40 | Edited apps/api/src/modules/videos/videos.routes.ts | 5→6 lines | ~111 |
+| 18:40 | Edited apps/api/src/modules/videos/videos.routes.ts | 6→7 lines | ~55 |
+| 18:40 | Edited apps/api/src/modules/videos/videos.routes.ts | expanded (+7 lines) | ~78 |
+| 18:40 | Edited apps/web/lib/api-client.ts | modified publishVideo() | ~144 |
+| 18:40 | Edited apps/web/lib/api-client.ts | modified publishVideo() | ~55 |
+| 18:41 | Edited apps/web/hooks/use-videos.ts | modified useRetryVideo() | ~233 |
+| 18:41 | Edited apps/web/components/dashboard/video-card.tsx | CSS: policy, 402 | ~2392 |
+| 18:42 | Edited apps/web/components/dashboard/video-list.tsx | CSS: onError | ~1424 |
+| 18:42 | Edited apps/web/app/dashboard/published/[id]/page.tsx | added 1 import(s) | ~50 |
+| 18:42 | Edited apps/web/app/dashboard/published/[id]/page.tsx | expanded (+12 lines) | ~254 |
+| 18:42 | Created apps/web/app/dashboard/published/[id]/retry-button.tsx | — | ~625 |
+| 18:42 | Edited apps/web/app/dashboard/published/[id]/page.tsx | added 1 import(s) | ~115 |
+| 18:42 | Edited apps/web/app/dashboard/published/[id]/page.tsx | 19→22 lines | ~197 |
+| 18:43 | Edited apps/web/components/dashboard/video-card.tsx | 16→21 lines | ~329 |
+
+## Session: 2026-07-08 18:44
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:43 | Ran `pnpm --filter web test:ci` to verify changes; 4 pre-existing failures in change-password-form.test.tsx (confirmed via git stash that they exist on the original code) — unrelated to this work | apps/web/components/auth | 4 pre-existing failures ignored | ~0 |
+| 18:44 | Logged bug-174 (raw upstream error strings shown to end users, no retry path for FAILED rows) to .wolf/buglog.json per OpenWolf policy | .wolf/buglog.json | valid JSON, 174 bugs | ~1.2k |

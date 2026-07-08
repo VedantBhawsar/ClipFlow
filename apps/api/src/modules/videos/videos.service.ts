@@ -1059,6 +1059,50 @@ export const publishVideoNow = async (
 };
 
 /**
+ * Retry a `FAILED` video. The user clicked the "Retry" button on a
+ * row that exhausted all of BullMQ's retries (e.g. a permanent FFmpeg
+ * error or an out-of-credits upstream). We reset the row to
+ * `EXTRACTING`, clear the failure reason, and re-enqueue the ingest
+ * job with a deterministic jobId so BullMQ dedupes.
+ *
+ * Why reset to `EXTRACTING` (and not `UPLOADED`):
+ *  - The S3 upload already succeeded; re-ingesting is all that's
+ *    needed.
+ *  - `EXTRACTING` matches the post-finalize state the worker expects
+ *    so any side effects (e.g. the recovery pass picking it up on a
+ *    worker crash) keep working unchanged.
+ *  - The ingest worker's `s3KeyAudio` idempotency check (set? skip)
+ *    is the natural short-circuit if a previous run actually finished
+ *    extraction and only the DB write failed.
+ *
+ * Status guard: `FAILED` only. A `PUBLISH_FAILED` row has nothing
+ * wrong with the video itself — only the publish failed — so the
+ * existing `POST /publish` endpoint is the right place to retry that
+ * (and it's already wired up to accept `PUBLISH_FAILED`).
+ */
+export const retryVideo = async (
+  userId: string,
+  videoId: string,
+  env: Env,
+): Promise<Video> => {
+  requireDatabase();
+  const existing = await loadVideoForOwner(userId, videoId);
+  if (existing.status !== "FAILED") {
+    throw new AppError(
+      409,
+      "NOT_RETRYABLE",
+      "Only failed processing can be retried.",
+    );
+  }
+  const updated = await prisma.video.update({
+    where: { id: existing.id },
+    data: { status: "EXTRACTING", failureReason: null },
+  });
+  await enqueueIngestJob(existing.id, env);
+  return toVideoDto(updated);
+};
+
+/**
  * User-driven publish endpoint. Dispatches to one of two paths:
  *
  * - `scheduledPublishAt` set → row flips to `SCHEDULED`, a delayed

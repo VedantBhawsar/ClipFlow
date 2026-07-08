@@ -319,6 +319,33 @@ export const unpublishVideoController = async (
 };
 
 /**
+ * POST /api/videos/:id/retry
+ *
+ * User-driven retry for a video that exhausted all of BullMQ's
+ * retries (e.g. permanent FFmpeg error, upstream out-of-credits).
+ * Resets the row to `EXTRACTING` and re-enqueues the ingest job.
+ *
+ * Service-level guards:
+ *   - 404 `VIDEO_NOT_FOUND` for unknown / foreign id (via
+ *     `loadVideoForOwner`).
+ *   - 409 `NOT_RETRYABLE` when the row isn't in `FAILED`. A
+ *     `PUBLISH_FAILED` row is retried via `POST /publish`, not here.
+ */
+export const retryVideoController = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  const userId = requireUser(req);
+  const env = requireEnv(req);
+  const id = (req.params as { id?: string }).id;
+  if (!id) {
+    throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
+  }
+  const result = await videosService.retryVideo(userId, id, env);
+  sendOk(res, result, "Video retry queued.");
+};
+
+/**
  * GET /api/videos/stream
  *
  * Opens an SSE connection that streams all video processing events

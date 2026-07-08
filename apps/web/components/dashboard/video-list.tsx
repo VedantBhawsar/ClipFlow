@@ -2,10 +2,11 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import { CreateVideoDialog } from "@/components/dashboard/create-video-dialog";
 import { VideoCard } from "@/components/dashboard/video-card";
-import { useDeleteVideo } from "@/hooks/use-videos";
+import { useDeleteVideo, useRetryVideo } from "@/hooks/use-videos";
 import type { Video, SseVideoEvent } from "@clipflow/types";
 
 interface VideoListProps {
@@ -37,8 +38,8 @@ interface VideoListProps {
  *
  * Presentational + actions. The server component hands us the videos
  * (so the very first paint is meaningful); we own the per-row delete
- * mutation and the post-mutation `router.refresh()` so the server
- * re-renders with fresh data.
+ * mutation, the per-row retry mutation, and the post-mutation
+ * `router.refresh()` so the server re-renders with fresh data.
  *
  * The `useDeleteVideo` mutation still hits TanStack Query's cache so
  * concurrent consumers (e.g. a future "videos" badge on the sidebar)
@@ -53,6 +54,7 @@ export function VideoList({
 }: VideoListProps) {
   const router = useRouter();
   const deleteMutation = useDeleteVideo();
+  const retryMutation = useRetryVideo();
 
   const disabledReason = channelConnected
     ? undefined
@@ -62,6 +64,18 @@ export function VideoList({
     if (!confirm("Cancel this video? The file will be removed.")) return;
     deleteMutation.mutate(id, {
       onSuccess: () => router.refresh(),
+    });
+  };
+
+  const handleRetry = (id: string) => {
+    retryMutation.mutate(id, {
+      onSuccess: () => {
+        toast.success("Retrying — back to the start of the pipeline.");
+        router.refresh();
+      },
+      onError: (err) => {
+        toast.error(err.message || "Couldn't retry. Try again in a moment.");
+      },
     });
   };
 
@@ -123,6 +137,8 @@ export function VideoList({
             video={v}
             onCancel={handleCancel}
             isCancelling={deleteMutation.isPending && deleteMutation.variables === v.id}
+            onRetry={handleRetry}
+            isRetrying={retryMutation.isPending && retryMutation.variables === v.id}
             sseEvents={sseEvents}
           />
         ))}
