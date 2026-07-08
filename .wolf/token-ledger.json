@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-06-26T04:13:47.972Z",
   "lifetime": {
-    "total_tokens_estimated": 868130,
-    "total_reads": 312,
-    "total_writes": 288,
-    "total_sessions": 74,
-    "anatomy_hits": 251,
+    "total_tokens_estimated": 903446,
+    "total_reads": 334,
+    "total_writes": 315,
+    "total_sessions": 78,
+    "anatomy_hits": 271,
     "anatomy_misses": 16,
-    "repeated_reads_blocked": 60,
-    "estimated_savings_vs_bare_cli": 332899
+    "repeated_reads_blocked": 62,
+    "estimated_savings_vs_bare_cli": 342955
   },
   "sessions": [
     {
@@ -4012,6 +4012,307 @@
         "writes_count": 18,
         "repeated_reads_blocked": 10,
         "anatomy_lookups": 8
+      }
+    },
+    {
+      "id": "session-2026-07-08-0932",
+      "started": "2026-07-08T04:02:38.078Z",
+      "ended": "2026-07-08T04:09:07.454Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/lib/marketing/faq.ts",
+          "tokens_estimated": 934,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/page.tsx",
+          "tokens_estimated": 600,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/FaqSection.tsx",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/ProblemSection.tsx",
+          "tokens_estimated": 1191,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/SiteFooter.tsx",
+          "tokens_estimated": 836,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/TrustCallout.tsx",
+          "tokens_estimated": 1434,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/SocialProofSection.tsx",
+          "tokens_estimated": 1153,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/ReassuranceStrip.tsx",
+          "tokens_estimated": 716,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/Hero.tsx",
+          "tokens_estimated": 3087,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/SiteHeader.tsx",
+          "tokens_estimated": 697,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/FaqSection.tsx",
+          "tokens_estimated": 1452,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/FinalCta.tsx",
+          "tokens_estimated": 907,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/page.tsx",
+          "tokens_estimated": 845,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/FaqSection.tsx",
+          "tokens_estimated": 18,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/ProblemSection.tsx",
+          "tokens_estimated": 19,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/SiteFooter.tsx",
+          "tokens_estimated": 18,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/SocialProofSection.tsx",
+          "tokens_estimated": 136,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/TrustCallout.tsx",
+          "tokens_estimated": 41,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/SiteHeader.tsx",
+          "tokens_estimated": 82,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/SiteHeader.tsx",
+          "tokens_estimated": 12,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/Hero.tsx",
+          "tokens_estimated": 12,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 10648,
+        "output_tokens_estimated": 3542,
+        "reads_count": 10,
+        "writes_count": 11,
+        "repeated_reads_blocked": 0,
+        "anatomy_lookups": 9
+      }
+    },
+    {
+      "id": "session-2026-07-08-0932",
+      "started": "2026-07-08T04:02:38.078Z",
+      "ended": "2026-07-08T04:17:27.316Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/lib/marketing/faq.ts",
+          "tokens_estimated": 934,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/page.tsx",
+          "tokens_estimated": 600,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/FaqSection.tsx",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/ProblemSection.tsx",
+          "tokens_estimated": 1191,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/SiteFooter.tsx",
+          "tokens_estimated": 836,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/TrustCallout.tsx",
+          "tokens_estimated": 1434,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/SocialProofSection.tsx",
+          "tokens_estimated": 1153,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/ReassuranceStrip.tsx",
+          "tokens_estimated": 716,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/Hero.tsx",
+          "tokens_estimated": 3087,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/SiteHeader.tsx",
+          "tokens_estimated": 697,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/FeatureTrio.tsx",
+          "tokens_estimated": 3028,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/DifferentiatorSection.tsx",
+          "tokens_estimated": 1694,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/FaqSection.tsx",
+          "tokens_estimated": 1452,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/FinalCta.tsx",
+          "tokens_estimated": 907,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/page.tsx",
+          "tokens_estimated": 845,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/FaqSection.tsx",
+          "tokens_estimated": 18,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/ProblemSection.tsx",
+          "tokens_estimated": 19,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/SiteFooter.tsx",
+          "tokens_estimated": 18,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/SocialProofSection.tsx",
+          "tokens_estimated": 136,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/TrustCallout.tsx",
+          "tokens_estimated": 41,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/SiteHeader.tsx",
+          "tokens_estimated": 82,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/SiteHeader.tsx",
+          "tokens_estimated": 12,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/Hero.tsx",
+          "tokens_estimated": 12,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/FeatureTrio.tsx",
+          "tokens_estimated": 316,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/FeatureTrio.tsx",
+          "tokens_estimated": 361,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/FeatureTrio.tsx",
+          "tokens_estimated": 20,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/FeatureTrio.tsx",
+          "tokens_estimated": 1142,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/DifferentiatorSection.tsx",
+          "tokens_estimated": 375,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 15370,
+        "output_tokens_estimated": 5756,
+        "reads_count": 12,
+        "writes_count": 16,
+        "repeated_reads_blocked": 2,
+        "anatomy_lookups": 11
       }
     }
   ],

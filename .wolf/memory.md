@@ -1068,3 +1068,73 @@ Closed the loop on the user-driven publish trigger for `READY_FOR_REVIEW` (and r
 | 21:34 | Edited apps/api/src/modules/videos/videos.service.test.ts | 8→8 lines | ~64 |
 | 21:35 | Edited apps/api/src/modules/videos/videos.service.test.ts | 8→8 lines | ~70 |
 | 21:37 | Edited apps/api/src/modules/videos/videos.service.test.ts | 5→5 lines | ~44 |
+
+## Session: 2026-07-08 08:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-08 09:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:27 | Created apps/web/lib/marketing/pricing.ts | — | ~1076 |
+| 09:27 | Created apps/web/lib/marketing/faq.ts | — | ~934 |
+| 09:27 | Created apps/web/components/marketing/SiteHeader.tsx | — | ~734 |
+| 09:27 | Created apps/web/components/marketing/SiteFooter.tsx | — | ~876 |
+| 09:28 | Edited apps/web/components/marketing/SiteHeader.tsx | 4→4 lines | ~48 |
+| 09:28 | Edited apps/web/components/marketing/SiteFooter.tsx | "sm" → "h-6 w-auto" | ~9 |
+| 09:28 | Edited apps/web/components/marketing/SiteHeader.tsx | 10→7 lines | ~51 |
+| 09:28 | Edited apps/web/components/marketing/SiteFooter.tsx | 10→7 lines | ~58 |
+| 09:29 | Created apps/web/components/marketing/Hero.tsx | — | ~3087 |
+| 09:29 | Created apps/web/components/marketing/ReassuranceStrip.tsx | — | ~716 |
+| 09:29 | Created apps/web/components/marketing/ProblemSection.tsx | — | ~1191 |
+| 09:30 | Created apps/web/components/marketing/HowItWorks.tsx | — | ~1100 |
+| 09:30 | Created apps/web/components/marketing/FeatureTrio.tsx | — | ~2668 |
+| 09:31 | Created apps/web/components/marketing/TrustCallout.tsx | — | ~1434 |
+| 09:31 | Created apps/web/components/marketing/DifferentiatorSection.tsx | — | ~1694 |
+| 09:31 | Created apps/web/components/marketing/SocialProofSection.tsx | — | ~1153 |
+| 09:31 | Created apps/web/components/marketing/PricingSection.tsx | — | ~1928 |
+
+## Session: 2026-07-08 09:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:33 | Created apps/web/components/marketing/FaqSection.tsx | — | ~1452 |
+| 09:33 | Created apps/web/components/marketing/FinalCta.tsx | — | ~907 |
+| 09:33 | Created apps/web/app/page.tsx | — | ~845 |
+| 09:34 | Edited apps/web/components/marketing/FaqSection.tsx | inline fix | ~18 |
+| 09:34 | Edited apps/web/components/marketing/ProblemSection.tsx | inline fix | ~19 |
+| 09:34 | Edited apps/web/components/marketing/SiteFooter.tsx | inline fix | ~18 |
+| 09:34 | Edited apps/web/components/marketing/SocialProofSection.tsx | 8→8 lines | ~136 |
+| 09:34 | Edited apps/web/components/marketing/TrustCallout.tsx | 2→2 lines | ~41 |
+| 09:38 | Edited apps/web/components/marketing/SiteHeader.tsx | 3→5 lines | ~82 |
+| 09:38 | Edited apps/web/components/marketing/SiteHeader.tsx | inline fix | ~12 |
+| 09:38 | Edited apps/web/components/marketing/Hero.tsx | inline fix | ~12 |
+| 09:39 | Edited apps/web/components/marketing/FaqSection.tsx | created | ~3200 |
+| 09:40 | Edited apps/web/components/marketing/FinalCta.tsx | created | ~1700 |
+| 09:41 | Edited apps/web/app/page.tsx | rewired to 13 marketing sections | ~1500 |
+| 09:41 | Deleted apps/web/components/landing/ | 7 obsolete files removed | ~0 |
+| 09:42 | pnpm check-types | web passes (next typegen + tsc) | ~1200 |
+| 09:42 | pnpm lint | 8 unescaped apostrophes → fixed across 5 files | ~600 |
+| 09:42 | pnpm lint | 0 warnings, 0 errors | ~200 |
+| 09:43 | Replaced "Start free" → "Get started" in SiteHeader + Hero | no-hardcoded-free-tier rule | ~30 |
+| 09:44 | Captured 10 viewport + full-page screenshots via Playwright | designqc verification | ~900 |
+| 09:45 | Read 13 section screenshots | all sections render as designed | ~1500 |
+| 09:39 | Session end: 11 writes across 9 files (FaqSection.tsx, FinalCta.tsx, page.tsx, ProblemSection.tsx, SiteFooter.tsx) | 10 reads | ~14190 tok |
+| 09:44 | Edited apps/web/components/marketing/FeatureTrio.tsx | expanded (+8 lines) | ~316 |
+| 09:44 | Edited apps/web/components/marketing/FeatureTrio.tsx | expanded (+17 lines) | ~361 |
+| 09:44 | Edited apps/web/components/marketing/FeatureTrio.tsx | "grid grid-cols-1 gap-4 md" → "grid grid-cols-1 gap-4 sm" | ~20 |
+| 09:44 | Edited apps/web/components/marketing/FeatureTrio.tsx | CSS: background, background, background | ~1142 |
+| 09:45 | Edited apps/web/components/marketing/DifferentiatorSection.tsx | CSS: sentence | ~375 |
+| 09:48 | Edited apps/web/components/marketing/FeatureTrio.tsx | added 4th pillar (personalization), grid → sm:2 lg:4, header doc updated | ~2400 |
+| 09:49 | Edited apps/web/components/marketing/FeatureTrio.tsx | added PersonalizationVisual (v.01 vs v.12 thumbnails) | ~1900 |
+| 09:50 | Edited apps/web/components/marketing/DifferentiatorSection.tsx | added personalization supporting sentence above math disclaimer | ~600 |
+| 09:51 | pnpm check-types + lint | both pass (0 errors, 0 warnings) | ~1200 |
+| 09:52 | Captured 6 screenshots via Playwright | 4 pillars verified, personalization sentence visible | ~1500 |
+| 09:47 | Session end: 16 writes across 11 files (FaqSection.tsx, FinalCta.tsx, page.tsx, ProblemSection.tsx, SiteFooter.tsx) | 12 reads | ~21126 tok |
+
+## Session: 2026-07-08 09:47
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|

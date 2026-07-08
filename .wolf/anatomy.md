@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-07T16:07:25.876Z
-> Files: 368 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-08T04:15:01.121Z
+> Files: 383 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../tmp/
 
@@ -200,7 +200,7 @@
 
 - `globals.css` — Styles: 23 rules, 110 vars (~3090 tok)
 - `layout.tsx` — interTight (~506 tok)
-- `page.tsx` — Marketing landing. (~600 tok)
+- `page.tsx` — Marketing landing. (~845 tok)
 
 ## apps/web/app/(auth)/
 
@@ -343,6 +343,22 @@
 - `site-header.tsx` — Marketing site header. Logo + three nav links (hidden on mobile) + sign-in / start-free pair. (~940 tok)
 - `site-header.tsx` — Marketing site header. (~484 tok)
 
+## apps/web/components/marketing/
+
+- `DifferentiatorSection.tsx` — DifferentiatorSection — the "one tool, not three" comparison. (~1897 tok)
+- `FaqSection.tsx` — FaqSection — the small objections a creator still has at the bottom (~1454 tok)
+- `FeatureTrio.tsx` — FeatureTrio — the automations named by PRD §3 Goal 1, plus one (~4052 tok)
+- `FinalCta.tsx` — FinalCta — the page's last beat, before the footer. (~907 tok)
+- `Hero.tsx` — Hero — the highest-leverage section on the page. (~3087 tok)
+- `HowItWorks.tsx` — HowItWorks — the 4-step pipeline that maps to AppFlow §2-§5. (~1100 tok)
+- `PricingSection.tsx` — PricingSection — three tiers, figures straight from PRD §8. (~1928 tok)
+- `ProblemSection.tsx` — ProblemSection — names the workflow before pitching the fix. (~1192 tok)
+- `ReassuranceStrip.tsx` — ReassuranceStrip — 3 short factual claims right under the hero. (~716 tok)
+- `SiteFooter.tsx` — Marketing footer. (~837 tok)
+- `SiteHeader.tsx` — Marketing site header. (~720 tok)
+- `SocialProofSection.tsx` — SocialProofSection — placeholder-safe by design. (~1159 tok)
+- `TrustCallout.tsx` — TrustCallout — a named product decision, given its own section. (~1436 tok)
+
 ## apps/web/components/onboarding/
 
 - `profile-wizard.test.tsx` — mockRouterPush (~2815 tok)
@@ -432,6 +448,11 @@
 - `video-status.ts` — Single source of truth for video-status presentation. (~1246 tok)
 - `voice.test.ts` — Tests for the voice formatters. Lifted from the video detail page (~849 tok)
 - `voice.ts` — User-facing formatters (Voice + Copy, Design.md Section 4). (~800 tok)
+
+## apps/web/lib/marketing/
+
+- `faq.ts` — FAQ entries — the section exists to pre-empt the specific objections (~934 tok)
+- `pricing.ts` — Pricing config — the single source of truth for the marketing (~1076 tok)
 
 ## apps/worker/
 

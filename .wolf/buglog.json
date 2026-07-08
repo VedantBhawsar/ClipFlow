@@ -2637,6 +2637,134 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-07T21:28:00.000Z"
+    },
+    {
+      "id": "bug-162",
+      "timestamp": "2026-07-08T03:58:01.965Z",
+      "error_message": "Incorrect value in code",
+      "file": "apps/web/components/marketing/SiteFooter.tsx",
+      "root_cause": "Had \"sm\"",
+      "fix": "Changed to \"h-6 w-auto\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-08T03:58:01.965Z"
+    },
+    {
+      "id": "bug-163",
+      "timestamp": "2026-07-08T03:58:15.149Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/web/components/marketing/SiteHeader.tsx",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 10→7 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-08T03:58:15.149Z"
+    },
+    {
+      "id": "bug-164",
+      "timestamp": "2026-07-08T03:58:15.282Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/web/components/marketing/SiteFooter.tsx",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 10→7 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-08T03:58:15.282Z"
+    },
+    {
+      "id": "bug-165",
+      "timestamp": "2026-07-08T04:08:09.184Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/web/components/marketing/SiteHeader.tsx",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 3→5 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-08T04:08:09.184Z"
+    },
+    {
+      "id": "bug-166",
+      "timestamp": "2026-07-08T04:14:10.580Z",
+      "error_message": "CSS fix: grid",
+      "file": "apps/web/components/marketing/FeatureTrio.tsx",
+      "root_cause": "grid: PRD §3 Goal 1 names → PRD §3 Goal 1",
+      "fix": "Changed grid: PRD §3 Goal 1 names → PRD §3 Goal 1",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-08T04:14:10.580Z"
+    },
+    {
+      "id": "bug-167",
+      "timestamp": "2026-07-08T04:14:10.872Z",
+      "error_message": "Type error",
+      "file": "apps/web/components/marketing/FeatureTrio.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation | Also: /**; * PersonalizationVisual — two stacked thumbnail cards that r",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-08T04:14:31.395Z"
+    },
+    {
+      "id": "bug-168",
+      "timestamp": "2026-07-08T04:14:11.116Z",
+      "error_message": "Incorrect value in code",
+      "file": "apps/web/components/marketing/FeatureTrio.tsx",
+      "root_cause": "Had \"grid grid-cols-1 gap-4 md:grid-cols-3\"",
+      "fix": "Changed to \"grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-col",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-08T04:14:11.116Z"
+    },
+    {
+      "id": "bug-169",
+      "timestamp": "2026-07-08T04:15:01.130Z",
+      "error_message": "Type error",
+      "file": "apps/web/components/marketing/DifferentiatorSection.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-08T04:15:01.130Z"
     }
   ]
 }
