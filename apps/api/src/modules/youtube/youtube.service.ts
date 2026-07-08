@@ -224,14 +224,20 @@ export const connectYouTubeChannel = async (
 /**
  * Disconnect a user's YouTube channel.
  *
+ * Sets the channel status to DISCONNECTED instead of deleting the row
+ * so that existing videos (and their metadata) persist. Users can still
+ * view their videos but cannot publish new ones or unpublish existing
+ * ones until they reconnect.
+ *
  * @param userId Authenticated user id.
  */
 export const disconnectYouTubeChannel = async (
   userId: string,
 ): Promise<void> => {
   requireDatabase();
-  await prisma.youTubeChannel.deleteMany({
+  await prisma.youTubeChannel.updateMany({
     where: { userId },
+    data: { status: "DISCONNECTED" },
   });
 };
 

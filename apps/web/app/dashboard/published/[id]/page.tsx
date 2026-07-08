@@ -5,6 +5,7 @@ import type {
   Video,
   VideoPrivacyStatus,
   VideoStatus,
+  YouTubeConnection,
 } from "@clipflow/types";
 
 import {
@@ -18,6 +19,7 @@ import { UnpublishButton } from "@/app/dashboard/published/[id]/unpublish-button
 import { CancelButton } from "@/app/dashboard/published/[id]/cancel-button";
 import { EditDetailsButton } from "@/app/dashboard/published/[id]/edit-details-button";
 import { PublishButton } from "@/app/dashboard/published/[id]/publish-button";
+import { RetryButton } from "@/app/dashboard/published/[id]/retry-button";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { DetailRow, EmptyValue } from "@/components/dashboard/detail-row";
 import { Button } from "@/components/ui/button";
@@ -36,6 +38,7 @@ import {
   formatLicense,
   formatPrivacy,
 } from "@/lib/voice";
+import { friendlyError } from "@/lib/friendly-error";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -68,8 +71,11 @@ export default async function VideoDetailPage({ params }: PageProps) {
   }
 
   let video: Video | null = null;
+  let channelConnected = false;
   try {
     video = await fetchVideo(token, id);
+    const connection = await fetchYouTubeConnection(token);
+    channelConnected = connection?.status === "connected";
 
     console.log("video" , video)
   } catch (err) {
@@ -131,7 +137,7 @@ export default async function VideoDetailPage({ params }: PageProps) {
             </p>
           </div>
 
-          <ActionPanel video={video} />
+          <ActionPanel video={video} channelConnected={channelConnected} />
         </div>
       </header>
 
@@ -174,13 +180,25 @@ export default async function VideoDetailPage({ params }: PageProps) {
         <StatusTimeline status={timelineStatus} hasError={hasError} />
 
         {video.failureReason ? (
-          <p className="mt-4 flex items-start gap-2 text-[13px] text-[color:var(--status-error)]">
-            <AlertCircle
-              className="mt-0.5 h-4 w-4 shrink-0"
-              aria-hidden="true"
-            />
-            {video.failureReason}
-          </p>
+          (() => {
+            const friendly = friendlyError(video.failureReason);
+            return (
+              <div className="mt-4 flex items-start gap-2 text-[13px] text-[color:var(--status-error)]">
+                <AlertCircle
+                  className="mt-0.5 h-4 w-4 shrink-0"
+                  aria-hidden="true"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block">{friendly.message}</span>
+                  {friendly.hint ? (
+                    <span className="mt-1 block text-[12px] text-[color:var(--ink-muted)]">
+                      {friendly.hint}
+                    </span>
+                  ) : null}
+                </span>
+              </div>
+            );
+          })()
         ) : null}
 
         {inFlight ? (
@@ -319,9 +337,28 @@ async function fetchVideo(token: string, id: string): Promise<Video> {
   return serverFetch<Video>(token, `/api/videos/${id}`);
 }
 
+async function fetchYouTubeConnection(
+  token: string,
+): Promise<YouTubeConnection | null> {
+  try {
+    return await serverFetch<YouTubeConnection>(
+      token,
+      "/api/youtube/connection",
+    );
+  } catch {
+    return null;
+  }
+}
+
 // ---------- sub-components ----------
 
-function ActionPanel({ video }: { video: Video }) {
+function ActionPanel({
+  video,
+  channelConnected,
+}: {
+  video: Video;
+  channelConnected: boolean;
+}) {
   const canCancel = [
     "UPLOADED",
     "READY",
@@ -346,7 +383,8 @@ function ActionPanel({ video }: { video: Video }) {
           }}
         />
       ) : null}
-      {video.status === "READY_FOR_REVIEW" || video.status === "PUBLISH_FAILED" ? (
+      {channelConnected &&
+      (video.status === "READY_FOR_REVIEW" || video.status === "PUBLISH_FAILED") ? (
         <PublishButton
           video={{
             id: video.id,
@@ -367,8 +405,11 @@ function ActionPanel({ video }: { video: Video }) {
           </a>
         </Button>
       ) : null}
-      {video.status === "PUBLISHED" ? (
+      {channelConnected && video.status === "PUBLISHED" ? (
         <UnpublishButton videoId={video.id} />
+      ) : null}
+      {video.status === "FAILED" ? (
+        <RetryButton videoId={video.id} videoTitle={video.title} />
       ) : null}
       {canCancel ? <CancelButton videoId={video.id} /> : null}
     </div>

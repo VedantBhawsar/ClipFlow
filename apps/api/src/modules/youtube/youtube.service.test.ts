@@ -22,6 +22,7 @@ vi.mock("../../lib/prisma.js", () => ({
       upsert: vi.fn(),
       findUnique: vi.fn(),
       deleteMany: vi.fn(),
+      updateMany: vi.fn(),
       update: vi.fn(),
     },
   },
@@ -57,6 +58,7 @@ import {
 const mockUpsert = vi.mocked(prisma.youTubeChannel.upsert);
 const mockFindUnique = vi.mocked(prisma.youTubeChannel.findUnique);
 const mockDeleteMany = vi.mocked(prisma.youTubeChannel.deleteMany);
+const mockUpdateMany = vi.mocked(prisma.youTubeChannel.updateMany);
 const mockUpdate = vi.mocked(prisma.youTubeChannel.update);
 const mockEncrypt = vi.mocked(encryptToken);
 const mockRefreshAccessToken = vi.mocked(refreshAccessToken);
@@ -148,14 +150,17 @@ describe("youtube.service", () => {
   });
 
   describe("disconnectYouTubeChannel", () => {
-    it("deletes the YouTubeChannel row for the user", async () => {
-      mockDeleteMany.mockResolvedValue({ count: 1 });
+    it("sets the channel status to DISCONNECTED instead of deleting", async () => {
+      mockUpdateMany.mockResolvedValue({ count: 1 });
       await youtubeService.disconnectYouTubeChannel("user-1");
-      expect(mockDeleteMany).toHaveBeenCalledWith({ where: { userId: "user-1" } });
+      expect(mockUpdateMany).toHaveBeenCalledWith({
+        where: { userId: "user-1" },
+        data: { status: "DISCONNECTED" },
+      });
     });
 
     it("succeeds even if no channel exists", async () => {
-      mockDeleteMany.mockResolvedValue({ count: 0 });
+      mockUpdateMany.mockResolvedValue({ count: 0 });
       await expect(youtubeService.disconnectYouTubeChannel("user-1")).resolves.not.toThrow();
     });
   });

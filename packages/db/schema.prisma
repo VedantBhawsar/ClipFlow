@@ -354,11 +354,11 @@ enum VideoStatus {
 /// client submits metadata; transitions through the `VideoStatus` enum
 /// as the upload → publish pipeline runs.
 ///
-/// Cascade on `youtubeChannelId`: disconnecting the YouTube channel
-/// deletes its videos (DB + S3) — matches the existing
-/// User → UserProfile cascade pattern. We treat the channel as the
-/// authoritative owner of the video; reconnection does not restore
-/// deleted rows.
+/// Cascade on `youtubeChannelId`: deleting the YouTube channel row
+/// cascades to its videos. However, the disconnect endpoint sets
+/// `status = "DISCONNECTED"` instead of deleting, so videos persist
+/// when a user disconnects their YouTube account. They remain visible
+/// in the dashboard but the publish/unpublish actions are hidden.
 model Video {
   id              String        @id @default(cuid())
   userId          String
