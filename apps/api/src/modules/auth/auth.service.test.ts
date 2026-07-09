@@ -88,6 +88,14 @@ const mockEnv: Env = {
   REPLICATE_IMAGE_MODEL: "black-forest-labs/flux-pro",
   THUMBNAILS_PER_VIDEO: 5,
   THUMBNAIL_VISION_ENABLED: true,
+  DODO_PAYMENTS_API_KEY: "test-dodo-payments-key-min-20-chars",
+  DODO_PAYMENTS_WEBHOOK_SECRET: "test-dodo-webhook-secret-min-20",
+  DODO_PAYMENTS_ENVIRONMENT: "test_mode",
+  DODO_STARTER_PRODUCT_ID: undefined,
+  DODO_CREATOR_PRODUCT_ID: undefined,
+  DODO_PRO_PRODUCT_ID: undefined,
+  DODO_FREE_PRODUCT_ID: undefined,
+  APP_URL: undefined,
 };
 
 const mockUser = {

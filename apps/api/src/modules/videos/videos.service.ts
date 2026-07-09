@@ -67,6 +67,7 @@ import { prisma } from "../../lib/prisma.js";
 import { requireDatabase } from "../../lib/db-guard.js";
 import { cache } from "../../lib/cache.js";
 import { enqueueIngestJob, enqueuePublishJob } from "../../lib/queue.js";
+import { assertWithinVideoLimit } from "../../lib/plan-guard.js";
 import { buildThumbnailLabel, toVideoDto } from "./videos.types.js";
 import type {
   CreateVideoInput,
@@ -248,6 +249,8 @@ export const createVideo = async (
   env: Env,
 ): Promise<CreateVideoResponse> => {
   requireDatabase();
+
+  await assertWithinVideoLimit(userId);
 
   const channel = await requireConnectedChannel(userId);
 
@@ -541,6 +544,12 @@ export const finalizeUpload = async (
   });
 
   await enqueueIngestJob(video.id, env);
+
+  await prisma.subscription.updateMany({
+    where: { userId },
+    data: { videosUsedThisPeriod: { increment: 1 } },
+  });
+  await cache.del(`access:${userId}`);
 
   await cache.del(`${PENDING_UPLOAD_KEY_PREFIX}${pendingUploadId}`);
 

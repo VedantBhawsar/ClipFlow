@@ -141,6 +141,7 @@ model User {
   refreshTokens        RefreshToken[]
   passwordResetTokens  PasswordResetToken[]
   thumbnailStyle      ChannelThumbnailStyle?
+  subscription        Subscription?
 
   @@map("users")
 @@index([id, email])
@@ -605,4 +606,81 @@ model ChannelThumbnailStyle {
   updatedAt       DateTime            @updatedAt
 
   @@map("channel_thumbnail_styles")
+}
+
+// ---------- Billing ----------
+
+enum SubscriptionStatus {
+  ACTIVE
+  ON_HOLD
+  CANCELED
+  EXPIRED
+}
+
+enum PlanInterval {
+  MONTH
+  YEAR
+}
+
+model Plan {
+  id               String       @id @default(cuid())
+  key              String       @unique
+  name             String
+  priceUsd         Int
+  videosPerMonth   Int
+  thumbnailsPerVideo Int
+  interval         PlanInterval @default(MONTH)
+  dodoProductId    String?      @unique
+  isHighlighted    Boolean      @default(false)
+  sortOrder        Int          @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId String
+  plan   Plan   @relation(fields: [planId], references: [id])
+
+  status              SubscriptionStatus @default(ACTIVE)
+  dodoSubscriptionId  String?            @unique
+  dodoCustomerId      String?
+  currentPeriodStart  DateTime?
+  currentPeriodEnd    DateTime?
+  cancelAtPeriodEnd   Boolean            @default(false)
+  videosUsedThisPeriod   Int             @default(0)
+  thumbnailsUsedThisPeriod Int           @default(0)
+  paymentFailedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([planId])
+  @@index([status])
+  @@index([currentPeriodEnd])
+  @@map("subscriptions")
+}
+
+model WebhookEvent {
+  id        String   @id @default(cuid())
+  provider  String
+  eventId   String
+  eventType String
+  payload   Json
+  processedAt DateTime?
+  attempts   Int     @default(1)
+  lastError  String?
+
+  receivedAt DateTime @default(now())
+
+  @@unique([provider, eventId])
+  @@index([provider, receivedAt])
+  @@map("webhook_events")
 }

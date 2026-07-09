@@ -2,16 +2,12 @@
  * Pricing config — the single source of truth for the marketing
  * page's tier copy and order.
  *
+ * Mapped 1:1 to Plan rows; see /api/billing/plans.
+ *
  * Why this lives in `lib/` rather than next to the section component:
  * the same config is meant to be consumed by the in-app billing screen
  * later (PRD §11 — "pricing as a one-object addition later, not a
- * redesign"), so we want it visible to non-marketing code paths too.
- *
- * Why a typed const (not inline JSX): a free tier is an unresolved
- * business decision (PRD §11). When it lands, drop another object into
- * `PRICING_PLANS` — the PricingSection, the in-app billing screen,
- * and any future plan-recommendation logic all pick it up without
- * touching the render path.
+ * redesign"), so we want that visible to non-marketing code paths too.
  *
  * Figures match PRD §8 exactly:
  *   Starter  $15  /mo —  5 videos,  3 thumbnails/video
@@ -22,7 +18,7 @@
 export type PricingPlanId = "starter" | "creator" | "pro";
 
 export interface PricingPlan {
-  /** Stable id; references the underlying billing record once Dodo is wired. */
+  /** Stable id; references the underlying billing record (Plan.key in the DB). */
   id: PricingPlanId;
   /** Tier name, used as the card heading. */
   name: string;
@@ -106,6 +102,12 @@ export const PRICING_PLANS: ReadonlyArray<PricingPlan> = [
  * Pricing-side disclosures that belong near the tier cards. Pulled out
  * of JSX so they read as data and can be unit-tested.
  */
+export const CHECKOUT_HREFS: Record<PricingPlanId, string> = {
+  starter: "/billing?plan=starter",
+  creator: "/billing?plan=creator",
+  pro: "/billing?plan=pro",
+};
+
 export const PRICING_FOOTNOTES: ReadonlyArray<string> = [
   "Chapters are included, unlimited, on every paid tier.",
   "Cancel anytime from your dashboard. No annual commitment.",

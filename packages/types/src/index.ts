@@ -872,3 +872,61 @@ export interface RegenerateThumbnailsRequest {
   /** Optional: override the generation prompt. */
   customPrompt?: string;
 }
+
+// ---------- Billing ----------
+
+export interface PlanDto {
+  id: string;
+  key: string;
+  name: string;
+  priceUsd: number;
+  videosPerMonth: number;
+  thumbnailsPerVideo: number;
+  isHighlighted: boolean;
+  sortOrder: number;
+}
+
+export interface SubscriptionDto {
+  id: string;
+  planKey: string;
+  status: string;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  videosUsedThisPeriod: number;
+  thumbnailsUsedThisPeriod: number;
+  paymentFailedAt: string | null;
+}
+
+export interface UsageDto {
+  videosUsed: number;
+  videosAllowed: number;
+  thumbnailsUsed: number;
+  thumbnailsAllowed: number;
+  periodEnd: string | null;
+}
+
+export interface SubscriptionResponse {
+  plan: PlanDto;
+  subscription: SubscriptionDto;
+  usage: UsageDto;
+}
+
+export interface CheckoutSessionResponse {
+  checkoutUrl: string;
+  sessionId: string;
+}
+
+export interface CustomerPortalResponse {
+  url: string;
+}
+
+export interface CustomerPortalUnavailableResponse {
+  available: false;
+}
+
+export interface CreateCheckoutRequest {
+  planId: "starter" | "creator" | "pro";
+  country?: string;
+  billingCurrency?: "INR" | "USD";
+}

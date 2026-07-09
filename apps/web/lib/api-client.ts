@@ -28,8 +28,11 @@ import type {
   AuthResponse,
   ChangePasswordRequest,
   ChannelRecentThumbnailsResponse,
+  CheckoutSessionResponse,
+  CreateCheckoutRequest,
   CreateVideoRequest,
   CreateVideoResponse,
+  CustomerPortalResponse,
   ForgotPasswordRequest,
   ListPublishedVideosParams,
   ListVideosParams,
@@ -38,6 +41,7 @@ import type {
   OnboardingStatusResponse,
   PaginatedVideos,
   PatchProfileRequest,
+  PlanDto,
   PublishVideoRequest,
   RefreshRequest,
   RefreshResponse,
@@ -45,11 +49,14 @@ import type {
   RegisterRequest,
   ResetPasswordRequest,
   SettingsResponse,
+  SubscriptionDto,
+  SubscriptionResponse,
   ThumbnailDto,
   UpdatePreferencesRequest,
   UpdateProfileRequest,
   UpdateVideoRequest,
   UploadUrlResponse,
+  UsageDto,
   UserPreferences,
   UserProfile,
   Video,
@@ -301,6 +308,12 @@ export interface ApiClient {
   triggerPersonalizedStyleAnalysis(body?: {
     selectedThumbnailUrls?: string[];
   }): Promise<{ jobId: string } | null>;
+
+  getPlans(): Promise<PlanDto[]>;
+  getSubscription(): Promise<SubscriptionResponse>;
+  createCheckoutSession(body: CreateCheckoutRequest): Promise<CheckoutSessionResponse>;
+  openCustomerPortal(): Promise<CustomerPortalResponse | { available: false }>;
+  cancelScheduled(): Promise<SubscriptionDto>;
 }
 
 /**
@@ -517,6 +530,22 @@ export function createApiClient(accessToken: string | null): ApiClient {
     },
     triggerPersonalizedStyleAnalysis(body) {
       return request("POST", `/api/thumbnail-style/analyze`, body ?? {});
+    },
+
+    getPlans() {
+      return request("GET", "/api/billing/plans");
+    },
+    getSubscription() {
+      return request("GET", "/api/billing/subscription");
+    },
+    createCheckoutSession(body) {
+      return request("POST", "/api/billing/checkout", body);
+    },
+    openCustomerPortal() {
+      return request("POST", "/api/billing/customer-portal");
+    },
+    cancelScheduled() {
+      return request("POST", "/api/billing/cancel-scheduled");
     },
   };
 }

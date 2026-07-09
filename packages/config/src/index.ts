@@ -163,6 +163,18 @@ const envSchema = z.object({
   // Rate limiting (per-IP defaults; tighten per-route later)
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
+
+  // ---- Dodo Payments ----
+  DODO_PAYMENTS_API_KEY: z.string().min(20),
+  DODO_PAYMENTS_WEBHOOK_SECRET: z.string().min(20),
+  DODO_PAYMENTS_ENVIRONMENT: z.enum(["test_mode", "live_mode"]).default("test_mode"),
+
+  DODO_STARTER_PRODUCT_ID: z.string().regex(/^pdt_/).optional(),
+  DODO_CREATOR_PRODUCT_ID: z.string().regex(/^pdt_/).optional(),
+  DODO_PRO_PRODUCT_ID: z.string().regex(/^pdt_/).optional(),
+  DODO_FREE_PRODUCT_ID: z.string().regex(/^pdt_/).optional(),
+
+  APP_URL: z.string().url().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -191,6 +203,8 @@ const publicEnvSchema = z.object({
 });
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;
+
+export const resolveAppUrl = (env: Env): string => env.APP_URL ?? env.WEB_ORIGIN;
 
 export function loadPublicEnv(source: Record<string, unknown> = {}): PublicEnv {
   const parsed = publicEnvSchema.safeParse({

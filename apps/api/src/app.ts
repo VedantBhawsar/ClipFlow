@@ -17,6 +17,7 @@ import { buildLogger, type Logger } from "./lib/logger.js";
 // unhandledRejection. Must come AFTER `import express` and BEFORE
 // any Router() construction. See lib/async-handler.ts for the why.
 import "./lib/async-handler.js";
+import { buildBillingRouter, buildBillingWebhookRouter } from "./modules/billing/routes.js";
 import { buildErrorHandler, notFoundHandler } from "./middleware/error.js";
 import { requestIdMiddleware } from "./middleware/request-id.js";
 import { buildGlobalRateLimiter } from "./middleware/rate-limit.js";
@@ -108,6 +109,10 @@ export const createApp = ({ env, logger }: CreateAppOptions): Application => {
     }),
   );
 
+  // Webhook route MUST be mounted BEFORE the global express.json() parser
+  // so the raw body is available for HMAC signature verification.
+  app.use("/api/billing/webhooks", express.raw({ type: "*/*", limit: "1mb" }), buildBillingWebhookRouter(env));
+
   // JSON body parser with a sensible size limit. Upload routes will be
   // mounted at a higher limit when they're built (this app doesn't proxy
   // uploads in v1 — direct-to-S3 — but the limit is here so the rest of
@@ -126,7 +131,7 @@ export const createApp = ({ env, logger }: CreateAppOptions): Application => {
   // narrower writes (PATCH /preferences, POST /change-password) are
   // mounted under the same prefix from the existing preferences
   // router so the URL space stays a single tree. The combined-read
-  // user/bundle router is gone — the dashboard chrome reads identity
+  // user/bundle bundle is gone — the dashboard chrome reads identity
   // + onboarding status straight from the NextAuth session JWT.
   app.use("/api/settings", buildSettingsRouter(env));
   app.use("/api/settings", buildPreferencesRouter(env));
@@ -138,6 +143,8 @@ export const createApp = ({ env, logger }: CreateAppOptions): Application => {
   app.use("/api/videos", buildVideosRouter(env));
   // User-level thumbnail style profile (not per-video).
   app.use("/api/thumbnail-style", buildThumbnailStyleRouter(env));
+  // Billing routes (JSON body, auth-protected).
+  app.use("/api/billing", buildBillingRouter(env));
 
   // 404 + error handler must be last.
   app.use(notFoundHandler);

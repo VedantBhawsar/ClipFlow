@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-06-26T04:13:47.972Z",
   "lifetime": {
-    "total_tokens_estimated": 918161,
-    "total_reads": 351,
-    "total_writes": 322,
+    "total_tokens_estimated": 1004234,
+    "total_reads": 384,
+    "total_writes": 323,
     "total_sessions": 103,
-    "anatomy_hits": 283,
-    "anatomy_misses": 21,
-    "repeated_reads_blocked": 63,
-    "estimated_savings_vs_bare_cli": 347630
+    "anatomy_hits": 306,
+    "anatomy_misses": 23,
+    "repeated_reads_blocked": 73,
+    "estimated_savings_vs_bare_cli": 380949
   },
   "sessions": [
     {
@@ -4484,6 +4484,226 @@
         "writes_count": 5,
         "repeated_reads_blocked": 1,
         "anatomy_lookups": 6
+      }
+    },
+    {
+      "id": "session-2026-07-09-2111",
+      "started": "2026-07-09T15:41:08.467Z",
+      "ended": "2026-07-09T15:53:06.992Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/docs/PRD.md",
+          "tokens_estimated": 2874,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/docs/TechSpec.md",
+          "tokens_estimated": 3221,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/docs/Schema.md",
+          "tokens_estimated": 4312,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/docs/AppFlow.md",
+          "tokens_estimated": 3137,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/auth.ts",
+          "tokens_estimated": 3420,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/auth.config.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/middleware.ts",
+          "tokens_estimated": 392,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/index.ts",
+          "tokens_estimated": 2421,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/app.ts",
+          "tokens_estimated": 1564,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/config/src/index.ts",
+          "tokens_estimated": 2623,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/marketing/PricingSection.tsx",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/lib/marketing/pricing.ts",
+          "tokens_estimated": 1076,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/auth/index.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/auth/auth.controller.ts",
+          "tokens_estimated": 770,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/auth/auth.routes.ts",
+          "tokens_estimated": 532,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/auth/auth.service.ts",
+          "tokens_estimated": 2107,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/types/express.d.ts",
+          "tokens_estimated": 405,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/auth/auth.schemas.ts",
+          "tokens_estimated": 717,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/middleware/auth.ts",
+          "tokens_estimated": 584,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.routes.ts",
+          "tokens_estimated": 1578,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.schemas.ts",
+          "tokens_estimated": 4468,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/db/schema.prisma",
+          "tokens_estimated": 5957,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts",
+          "tokens_estimated": 12814,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/hooks/use-api.ts",
+          "tokens_estimated": 356,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/types/src/index.ts",
+          "tokens_estimated": 8029,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/lib/api-client.ts",
+          "tokens_estimated": 5330,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/onboarding/plan-recommendation.test.ts",
+          "tokens_estimated": 175,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/errors/AppError.ts",
+          "tokens_estimated": 374,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.types.ts",
+          "tokens_estimated": 1301,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/lib/cache.ts",
+          "tokens_estimated": 2524,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/lib/db-guard.ts",
+          "tokens_estimated": 210,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/middleware/error.ts",
+          "tokens_estimated": 966,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/.claude/plans/i-want-you-to-expressive-quail.md",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/.claude/plans/i-want-you-to-expressive-quail.md",
+          "tokens_estimated": 11836,
+          "action": "create"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 74237,
+        "output_tokens_estimated": 11836,
+        "reads_count": 33,
+        "writes_count": 1,
+        "repeated_reads_blocked": 10,
+        "anatomy_lookups": 23
       }
     }
   ],

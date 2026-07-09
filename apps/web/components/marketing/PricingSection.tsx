@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import {
+  CHECKOUT_HREFS,
   PRICING_PLANS,
   PRICING_FOOTNOTES,
   type PricingPlan,
@@ -176,7 +177,7 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
         ].join(" ")}
         variant={isHighlighted ? "default" : "outline"}
       >
-        <Link href={plan.ctaHref}>{plan.ctaLabel}</Link>
+        <Link href={CHECKOUT_HREFS[plan.id]}>{plan.ctaLabel}</Link>
       </Button>
     </article>
   );

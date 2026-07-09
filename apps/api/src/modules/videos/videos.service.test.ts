@@ -50,6 +50,14 @@ vi.mock("../../lib/prisma.js", () => ({
       count: vi.fn(),
       delete: vi.fn(),
     },
+    subscription: {
+      findUnique: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    plan: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+    },
   },
 }));
 
@@ -126,6 +134,24 @@ const mockCacheDel = vi.mocked(cache.del);
 const mockHead = vi.mocked(headObject);
 const mockDeleteObject = vi.mocked(deleteObject);
 const mockPresign = vi.mocked(createPresignedPostUrl);
+const mockSubFindUnique = vi.mocked(prisma.subscription.findUnique);
+const mockSubUpdateMany = vi.mocked(prisma.subscription.updateMany);
+const mockPlanFindUnique = vi.mocked(prisma.plan.findUnique);
+
+const FREE_PLAN = {
+  id: "plan-free",
+  key: "free",
+  name: "Free",
+  priceUsd: 0,
+  videosPerMonth: 1,
+  thumbnailsPerVideo: 1,
+  isHighlighted: false,
+  sortOrder: 0,
+  interval: "MONTH" as const,
+  dodoProductId: null,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
 const mockPresignGet = vi.mocked(createPresignedGetUrl);
 const mockEnqueue = vi.mocked(enqueueIngestJob);
 const mockEnqueuePublish = vi.mocked(enqueuePublishJob);
@@ -289,6 +315,27 @@ describe("videos.service", () => {
   });
 
   describe("createVideo", () => {
+    beforeEach(() => {
+      mockPlanFindUnique.mockResolvedValue(FREE_PLAN);
+      mockSubFindUnique.mockResolvedValue({
+        id: "sub-free-1",
+        userId: "user-1",
+        planId: "plan-free",
+        status: "ACTIVE",
+        dodoSubscriptionId: null,
+        dodoCustomerId: null,
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        cancelAtPeriodEnd: false,
+        videosUsedThisPeriod: 0,
+        thumbnailsUsedThisPeriod: 0,
+        paymentFailedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        plan: FREE_PLAN,
+      });
+    });
+
     it("does not create a Video row, only writes to cache and returns a presigned URL", async () => {
       mockFindChannel.mockResolvedValue(baseChannel);
 
@@ -296,8 +343,11 @@ describe("videos.service", () => {
 
       expect(mockVideoCreate).not.toHaveBeenCalled();
       expect(mockPresign).toHaveBeenCalledTimes(1);
-      expect(mockCacheSet).toHaveBeenCalledTimes(1);
-      const [cacheKey, cacheValue, ttl] = mockCacheSet.mock.calls[0]!;
+      expect(mockCacheSet).toHaveBeenCalledTimes(2);
+      const cacheCalls = mockCacheSet.mock.calls;
+      const pendingCall = cacheCalls.find(([key]) => key.startsWith("pendingUpload:"));
+      expect(pendingCall).toBeDefined();
+      const [cacheKey, cacheValue, ttl] = pendingCall!;
       expect(cacheKey).toMatch(/^pendingUpload:pu_[0-9a-f-]{36}$/);
       expect(ttl).toBe(900);
       const parsed = JSON.parse(cacheValue);
@@ -321,7 +371,7 @@ describe("videos.service", () => {
         videosService.createVideo("user-1", baseInput, baseEnv),
       ).rejects.toMatchObject({ statusCode: 412, code: "YOUTUBE_NOT_CONNECTED" });
       expect(mockVideoCreate).not.toHaveBeenCalled();
-      expect(mockCacheSet).not.toHaveBeenCalled();
+      expect(mockPresign).not.toHaveBeenCalled();
     });
 
     it("throws YOUTUBE_NEEDS_REAUTH when channel is in NEEDS_REAUTH", async () => {
@@ -363,6 +413,28 @@ describe("videos.service", () => {
   });
 
   describe("finalizeUpload", () => {
+    beforeEach(() => {
+      mockSubFindUnique.mockResolvedValue({
+        id: "sub-free-1",
+        userId: "user-1",
+        planId: "plan-free",
+        status: "ACTIVE",
+        dodoSubscriptionId: null,
+        dodoCustomerId: null,
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        cancelAtPeriodEnd: false,
+        videosUsedThisPeriod: 0,
+        thumbnailsUsedThisPeriod: 0,
+        paymentFailedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        plan: FREE_PLAN,
+      });
+      mockPlanFindUnique.mockResolvedValue(FREE_PLAN);
+      mockSubUpdateMany.mockResolvedValue({ count: 1 });
+    });
+
     it("happy path: cache hit + S3 HEAD success + row created + ingest enqueued", async () => {
       mockCacheGet.mockResolvedValue(JSON.stringify(basePending));
       mockHead.mockResolvedValue({

@@ -29,6 +29,7 @@ import { prisma, setDatabaseAvailable } from "./lib/prisma.js";
 import { connectEventBus, eventBus } from "./lib/events.js";
 import { inspect } from "node:util";
 import type { Logger } from "./lib/logger.js";
+import { initBillingClient, getBillingClient } from "./modules/billing/client.js";
 
 /**
  * Result of a single service reachability probe. Shape stays narrow so the
@@ -174,6 +175,42 @@ const main = async (): Promise<void> => {
         ? "skipped — REDIS_URL unset"
         : `FAILED — ${generateQueueResult.error}`,
   });
+
+  // ---- Dodo Payments probe ----
+  let indiaSupported = false;
+  if (env.DODO_PAYMENTS_API_KEY && env.DODO_PAYMENTS_API_KEY !== "stub") {
+    try {
+      initBillingClient(env);
+      const billingClient = getBillingClient();
+      await billingClient.init();
+      indiaSupported = billingClient.isInSupported();
+      if (indiaSupported) {
+        checks.push({
+          name: "Dodo Payments (IN)",
+          ok: true,
+          detail: `live IN support (${billingClient.supportedCountriesList.length} countries loaded)`,
+        });
+      } else {
+        checks.push({
+          name: "Dodo Payments (IN)",
+          ok: false,
+          detail: `WARN: 'IN' not in Dodo's supported countries list — checkout will 502 until Dodo confirms India GA`,
+        });
+      }
+    } catch (err) {
+      checks.push({
+        name: "Dodo Payments",
+        ok: false,
+        detail: err instanceof Error ? err.message : String(err),
+      });
+    }
+  } else {
+    checks.push({
+      name: "Dodo Payments",
+      ok: false,
+      detail: "skipped — DODO_PAYMENTS_API_KEY unset",
+    });
+  }
 
   logger.info(
     { cacheBackend: getCacheBackend() },

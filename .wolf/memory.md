@@ -3,6 +3,10 @@
 > Chronological action log. Hooks and AI append to this file automatically.
 > Old sessions are consolidated by the daemon weekly.
 
+| Time | Description | File(s) | Outcome | ~Tokens |
+| --- | --- | --- | --- | --- |
+| 15:30 | Plan: Dodo Payments integration for India region — schema (`Plan`/`Subscription`/`WebhookEvent`), env, API surface, webhook HMAC + idempotency, plan-guard into `videos.service.ts → createVideo`, web billing pages, test plan | `implementation.payment.md` (new, 494 lines) + `.wolf/cerebrum.md` + `.wolf/anatomy.md` | Approved by user; ready for implementation agent | ~12k |
+
 ## Session: 2026-06-26 09:44
 
 | Time | Action | File(s) | Outcome | ~Tokens |
@@ -1376,3 +1380,5 @@ Closed the loop on the user-driven publish trigger for `READY_FOR_REVIEW` (and r
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+| 21:20 | Created ../../../.claude/plans/i-want-you-to-expressive-quail.md | — | ~11047 |
+| 21:23 | Session end: 1 writes across 1 files (i-want-you-to-expressive-quail.md) | 33 reads | ~86073 tok |

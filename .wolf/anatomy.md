@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-09T15:19:00.353Z
-> Files: 403 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-09T15:50:45.077Z
+> Files: 402 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../tmp/
 
@@ -15,6 +15,7 @@
 
 ## ../../../.claude/plans/
 
+- `i-want-you-to-expressive-quail.md` — ClipFlow — Dodo Payments Implementation Plan (India Region) (~10356 tok)
 - `i-want-you-to-precious-hopcroft.md` — Plan: Personalized Thumbnail Style — Onboarding Step 5 + Settings Re-entry (~3683 tok)
 - `memoized-floating-dijkstra.md` — ClipFlow Dashboard UI Polish — Plan (~2700 tok)
 - `quirky-giggling-blanket.md` — Plan: In-place editing for video metadata + chapters (~2106 tok)
@@ -36,6 +37,7 @@
 - `.npmrc` (~0 tok)
 - `CLAUDE.md` — OpenWolf (~3549 tok)
 - `docker-compose.yml` — Docker Compose services (~2275 tok)
+- `implementation.payment.md` — Plan: Dodo Payments integration for India region (Plan/Subscription/WebhookEvent schema, env, API surface, webhook HMAC + idempotency, plan-guard into videos.service.ts → createVideo, web billing pages, test plan) (~12k tok)
 - `neon_backup.sql` — PostgreSQL database dump (~6500 tok)
 - `package.json` — Node.js package manifest (~123 tok)
 - `pnpm-lock.yaml` — pnpm lock file (~100120 tok)
@@ -588,7 +590,6 @@
 
 ## packages/db/
 
-- `Dockerfile.migrate` — One-shot Prisma migration runner for the docker-compose stack. Single-stage `node:24.13.0-slim` + corepack pnpm + the `@clipflow/db` workspace package; CMD runs `packages/db/scripts/migrate.mjs`. Mirrors the install phase of `apps/api/Dockerfile` + `apps/worker/Dockerfile`. Used by the `migrate` service in `docker-compose.yml` with `restart: "no"` and `condition: service_completed_successfully` gates on `api` + `worker`. (~2.3k tok)
 - `package.json` — Node.js package manifest (~313 tok)
 - `prisma.config.ts` (~89 tok)
 - `schema.prisma` — packages/db/schema.prisma (~5957 tok)
@@ -652,7 +653,6 @@
 
 ## packages/db/scripts/
 
-- `migrate.mjs` — Apply pending Prisma migrations to the running Postgres container. Two-state logic: probes `SELECT 1 FROM "users"` to detect schema bootstrap (true first boot from `neon_backup.sql` vs. fresh DB). If schema exists, baselines every existing migration via `prisma migrate resolve --applied` (no SQL re-run) — then `prisma migrate deploy` is a no-op for already-applied migrations but picks up genuinely-new ones. If schema missing, runs `migrate deploy` from scratch. Invoked from `packages/db/Dockerfile.migrate`; safe to run locally for a sanity check.
 
 ## packages/db/src/
 
