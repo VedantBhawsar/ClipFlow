@@ -31,7 +31,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <div className="flex min-h-svh bg-[color:var(--bg)]">
         <Sidebar />
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col h-screen max-h-screen overflow-y-auto">
           {/* Mobile top bar — Menu button visible below `lg`; the
               desktop sidebar handles its own nav. Hidden on `lg+`
               via `lg:hidden` on the trigger. */}
@@ -39,7 +39,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <MobileNav />
           </header>
 
-          <main className="mx-auto w-full max-w-5xl flex-1 px-5 py-8 sm:px-8">
+          <main className="mx-auto w-full max-w-5xl flex-1 px-5 py-8 sm:px-8  ">
             <OnboardingGuard mode="require-complete">{children}</OnboardingGuard>
           </main>
         </div>

@@ -2867,6 +2867,319 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-08T18:46:00.000Z"
+    },
+    {
+      "id": "bug-176",
+      "timestamp": "2026-07-08T13:41:26.184Z",
+      "error_message": "Type error",
+      "file": "packages/types/src/index.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-08T13:41:26.184Z"
+    },
+    {
+      "id": "bug-177",
+      "timestamp": "2026-07-08T13:42:15.369Z",
+      "error_message": "Null/undefined access in ",
+      "file": "packages/youtube-upload/src/youtube-api.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-08T13:42:15.369Z"
+    },
+    {
+      "id": "bug-178",
+      "timestamp": "2026-07-08T13:43:06.740Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "apps/api/src/modules/youtube/youtube.service.ts",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-08T13:43:06.740Z"
+    },
+    {
+      "id": "bug-179",
+      "timestamp": "2026-07-08T13:43:21.875Z",
+      "error_message": "Function not marked async",
+      "file": "apps/api/src/modules/youtube/youtube.controller.ts",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-08T13:43:21.875Z"
+    },
+    {
+      "id": "bug-180",
+      "timestamp": "2026-07-08T13:43:48.717Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/api/src/modules/youtube/youtube.controller.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-08T13:43:48.717Z"
+    },
+    {
+      "id": "bug-181",
+      "timestamp": "2026-07-08T13:44:29.440Z",
+      "error_message": "Wrong reference: ChannelRecentVideo should be ChannelRecentThumbnail",
+      "file": "apps/api/src/modules/youtube/youtube.service.ts",
+      "root_cause": "Used \"ChannelRecentVideo\" instead of \"ChannelRecentThumbnail\"",
+      "fix": "Changed ChannelRecentVideo → ChannelRecentThumbnail",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-08T13:44:29.440Z"
+    },
+    {
+      "id": "bug-182",
+      "timestamp": "2026-07-08T13:44:58.326Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/api/src/modules/settings/settings.service.ts",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 15→27 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-08T13:44:58.326Z"
+    },
+    {
+      "id": "bug-183",
+      "timestamp": "2026-07-08T13:45:27.173Z",
+      "error_message": "Type error",
+      "file": "apps/api/src/lib/queue.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-08T13:45:27.173Z"
+    },
+    {
+      "id": "bug-184",
+      "timestamp": "2026-07-09T02:45:09.662Z",
+      "error_message": "Type error",
+      "file": "apps/api/src/modules/thumbnails/thumbnails.service.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-09T02:45:09.662Z"
+    },
+    {
+      "id": "bug-185",
+      "timestamp": "2026-07-09T02:45:18.889Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/api/src/modules/thumbnails/thumbnails.controller.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-09T02:45:18.889Z"
+    },
+    {
+      "id": "bug-186",
+      "timestamp": "2026-07-09T02:46:22.903Z",
+      "error_message": "Type error",
+      "file": "apps/worker/src/jobs/channel-style-analyze.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-09T02:46:22.903Z"
+    },
+    {
+      "id": "bug-187",
+      "timestamp": "2026-07-09T02:46:40.334Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/worker/src/jobs/channel-style-analyze.ts",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 22→37 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-09T02:46:40.334Z"
+    },
+    {
+      "id": "bug-188",
+      "timestamp": "2026-07-09T02:46:54.063Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/worker/src/jobs/channel-style-analyze.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-09T02:46:54.063Z"
+    },
+    {
+      "id": "bug-189",
+      "timestamp": "2026-07-09T02:51:08.768Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/web/components/onboarding/profile-wizard.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-09T02:51:08.768Z"
+    },
+    {
+      "id": "bug-190",
+      "timestamp": "2026-07-09T02:53:52.741Z",
+      "error_message": "CSS fix: data",
+      "file": "apps/web/components/onboarding/profile-wizard.test.tsx",
+      "root_cause": "data: { → { status: \"disconnected\"",
+      "fix": "Changed data: { → { status: \"disconnected\"",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 5,
+      "last_seen": "2026-07-09T02:58:00.575Z"
+    },
+    {
+      "id": "bug-191",
+      "timestamp": "2026-07-09T02:54:30.621Z",
+      "error_message": "Type error",
+      "file": "apps/web/components/onboarding/profile-wizard.test.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation | Also: // idle card surfaces immediately. The same phrase appears a; // the card title and the wizard step subhead, so use a head",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-07-09T02:57:19.820Z"
+    },
+    {
+      "id": "bug-192",
+      "timestamp": "2026-07-09T02:58:24.730Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/web/components/onboarding/profile-wizard.test.tsx",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 5→5 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-09T02:58:24.730Z"
+    },
+    {
+      "id": "bug-193",
+      "timestamp": "2026-07-09T02:59:21.059Z",
+      "error_message": "Null/undefined access in ",
+      "file": "apps/web/app/dashboard/settings/connected/page.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-09T02:59:21.059Z"
+    },
+    {
+      "id": "bug-194",
+      "timestamp": "2026-07-09T08:34:00.000Z",
+      "error_message": "apps/web/Dockerfile was a generic single-package Next.js Dockerfile: globs package-lock.json/yarn.lock/pnpm-lock.yaml (only matches one per project), runs `npm run build` (the project uses pnpm + turbo), and COPYs `.` into the image indiscriminately. In a Turborepo layout the install layer would never find the workspace packages — the build would resolve against a broken tree and the runtime COPY of `.next/standalone` would land on an empty directory because next.config.js had no `output: \"standalone\"`.",
+      "file": "apps/web/Dockerfile",
+      "root_cause": "Dockerfile authored as a generic Next.js template, not the Turborepo project it actually lives in. The COPY/install/build pattern is single-package; the project's packages live outside the COPY context, the build command is `pnpm --filter web... build` not `next build` directly, and the standalone output path is `apps/web/.next/standalone/apps/web/server.js` (source path preserved) not `./server.js`.",
+      "fix": "Rewrote apps/web/Dockerfile to mirror apps/worker/Dockerfile's 3-stage pnpm+frozen-lockfile pattern: deps stage COPIes workspace manifests + every package's package.json + the lockfile, then `pnpm install --frozen-lockfile --filter web...`; build stage COPIes apps/web + packages, then `pnpm --filter web... build` (the trailing `...` is load-bearing — without it @clipflow/config + @clipflow/types never reach apps/web/node_modules and next build fails to resolve their imports); runtime stage COPYs `apps/web/.next/standalone` (preserving the apps/web/ source path) + static + public + apps/web/node_modules (the pnpm-isolated-mode pitfall bug-048 warns about) + the root node_modules + packages/ (workspace-package dist/ is NOT inlined by standalone). Also added `output: \"standalone\"` + `outputFileTracingRoot: path.join(import.meta.dirname, \"../../\")` to apps/web/next.config.js — both are prerequisites for the Dockerfile to function. CMD is `[\"node\", \"apps/web/server.js\"]` because standalone preserves the source path inside the bundle.",
+      "tags": [
+        "manual",
+        "docker",
+        "turborepo",
+        "pnpm",
+        "nextjs",
+        "standalone",
+        "outputFileTracingRoot",
+        "monorepo",
+        "node-modules",
+        "workspaces"
+      ],
+      "related_bugs": [
+        "bug-048"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-07-09T08:34:00.000Z"
     }
   ]
 }

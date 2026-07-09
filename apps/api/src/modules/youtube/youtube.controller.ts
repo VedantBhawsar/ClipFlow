@@ -26,9 +26,14 @@ import {
   buildOAuthUrl,
   connectYouTubeChannel,
   disconnectYouTubeChannel,
+  getChannelRecentThumbnails,
   getYouTubeConnectionByUserId,
 } from "./youtube.service.js";
-import type { YouTubeConnection } from "@clipflow/types";
+import type { ChannelRecentThumbnailsQuery } from "./youtube.schemas.js";
+import type {
+  ChannelRecentThumbnailsResponse,
+  YouTubeConnection,
+} from "@clipflow/types";
 
 const CONNECTION_CACHE_TTL_SECONDS = 60;
 
@@ -168,4 +173,30 @@ export const getConnectionController = async (
 
   res.setHeader("X-Cache", "MISS");
   sendOk(res, connection, "YouTube connection retrieved.");
+};
+
+/**
+ * GET /api/youtube/channel-recent-thumbnails
+ *
+ * Return up to N (default 8, max 8) of the user's most recent YouTube
+ * video thumbnails. The wizard's step 5 and the settings re-style CTA
+ * render these in a 4×2 grid for the user to pick up to 4.
+ *
+ * Throws 412 `YOUTUBE_NOT_CONNECTED` if the user has no connected
+ * channel — the wizard handles that case with an inline "Connect
+ * YouTube first" prompt, but the API also surfaces it cleanly so
+ * other callers can branch on the code.
+ */
+export const channelRecentThumbnailsController = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  const userId = requireUser(req);
+  const env = requireEnv(req);
+  const { limit } = req.query as unknown as ChannelRecentThumbnailsQuery;
+  const clampedLimit = Math.min(Math.max(limit ?? 8, 1), 8);
+
+  const items = await getChannelRecentThumbnails(userId, clampedLimit, env);
+  const payload: ChannelRecentThumbnailsResponse = { items };
+  sendOk(res, payload, "Channel thumbnails retrieved.");
 };

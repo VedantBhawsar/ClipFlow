@@ -43,3 +43,5 @@ yarn-error.log*
 
 # Image-generation smoke test output (apps/worker/scripts/test-image-gen.ts)
 .image-gen-smoke/
+
+.env

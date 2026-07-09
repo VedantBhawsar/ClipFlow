@@ -303,6 +303,8 @@ export interface SettingsResponse {
   profile: UserProfile | null;
   preferences: UserPreferences | null;
   youtubeConnection: YouTubeConnection;
+  /** Personalized thumbnail-style analysis (null if never run). */
+  channelThumbnailStyle: ChannelThumbnailStyleDto | null;
 }
 
 // ---------- API response envelope ----------
@@ -806,10 +808,52 @@ export interface ChannelThumbnailStyleDto {
   brandElements: string[] | null;
   analysisRaw: string | null;
   styleOverride: ThumbnailStyle;
+  /** URLs the user explicitly picked for the last analysis (1–4). Empty array means the worker auto-picked. */
+  selectedThumbnailUrls: string[];
+  /** HIGH = Gemini Vision returned a coherent style. LOW = partial parse; consumers should fall back to niche-only. */
+  confidence: ChannelStyleConfidence;
+  /** Machine-readable prefix when `confidence === "LOW"` (e.g. "[VISION_PARTIAL_PARSE]"). */
+  lowConfidenceReason: string | null;
   thumbnailCount: number;
   lastAnalyzedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Confidence flag for the personalized channel-style analysis. Mirrors
+ * the `ChannelStyleConfidence` Prisma enum — defined here so the web
+ * layer can switch on it without importing Prisma types.
+ */
+export type ChannelStyleConfidence = "HIGH" | "LOW";
+
+/**
+ * One entry in the response of `GET /api/youtube/channel-recent-thumbnails`.
+ * `thumbnailUrl` is `snippet.thumbnails.high.url` preferred, with medium
+ * and default as fallbacks. The UI renders this directly in an `<img>`.
+ */
+export interface ChannelRecentThumbnail {
+  videoId: string;
+  title: string;
+  thumbnailUrl: string;
+}
+
+/**
+ * Response shape for `GET /api/youtube/channel-recent-thumbnails`.
+ */
+export interface ChannelRecentThumbnailsResponse {
+  items: ChannelRecentThumbnail[];
+}
+
+/**
+ * Request body for `POST /api/thumbnail-style/analyze` when the user
+ * picked references themselves (onboarding step 5 or the settings
+ * "Refresh my channel style" CTA). Empty body falls back to the
+ * auto-pick flow.
+ */
+export interface TriggerPersonalizedStyleAnalysisRequest {
+  /** 1–4 thumbnail URLs (PNG/JPEG/WebP). */
+  selectedThumbnailUrls: string[];
 }
 
 /**

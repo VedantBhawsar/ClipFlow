@@ -75,6 +75,7 @@ const settingsWithTimezone: SettingsResponse = {
     connectedAt: null,
     lastVerifiedAt: null,
   },
+  channelThumbnailStyle: null,
 };
 
 /**

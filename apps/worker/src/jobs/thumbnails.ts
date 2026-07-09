@@ -92,6 +92,13 @@ const saveBase64Image = async (
 
 /**
  * Build a short style description from the ChannelThumbnailStyle for use in prompts.
+ *
+ * Short-circuits to `null` when `confidence === "LOW"` — the personalized
+ * analysis returned all-default fields (no parseable style JSON), so we
+ * drop the style attribution rather than describe a "center / text-heavy /
+ * sometimes-face" creator that doesn't actually exist. Downstream callers
+ * fall back to the niche-only prompt and Gemini Vision has to do more
+ * heavy lifting, but we never invent a style the creator didn't have.
  */
 const buildStyleDescription = (style: {
   dominantColors: unknown;
@@ -100,7 +107,12 @@ const buildStyleDescription = (style: {
   facePresence: string | null;
   brandElements: unknown;
   analysisRaw: string | null;
+  confidence?: string | null;
 }): string | null => {
+  if (style.confidence === "LOW") {
+    return null;
+  }
+
   const parts: string[] = [];
   if (style.compositionStyle) parts.push(`Composition: ${style.compositionStyle}`);
   if (style.facePresence) parts.push(`Face usage: ${style.facePresence}`);
@@ -185,6 +197,7 @@ export const processThumbnailsJob = async (
                 facePresence: true,
                 brandElements: true,
                 analysisRaw: true,
+                confidence: true,
               },
             },
           },

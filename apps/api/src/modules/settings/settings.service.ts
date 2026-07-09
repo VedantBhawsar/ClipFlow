@@ -28,6 +28,7 @@ import { requireDatabase } from "../../lib/db-guard.js";
 import {
   toPreferencesDto,
 } from "../preferences/preferences.service.js";
+import { toStyleDto } from "../thumbnails/thumbnails.types.js";
 
 const channelStatusToApi = (
   status: ChannelConnectionStatus,
@@ -98,7 +99,12 @@ export const getSettings = async (
 
   const row = await prisma.user.findUnique({
     where: { id: userId },
-    include: { profile: true, youtubeChannel: true, preferences: true },
+    include: {
+      profile: true,
+      youtubeChannel: true,
+      preferences: true,
+      thumbnailStyle: true,
+    },
   });
   const profile = row?.profile ? toProfileDto(row.profile) : null;
   const youtubeConnection = row?.youtubeChannel
@@ -109,7 +115,14 @@ export const getSettings = async (
     ? toPreferencesDto(row?.preferences)
     : null;
 
-  return { profile, preferences, youtubeConnection };
+  // The personalized-style row may be null (the user hasn't run step 5
+  // or the settings CTA yet). The web side branches on `=== null` to
+  // decide whether to show the "Set up" CTA or the "Refresh" button.
+  const channelThumbnailStyle = row?.thumbnailStyle
+    ? toStyleDto(row.thumbnailStyle)
+    : null;
+
+  return { profile, preferences, youtubeConnection, channelThumbnailStyle };
 };
 
 /**

@@ -106,10 +106,29 @@ export const triggerStyleAnalysisController = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    await thumbnailsService.triggerStyleAnalysis(
-      getUserId(req),
-      getEnv(req),
-    );
+    const body = (req.body ?? {}) as {
+      selectedThumbnailUrls?: string[];
+    };
+    if (body.selectedThumbnailUrls && body.selectedThumbnailUrls.length > 0) {
+      // User picked references themselves — branch to the personalized
+      // enqueue. The Zod schema in `triggerStyleAnalysisBodySchema`
+      // already enforced 1-4 URLs and a valid image extension; the
+      // service re-asserts the size cap and the channel-connected gate.
+      const result = await thumbnailsService.triggerPersonalizedStyleAnalysis(
+        getUserId(req),
+        body.selectedThumbnailUrls,
+        getEnv(req),
+      );
+      res.json({
+        success: true,
+        data: result,
+        message:
+          "Style analysis started. We'll let you know when it's ready.",
+      });
+      return;
+    }
+
+    await thumbnailsService.triggerStyleAnalysis(getUserId(req), getEnv(req));
     res.json({
       success: true,
       data: null,

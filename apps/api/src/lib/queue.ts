@@ -370,6 +370,37 @@ export const enqueueChannelStyleJob = async (
 };
 
 /**
+ * Enqueue a `channel-style-analyze` job driven by a user-picked set of
+ * thumbnail URLs (onboarding step 5 / settings "Refresh my channel
+ * style" CTA). Reuses the same queue + handler as `enqueueChannelStyleJob` —
+ * the handler branches on `selectedThumbnailUrls` presence.
+ *
+ * Different `jobId` pattern (`channel-style-personalized-${userId}`) so
+ * BullMQ's dedupe doesn't fold a user-triggered run into the auto run
+ * scheduled by the YouTube-connect callback. Both runs use the same job
+ * name (`channel-style-analyze`) so they hit the same handler.
+ */
+export const enqueuePersonalizedChannelStyleJob = async (
+  userId: string,
+  selectedThumbnailUrls: string[],
+  env: Env,
+): Promise<void> => {
+  const queue = getChannelStyleQueue(env);
+  if (!queue) {
+    throw new AppError(
+      503,
+      "QUEUE_UNAVAILABLE",
+      "REDIS_URL is not configured; cannot enqueue channel-style analysis jobs.",
+    );
+  }
+  await queue.add(
+    "channel-style-analyze",
+    { userId, selectedThumbnailUrls },
+    { jobId: `channel-style-personalized-${userId}` },
+  );
+};
+
+/**
  * Close all queues and the shared Redis connection on graceful
  * shutdown. Order: close queues before disconnecting the connection.
  *

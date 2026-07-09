@@ -24,3 +24,41 @@ export const regenerateThumbnailsBodySchema = z
 export const updateThumbnailStyleBodySchema = z.object({
   styleOverride: z.enum(THUMBNAIL_STYLES),
 });
+
+/**
+ * Body for POST /api/thumbnail-style/analyze.
+ *
+ * Empty/missing body falls back to the auto-pick flow (the worker's
+ * `search.list` chooses the 10 most-recent thumbnails). When the user
+ * picked references themselves (onboarding step 5 or the settings
+ * "Refresh my channel style" CTA), `selectedThumbnailUrls` must contain
+ * 1–4 PNG/JPEG/WebP URLs.
+ *
+ * The regex requires a `.png` / `.jpg` / `.jpeg` / `.webp` extension
+ * (case-insensitive) at the end of the URL — possibly followed by a
+ * query string for signed URLs (e.g. `?GoogleAccessId=...`). We validate
+ * at the edge so the worker doesn't have to re-validate and we surface
+ * a clear 400 instead of a downstream Gemini Vision failure on a
+ * non-image URL.
+ *
+ * Both fields are optional inside the object so an empty body parses
+ * cleanly to `{}`. The controller branches on whether
+ * `selectedThumbnailUrls` is present and non-empty.
+ */
+export const triggerStyleAnalysisBodySchema = z
+  .object({
+    selectedThumbnailUrls: z
+      .array(z.string().url())
+      .min(1, "Pick at least one thumbnail.")
+      .max(4, "Pick at most four thumbnails.")
+      .refine(
+        (urls) => urls.every((u) => /\.(png|jpe?g|webp)(\?|$)/i.test(u)),
+        "Each URL must point to a PNG / JPEG / WebP image.",
+      )
+      .optional(),
+  })
+  .default({});
+
+export type TriggerStyleAnalysisBody = z.infer<
+  typeof triggerStyleAnalysisBodySchema
+>;

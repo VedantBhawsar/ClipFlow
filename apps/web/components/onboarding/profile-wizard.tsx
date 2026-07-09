@@ -16,7 +16,9 @@ import { QuestionNiche } from "@/components/onboarding/question-niche";
 import { QuestionFrequency } from "@/components/onboarding/question-frequency";
 import { QuestionGoal } from "@/components/onboarding/question-goal";
 import { QuestionDisplayName } from "@/components/onboarding/question-display-name";
+import { QuestionThumbnailStyle } from "@/components/onboarding/question-thumbnail-style";
 import { useUpdateProfile } from "@/hooks/use-update-profile";
+import { useYouTubeConnection } from "@/hooks/use-youtube-connection";
 import { useSession } from "next-auth/react";
 
 interface WizardState {
@@ -38,9 +40,10 @@ const STEP_LABELS = [
   "Content niche",
   "Upload frequency",
   "Primary goal",
+  "Thumbnail style",
 ];
 
-const STEP_COUNT = 4;
+const STEP_COUNT = 5;
 
 /**
  * Four-step wizard for the onboarding profile questions. Each step owns
@@ -59,6 +62,13 @@ export function ProfileWizard() {
   const [step, setStep] = React.useState(1);
   const [state, setState] = React.useState<WizardState>(INITIAL_STATE);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
+
+  // Step 5 only renders when the user has a connected YouTube channel.
+  // When not connected, the wizard effectively ends at step 4 — the
+  // dots still show 5 but the question panel is replaced by a "skip"
+  // hint so the user understands they can finish without YouTube.
+  const connectionQuery = useYouTubeConnection();
+  const youtubeConnected = connectionQuery.data?.status === "connected";
 
   const canAdvance = (() => {
     if (step === 2) return state.niche !== null;
@@ -163,6 +173,23 @@ export function ProfileWizard() {
             onChange={(v) => setState((s) => ({ ...s, goal: v }))}
           />
         ) : null}
+        {step === 5 && youtubeConnected ? (
+          <QuestionThumbnailStyle
+            variant="onboarding"
+            onComplete={() => void handleSubmit()}
+          />
+        ) : null}
+        {step === 5 && !youtubeConnected && !connectionQuery.isLoading ? (
+          <div className="space-y-3 rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+            <p>
+              Connect your YouTube channel to pick thumbnails for personalized
+              style analysis. You can do this anytime from your dashboard.
+            </p>
+            <Button type="button" variant="ghost" onClick={() => void handleSubmit()}>
+              Skip — go to dashboard
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       <div className="flex items-center justify-between gap-2 pt-2">
@@ -178,7 +205,10 @@ export function ProfileWizard() {
         <Button
           type="button"
           onClick={handleNext}
-          disabled={!canAdvance || isSubmitting}
+          disabled={!canAdvance || isSubmitting || (step === 5 && !youtubeConnected)}
+          aria-hidden={step === 5 && youtubeConnected ? "true" : undefined}
+          tabIndex={step === 5 && youtubeConnected ? -1 : 0}
+          className={step === 5 && youtubeConnected ? "sr-only" : undefined}
         >
           {step === STEP_COUNT
             ? isSubmitting
@@ -202,6 +232,8 @@ function stepHeadline(step: number): string {
       return "How often do you upload?";
     case 4:
       return "What's your main goal right now?";
+    case 5:
+      return "Personalize your thumbnails";
     default:
       return "";
   }
@@ -217,6 +249,8 @@ function stepSubhead(step: number): string {
       return "We'll use this to suggest a plan that fits your volume — never auto-charged.";
     case 4:
       return "Pick the one that would make the biggest difference this quarter.";
+    case 5:
+      return "Pick a few of your recent thumbnails so generated thumbnails match your channel style.";
     default:
       return "";
   }

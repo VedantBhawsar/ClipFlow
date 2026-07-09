@@ -17,12 +17,15 @@ import { Router } from "express";
 import type { Env } from "@clipflow/config";
 import { requireAuth } from "../../middleware/auth.js";
 import { buildPerUserRateLimiter } from "../../middleware/rate-limit.js";
+import { validate } from "../../middleware/validate.js";
 import {
+  channelRecentThumbnailsController,
   getOAuthUrlController,
   connectController,
   disconnectController,
   getConnectionController,
 } from "./youtube.controller.js";
+import { channelRecentThumbnailsQuerySchema } from "./youtube.schemas.js";
 import "../auth/auth.types.js";
 
 /**
@@ -63,6 +66,19 @@ export const buildYouTubeRouter = (env: Env): Router => {
    * Get current connection status and channel info. Cached for 60s.
    */
   router.get("/connection", auth, getConnectionController);
+
+  /**
+   * GET /api/youtube/channel-recent-thumbnails
+   * Return up to 8 of the connected channel's most recent video thumbnails.
+   * Used by the onboarding wizard's step 5 and the settings "Refresh my
+   * channel style" CTA. 412 if the channel isn't connected.
+   */
+  router.get(
+    "/channel-recent-thumbnails",
+    auth,
+    validate({ query: channelRecentThumbnailsQuerySchema }),
+    channelRecentThumbnailsController,
+  );
 
   return router;
 };

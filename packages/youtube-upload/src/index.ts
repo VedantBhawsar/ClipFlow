@@ -16,12 +16,15 @@ export {
 } from "./token-refresh.js";
 export {
   formatChaptersForDescription,
+  listChannelRecentVideos,
   setYouTubeThumbnail,
   startResumableUploadSession,
   updateVideoSnippet,
   updateVideoStatus,
   uploadVideoBytes,
   toYouTubeLicense,
+  type ChannelRecentVideo,
+  type ListChannelRecentVideosOptions,
   type SetThumbnailInput,
   type VideoMetadataInput,
   type VideoSnippetInput,

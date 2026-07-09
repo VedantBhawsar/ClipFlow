@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-08T13:13:09.552Z
-> Files: 385 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-09T03:19:40.565Z
+> Files: 401 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../tmp/
 
@@ -15,6 +15,7 @@
 
 ## ../../../.claude/plans/
 
+- `i-want-you-to-precious-hopcroft.md` — Plan: Personalized Thumbnail Style — Onboarding Step 5 + Settings Re-entry (~3683 tok)
 - `memoized-floating-dijkstra.md` — ClipFlow Dashboard UI Polish — Plan (~2700 tok)
 - `quirky-giggling-blanket.md` — Plan: In-place editing for video metadata + chapters (~2106 tok)
 - `radiant-prancing-quail.md` — Plan: Migrate image-gen-client to `@google/genai` SDK (~1818 tok)
@@ -61,7 +62,9 @@
 
 ## apps/api/
 
+- `.dockerignore` — Production-ready ignore file for the Express+TS API. Build artifacts (`dist/`, `*.tsbuildinfo`), tests (`*.test.*`, `vitest.config.*`), editor/OS noise, env files, Docker + CI configs, AI tool metadata (`.cursor/`, `.claude/`, `wolf/`, etc.). Mirrors the shape of `apps/web/.dockerignore` minus Next.js entries. (~580 tok)
 - `.gitignore` — Git ignore rules (~36 tok)
+- `Dockerfile` — Multi-stage Docker build for the ClipFlow API (Express 4 + TypeScript). 3 stages mirroring apps/web/Dockerfile + apps/worker/Dockerfile: deps (`pnpm install --frozen-lockfile --filter api...`) → build (`pnpm --filter api... build` + `prisma:generate`) → runtime (slim node + `apps/api/dist` + `apps/api/node_modules` to satisfy the pnpm-isolated-mode pitfall bug-048 + workspace packages, non-root user, CMD `node apps/api/dist/index.js`). node:24.13.0-slim base (no ffmpeg unlike worker). PORT=4000 default (matches `@clipflow/config`). (~3.5k tok)
 - `eslint.config.mjs` — ESLint flat configuration (~50 tok)
 - `package.json` — Node.js package manifest (~435 tok)
 - `tsconfig.json` — TypeScript configuration (~124 tok)
@@ -96,7 +99,7 @@
 - `logger.ts` — Structured logger (pino). The single source of truth for application (~306 tok)
 - `password.ts` — Password hashing helpers. (~264 tok)
 - `prisma.ts` — Prisma client re-export. (~328 tok)
-- `queue.ts` — BullMQ enqueue helpers. (~2912 tok)
+- `queue.ts` — BullMQ enqueue helpers. (~3943 tok)
 - `refresh-token.test.ts` — Declares prismaMock (~2701 tok)
 - `refresh-token.ts` — Refresh-token rotation primitives. (~2161 tok)
 - `response.test.ts` — Unit tests for the centralized response helpers. (~924 tok)
@@ -150,7 +153,15 @@
 
 - `settings.controller.ts` — Settings controller. (~412 tok)
 - `settings.routes.ts` — Settings route definitions. (~219 tok)
-- `settings.service.ts` — Settings service. (~1149 tok)
+- `settings.service.ts` — Settings service. (~1278 tok)
+
+## apps/api/src/modules/thumbnails/
+
+- `thumbnails.controller.ts` — API routes: GET (1 endpoints) (~1067 tok)
+- `thumbnails.routes.ts` — Router for user-level thumbnail style operations: /api/thumbnail-style (~551 tok)
+- `thumbnails.schemas.ts` — Body for POST /api/thumbnail-style/analyze. (~632 tok)
+- `thumbnails.service.ts` — List all thumbnails for a video. (~1679 tok)
+- `thumbnails.types.ts` — Exports toThumbnailDto, toStyleDto (~538 tok)
 
 ## apps/api/src/modules/videos/
 
@@ -163,11 +174,11 @@
 
 ## apps/api/src/modules/youtube/
 
-- `youtube.controller.ts` — YouTube OAuth controller. (~1427 tok)
-- `youtube.routes.ts` — YouTube OAuth route definitions. (~594 tok)
-- `youtube.schemas.ts` — Zod schemas for YouTube module request/response validation. (~372 tok)
+- `youtube.controller.ts` — YouTube OAuth controller. (~1758 tok)
+- `youtube.routes.ts` — YouTube OAuth route definitions. (~766 tok)
+- `youtube.schemas.ts` — Zod schemas for YouTube module request/response validation. (~496 tok)
 - `youtube.service.test.ts` — Declares PermanentPublishError (~2929 tok)
-- `youtube.service.ts` — YouTube OAuth service. (~2526 tok)
+- `youtube.service.ts` — YouTube OAuth service. (~3366 tok)
 - `youtube.types.ts` — YouTube module types. (~365 tok)
 
 ## apps/api/src/scripts/
@@ -188,7 +199,7 @@
 - `eslint.config.js` — ESLint flat configuration (~41 tok)
 - `middleware.ts` — Export `.auth` as a function reference, NOT invoked. (~392 tok)
 - `next-env.d.ts` — / <reference types="next" /> (~71 tok)
-- `next.config.js` — Declares nextConfig (~94 tok)
+- `next.config.js` — Declares nextConfig + `output: "standalone"` (Dockerfile depends on it) + `outputFileTracingRoot: path.join(import.meta.dirname, "../../")` so Next can trace @clipflow/* workspace packages from packages/. (~700 tok)
 - `package.json` — Node.js package manifest (~481 tok)
 - `postcss.config.mjs` — Declares config (~26 tok)
 - `README.md` — Project documentation (~353 tok)
@@ -233,7 +244,7 @@
 - `cancel-button.tsx` — Cancel action for the video detail page. Calls (~436 tok)
 - `edit-details-button.tsx` — Thin client island that keeps the Sheet open-state and renders the (~344 tok)
 - `page.tsx` — `/dashboard/published/:id` — full detail view for a single video. (~4749 tok)
-- `publish-button.test.tsx` — Tests for `<PublishButton>` + the `<PublishSheet>` it opens. (~3072 tok)
+- `publish-button.test.tsx` — Tests for `<PublishButton>` + the `<PublishSheet>` it opens. (~3080 tok)
 - `publish-button.tsx` — Header "Publish" button for a `READY_FOR_REVIEW` (or (~304 tok)
 - `retry-button.tsx` — Title used in the confirm prompt and the aria-label. (~625 tok)
 - `unpublish-button.tsx` — Unpublish action for the video detail page. Calls (~426 tok)
@@ -250,7 +261,7 @@
 
 ## apps/web/app/dashboard/settings/connected/
 
-- `page.tsx` — ConnectedSettingsPage (~726 tok)
+- `page.tsx` — ConnectedSettingsPage — renders modal (~1838 tok)
 
 ## apps/web/app/dashboard/settings/generation/
 
@@ -279,6 +290,10 @@
 - `change-password-form.tsx` — Live password rule checkers. Reused from the signup form so the (~1643 tok)
 - `page.tsx` — metadata (~162 tok)
 
+## apps/web/app/dashboard/thumbnail-style/
+
+- `page.tsx` — Full page (not a Dialog) for already-onboarded users who want to (~387 tok)
+
 ## apps/web/app/onboarding/
 
 - `layout.tsx` — Onboarding shell. No app sidebar yet (the user isn't in the app (~324 tok)
@@ -286,6 +301,10 @@
 ## apps/web/app/onboarding/profile/
 
 - `page.tsx` — metadata (~101 tok)
+
+## apps/web/app/onboarding/thumbnail-style/
+
+- `page.tsx` — Standalone mount of the wizard's step 5 for users who finished the (~477 tok)
 
 ## apps/web/app/youtube-connect/callback/
 
@@ -362,13 +381,14 @@
 
 ## apps/web/components/onboarding/
 
-- `profile-wizard.test.tsx` — mockRouterPush (~2815 tok)
-- `profile-wizard.tsx` — Four-step wizard for the onboarding profile questions. Each step owns (~1908 tok)
+- `profile-wizard.test.tsx` — Wrapper that exposes a fresh QueryClient per render. Step 5 mounts (~4384 tok)
+- `profile-wizard.tsx` — Four-step wizard for the onboarding profile questions. Each step owns (~2408 tok)
 - `progress-dots.tsx` — Optional labels per step; shown above the dots when provided. (~591 tok)
 - `question-display-name.tsx` — Step 1 — channel / display name. Free text and explicitly optional (~388 tok)
 - `question-frequency.tsx` — Step 3 — upload frequency. Four single-select cards stacked vertically (~888 tok)
 - `question-goal.tsx` — Step 4 — primary goal. Four single-select cards. Drives which feature (~912 tok)
 - `question-niche.tsx` — One-line description shown under the label on the card. (~1064 tok)
+- `question-thumbnail-style.tsx` — Step 5 of the onboarding wizard (and the same component reused in a (~3908 tok)
 
 ## apps/web/components/review/
 
@@ -420,6 +440,7 @@
 - `use-api.ts` — Hook that returns a typed `api` surface bound to the current session's (~356 tok)
 - `use-auth.ts` — Identity hook for components. (~858 tok)
 - `use-change-password.ts` — Change the authenticated user's password. The server returns 204; (~194 tok)
+- `use-channel-thumbnails.ts` — Hooks for the personalized-thumbnail-style onboarding step 5 and the (~693 tok)
 - `use-connect-youtube.ts` — Connect the authenticated user's YouTube channel by exchanging an (~417 tok)
 - `use-disconnect-youtube.ts` — Disconnect the authenticated user's YouTube channel. Optimistic: we (~766 tok)
 - `use-onboarding-status.ts` — Onboarding-completion status. Used by /onboarding routes to decide (~245 tok)
@@ -432,10 +453,11 @@
 - `use-video-sse.ts` — Subscribe to SSE events for video processing. (~847 tok)
 - `use-videos.ts` — TanStack Query hooks + an XHR-based upload helper for the (~4604 tok)
 - `use-youtube-connection.ts` — Narrow YouTube-connection read for /settings/connected. The (~203 tok)
+- `use-youtube-oauth-popup.ts` — Open the Google OAuth URL in a centered popup and listen for the (~1419 tok)
 
 ## apps/web/lib/
 
-- `api-client.ts` — Typed API surface for talking to the Express backend. (~4955 tok)
+- `api-client.ts` — Typed API surface for talking to the Express backend. (~5330 tok)
 - `auth-guard.test.tsx` — mockReplace (~700 tok)
 - `auth-guard.tsx` — Where to send unauthenticated users. Defaults to /signin. (~521 tok)
 - `env.ts` — Centralized access to NEXT_PUBLIC_* env vars. (~184 tok)
@@ -482,8 +504,10 @@
 
 ## apps/worker/src/jobs/
 
+- `channel-style-analyze.ts` — Worker job: analyze a creator's existing YouTube thumbnails to detect (~3952 tok)
 - `generate.test.ts` — Unit tests for the `generate` BullMQ job. (~5508 tok)
 - `generate.ts` — Worker job: LLM-driven chapter + summary generation. (~3836 tok)
+- `thumbnails.ts` — Worker job: generate thumbnails for a video using chapter context, (~4241 tok)
 - `transcription.test.ts` — Unit tests for the `transcription` BullMQ job. (~3704 tok)
 - `transcription.ts` — Worker job: transcribe an extracted audio file with AssemblyAI. (~4301 tok)
 - `video-ingest.test.ts` — Integration test for the video-ingest BullMQ job. (~1919 tok)
@@ -566,7 +590,7 @@
 
 - `package.json` — Node.js package manifest (~313 tok)
 - `prisma.config.ts` (~89 tok)
-- `schema.prisma` — packages/db/schema.prisma (~4208 tok)
+- `schema.prisma` — packages/db/schema.prisma (~5957 tok)
 - `tsconfig.json` — TypeScript configuration (~75 tok)
 
 ## packages/db/prisma/migrations/
@@ -621,6 +645,10 @@
 
 - `migration.sql` — Add transcript + LLM-driven highlight artefacts to the videos table. (~419 tok)
 
+## packages/db/prisma/migrations/20260708_personalized_thumbnail_style/
+
+- `migration.sql` — Personalized thumbnail-style analysis (onboarding step 5 + settings re-entry). (~252 tok)
+
 ## packages/db/src/
 
 - `index.ts` — Exports prisma (~300 tok)
@@ -653,7 +681,7 @@
 
 ## packages/types/src/
 
-- `index.ts` — ---------- Enums (mirror Prisma enums in packages/db) ---------- (~7544 tok)
+- `index.ts` — ---------- Enums (mirror Prisma enums in packages/db) ---------- (~8029 tok)
 
 ## packages/typescript-config/
 
@@ -672,11 +700,11 @@
 ## packages/youtube-upload/src/
 
 - `errors.ts` — Typed errors thrown by `publishVideo` and its collaborators. The (~588 tok)
-- `index.ts` — Declares PublishVideoContext (~218 tok)
+- `index.ts` — Declares PublishVideoContext (~282 tok)
 - `publish-video.ts` — Publish a Video row to YouTube. Used by both the API (immediate path (~4838 tok)
 - `token-refresh.ts` — Token refresh for a stored YouTube connection. (~945 tok)
 - `youtube-api.test.ts` — Unit tests for the internal-license → YouTube-API license translator. (~2000 tok)
-- `youtube-api.ts` — YouTube Data API v3 — two-step resumable upload for videos.insert (~5124 tok)
+- `youtube-api.ts` — YouTube Data API v3 — two-step resumable upload for videos.insert (~6047 tok)
 
 ## scripts/
 

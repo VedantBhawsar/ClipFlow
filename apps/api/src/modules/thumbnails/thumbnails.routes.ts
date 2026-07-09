@@ -11,10 +11,11 @@ import {
   triggerStyleAnalysisController,
 } from "./thumbnails.controller.js";
 import {
-  videoIdParamsSchema,
-  thumbnailIdParamsSchema,
   regenerateThumbnailsBodySchema,
+  thumbnailIdParamsSchema,
+  triggerStyleAnalysisBodySchema,
   updateThumbnailStyleBodySchema,
+  videoIdParamsSchema,
 } from "./thumbnails.schemas.js";
 
 export const buildThumbnailsRouter = (env: Env): Router => {
@@ -64,7 +65,12 @@ export const buildThumbnailStyleRouter = (env: Env): Router => {
     updateThumbnailStyleController,
   );
 
-  router.post("/analyze", auth, triggerStyleAnalysisController);
+  router.post(
+    "/analyze",
+    auth,
+    validate({ body: triggerStyleAnalysisBodySchema }),
+    triggerStyleAnalysisController,
+  );
 
   return router;
 };

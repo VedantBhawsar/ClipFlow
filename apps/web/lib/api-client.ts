@@ -27,6 +27,7 @@ import type {
   ApiResponse,
   AuthResponse,
   ChangePasswordRequest,
+  ChannelRecentThumbnailsResponse,
   CreateVideoRequest,
   CreateVideoResponse,
   ForgotPasswordRequest,
@@ -276,6 +277,30 @@ export interface ApiClient {
     videoId: string,
     body?: RegenerateThumbnailsRequest,
   ): Promise<{ generationId: string }>;
+
+  /**
+   * Fetch up to 8 of the connected YouTube channel's most recent video
+   * thumbnails. Used by the onboarding wizard's step 5 and the settings
+   * "Refresh my channel style" CTA to populate the 4×2 selection grid.
+   * 412 if the channel isn't connected — the wizard handles that with
+   * an inline "Connect YouTube first" prompt.
+   */
+  fetchChannelRecentThumbnails(
+    limit?: number,
+  ): Promise<ChannelRecentThumbnailsResponse>;
+
+  /**
+   * Kick off a personalized channel-style analysis using the user's
+   * hand-picked thumbnail URLs. Returns immediately; the worker
+   * produces the analysis asynchronously and the dashboard re-reads
+   * the settings bundle on the next render.
+   *
+   * Empty body / omitted → fall back to the auto-pick flow (the worker's
+   * `search.list` chooses the thumbnails).
+   */
+  triggerPersonalizedStyleAnalysis(body?: {
+    selectedThumbnailUrls?: string[];
+  }): Promise<{ jobId: string } | null>;
 }
 
 /**
@@ -482,6 +507,16 @@ export function createApiClient(accessToken: string | null): ApiClient {
         `/api/videos/${videoId}/thumbnails/regenerate`,
         body ?? {},
       );
+    },
+    fetchChannelRecentThumbnails(limit) {
+      const qs = limit ? `?limit=${limit}` : "";
+      return request(
+        "GET",
+        `/api/youtube/channel-recent-thumbnails${qs}`,
+      );
+    },
+    triggerPersonalizedStyleAnalysis(body) {
+      return request("POST", `/api/thumbnail-style/analyze`, body ?? {});
     },
   };
 }

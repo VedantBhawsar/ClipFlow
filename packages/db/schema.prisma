@@ -101,6 +101,16 @@ enum ThumbnailStyleOverride {
   TEXT_FORWARD
 }
 
+/// Confidence flag for the personalized channel-style analysis.
+/// HIGH = Gemini Vision returned a coherent style with at least one
+/// non-default field. LOW = partial parse — we kept what we could and
+/// the thumbnail worker falls back to niche-only prompts (no style
+/// attribution) so we never invent a style the creator didn't have.
+enum ChannelStyleConfidence {
+  HIGH
+  LOW
+}
+
 // ---------- Channel connection status ----------
 
 enum ChannelConnectionStatus {
@@ -569,6 +579,23 @@ model ChannelThumbnailStyle {
 
   /// Manual user override — AUTO means "use detected style"
   styleOverride   ThumbnailStyleOverride @default(AUTO)
+
+  /// URLs the user explicitly picked for the analysis (1–4). Set during
+  /// the onboarding wizard's step 5 and on "Refresh my channel style"
+  /// re-runs from the settings page. Empty array means the auto-pick
+  /// flow ran (the worker's `search.list` chose the thumbnails).
+  selectedThumbnailUrls String[]            @default([])
+
+  /// HIGH = Gemini Vision returned a parseable style with at least one
+  /// non-default field. LOW = partial parse — consumers (the thumbnail
+  /// worker) fall back to niche-only prompts to avoid inventing a
+  /// style the creator didn't have.
+  confidence      ChannelStyleConfidence @default(HIGH)
+
+  /// When `confidence = LOW`, why we couldn't extract a full style.
+  /// Free-form, machine-readable prefix (e.g. "[VISION_PARTIAL_PARSE]")
+  /// so support can grep for known causes.
+  lowConfidenceReason String?
 
   /// How many thumbnails were analyzed in the last run
   thumbnailCount  Int                 @default(0)

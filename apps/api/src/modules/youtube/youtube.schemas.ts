@@ -14,6 +14,19 @@ export const getOAuthUrlSchema = z.object({
 export type GetOAuthUrlQuery = z.infer<typeof getOAuthUrlSchema>;
 
 /**
+ * Query for GET /api/youtube/channel-recent-thumbnails.
+ * `limit` is clamped 1..8 by the controller so the wizard's 8-thumbnail
+ * grid renders in one page (Gemini Vision recommends 4-8 references).
+ */
+export const channelRecentThumbnailsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(8).default(8),
+});
+
+export type ChannelRecentThumbnailsQuery = z.infer<
+  typeof channelRecentThumbnailsQuerySchema
+>;
+
+/**
  * Google OAuth scope set for ClipFlow's YouTube integration.
  * Requested together per PRD.md Section 6a to avoid a second consent prompt.
  */

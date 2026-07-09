@@ -26,7 +26,7 @@
 #   postgresql://clipflow:clipflow@localhost:5432/clipflow
 #
 # The worker container uses in-network hostnames (postgres / redis / minio)
-# via the env file at apps/worker/.env.docker. The container does NOT
+# via the env file at apps/worker/.env. The container does NOT
 # expose a port — it has no inbound traffic.
 
 services:
@@ -36,11 +36,9 @@ services:
     image: postgres:18-alpine
     container_name: clipflow-postgres
     environment:
-      POSTGRES_USER: clipflow
-      POSTGRES_PASSWORD: clipflow
-      POSTGRES_DB: clipflow
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       # pg 18+ images expect data under /var/lib/postgresql (the entrypoint
       # picks the version-specific subdir itself). Mounting at
@@ -55,29 +53,34 @@ services:
       - ./docker/postgres/init/00-create-neondb-owner.sql:/docker-entrypoint-initdb.d/00-create-neondb-owner.sql:ro
       - ./neon_backup.sql:/docker-entrypoint-initdb.d/10-neon_backup.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U clipflow -d clipflow"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - clipflow
 
   redis:
     image: redis:7-alpine
     container_name: clipflow-redis
-    ports:
-      - "6379:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - clipflow
 
   minio:
     image: minio/minio:latest
     container_name: clipflow-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
       - "9000:9000"   # S3 API
       - "9001:9001"   # Web console (login minioadmin/minioadmin)
@@ -88,6 +91,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - clipflow
 
   # One-shot init container: create the videos bucket on first boot.
   # `minio mb` is idempotent when wrapped in `|| true`, so it's safe
@@ -100,12 +105,14 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-        mc alias set local http://minio:9000 minioadmin minioadmin &&
-        (mc mb -p local/clipflow-videos || true) &&
-        mc anonymous set none local/clipflow-videos &&
+        mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
+        (mc mb -p local/${S3_BUCKET} || true) &&
+        mc anonymous set none local/${S3_BUCKET} &&
         echo 'MinIO bucket ready.'
       "
     restart: "no"
+    networks:
+      - clipflow
 
   # The BullMQ worker. Builds from apps/worker/Dockerfile (which installs
   # ffmpeg in the runtime stage) and uses the in-network hostnames so it
@@ -132,25 +139,50 @@ services:
       minio-init:
         condition: service_completed_successfully
     env_file:
-      - apps/worker/.env.docker
-    environment:
-      # DATABASE_URL / S3_ENDPOINT override .env.docker to use the
-      # compose-network hostnames (postgres:5432 / minio:9000) — the
-      # default in .env.docker already points at those, but we set them
-      # explicitly here as a belt-and-braces.
-      DATABASE_URL: postgresql://clipflow:clipflow@postgres:5432/clipflow
-      # REDIS_URL MUST stay on Redis Cloud (the same broker the API on
-      # the host uses). Do NOT change this to `redis://redis:6379` —
-      # that's the local compose Redis, and pointing the worker there
-      # silently splits BullMQ into two brokers: API enqueues to
-      # Redis Cloud, worker consumes from compose Redis, and every
-      # video-ingest job sits in `clipflow:video-ingest:wait` forever
-      # with the row stuck in EXTRACTING. If we ever want the worker
-      # on compose Redis, switch BOTH apps/api/.env AND the worker
-      # env to redis://localhost:6379 first.
-      S3_ENDPOINT: http://minio:9000
+      - .env
     restart: unless-stopped
+    networks: 
+      - clipflow
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: clipflow-web
+    ports: 
+      - "${WEB_PORT}:3000"
+    depends_on:
+      - api 
+    env_file: 
+      - .env
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: clipflow-api
+    ports: 
+      - "${PORT}:${PORT}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    env_file: 
+        - .env
+    restart: unless-stopped
+    networks: 
+      - clipflow
 
 volumes:
   pgdata:
   miniodata:
+
+networks:
+  clipflow:
+    driver: bridge

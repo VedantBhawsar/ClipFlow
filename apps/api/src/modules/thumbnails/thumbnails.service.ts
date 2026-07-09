@@ -1,7 +1,11 @@
 import type { Env } from "@clipflow/config";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../errors/AppError.js";
-import { enqueueThumbnailsJob, enqueueChannelStyleJob } from "../../lib/queue.js";
+import {
+  enqueueThumbnailsJob,
+  enqueueChannelStyleJob,
+  enqueuePersonalizedChannelStyleJob,
+} from "../../lib/queue.js";
 import { toThumbnailDto, toStyleDto } from "./thumbnails.types.js";
 import type { ThumbnailDto, ChannelThumbnailStyleDto } from "@clipflow/types";
 
@@ -146,4 +150,53 @@ export const triggerStyleAnalysis = async (
   env: Env,
 ): Promise<void> => {
   await enqueueChannelStyleJob(userId, env);
+};
+
+/**
+ * Trigger a personalized channel-style analysis using the user's
+ * hand-picked set of thumbnail URLs (1-4). Enqueues the same
+ * `channel-style-analyze` worker job, but with the `selectedThumbnailUrls`
+ * field set in the payload so the worker skips the `search.list` fetch
+ * and analyzes exactly the URLs the user picked.
+ *
+ * The 1-4 size cap is enforced by the Zod schema in
+ * `triggerStyleAnalysisBodySchema`; we re-assert it here as a defense-
+ * in-depth check in case the controller is ever called without going
+ * through the schema.
+ *
+ * @throws AppError 412 if the user has no connected YouTube channel —
+ *   we can't extract style from URLs that don't exist. Mirrors the
+ *   gating the endpoint surfaces on the GET side.
+ */
+export const triggerPersonalizedStyleAnalysis = async (
+  userId: string,
+  selectedThumbnailUrls: string[],
+  env: Env,
+): Promise<{ jobId: string }> => {
+  if (selectedThumbnailUrls.length < 1 || selectedThumbnailUrls.length > 4) {
+    throw new AppError(
+      400,
+      "INVALID_SELECTION",
+      "Pick between 1 and 4 thumbnails to analyze.",
+    );
+  }
+
+  const channel = await prisma.youTubeChannel.findUnique({
+    where: { userId },
+    select: { status: true },
+  });
+  if (!channel || channel.status !== "CONNECTED") {
+    throw new AppError(
+      412,
+      "YOUTUBE_NOT_CONNECTED",
+      "Connect your YouTube channel to analyze your style.",
+    );
+  }
+
+  await enqueuePersonalizedChannelStyleJob(
+    userId,
+    selectedThumbnailUrls,
+    env,
+  );
+  return { jobId: `channel-style-personalized-${userId}` };
 };

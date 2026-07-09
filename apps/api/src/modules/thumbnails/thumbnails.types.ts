@@ -31,6 +31,9 @@ export const toStyleDto = (row: {
   brandElements: unknown;
   analysisRaw: string | null;
   styleOverride: string;
+  selectedThumbnailUrls: string[];
+  confidence: string;
+  lowConfidenceReason: string | null;
   thumbnailCount: number;
   lastAnalyzedAt: Date | null;
   createdAt: Date;
@@ -48,6 +51,9 @@ export const toStyleDto = (row: {
     : null,
   analysisRaw: row.analysisRaw,
   styleOverride: row.styleOverride as ChannelThumbnailStyleDto["styleOverride"],
+  selectedThumbnailUrls: row.selectedThumbnailUrls,
+  confidence: row.confidence as ChannelThumbnailStyleDto["confidence"],
+  lowConfidenceReason: row.lowConfidenceReason,
   thumbnailCount: row.thumbnailCount,
   lastAnalyzedAt: row.lastAnalyzedAt?.toISOString() ?? null,
   createdAt: row.createdAt.toISOString(),

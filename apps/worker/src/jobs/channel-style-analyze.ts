@@ -35,6 +35,13 @@ import type { EventPublisher } from "../lib/events.js";
 
 export interface ChannelStyleJobData {
   userId: string;
+  /**
+   * Present for user-driven runs (wizard step 5, settings CTA). When
+   * set, the worker skips the YouTube `search.list` fetch and uses
+   * exactly these URLs as vision-model references. The auto-pick flow
+   * (which YouTube-connect kicks off) leaves this field undefined.
+   */
+  selectedThumbnailUrls?: string[];
 }
 
 export interface ProcessContext {
@@ -185,7 +192,13 @@ export const processChannelStyleAnalyzeJob = async (
   }
 
   // ---- Idempotency: skip if already analyzed within 24h ----
-  if (user.thumbnailStyle?.lastAnalyzedAt) {
+  //
+  // User-driven personalized runs (wizard step 5 / settings CTA) always
+  // re-analyze — the user explicitly chose fresh references, so the
+  // 24h cache gets bypassed. Without this override, a creator who
+  // re-runs the flow within a day would silently see stale results.
+  const isPersonalized = !!job.data.selectedThumbnailUrls?.length;
+  if (!isPersonalized && user.thumbnailStyle?.lastAnalyzedAt) {
     const age = Date.now() - user.thumbnailStyle.lastAnalyzedAt.getTime();
     if (age < STALE_AFTER_MS) {
       ctx.logger.info(
@@ -219,16 +232,36 @@ export const processChannelStyleAnalyzeJob = async (
     });
   }
 
-  // ---- Fetch recent thumbnails ----
-  const thumbnailUrls = await fetchRecentThumbnails(
-    ctx.env,
-    channel.youtubeChannelId,
-    channel.channelThumbnailUrl,
-  );
+  // ---- Fetch recent thumbnails (or use the user's picks) ----
+  //
+  // Personalized runs skip the YouTube `search.list` call entirely —
+  // the user explicitly picked these URLs and we respect that choice.
+  // We do NOT fall back to `fetchRecentThumbnails` if the user gave
+  // us URLs: silent fallback would defeat the purpose of letting the
+  // creator curate references.
+  let thumbnailUrls: string[];
+  if (isPersonalized && job.data.selectedThumbnailUrls) {
+    thumbnailUrls = job.data.selectedThumbnailUrls.slice(0, 8);
+    ctx.logger.info(
+      { userId, pickedCount: thumbnailUrls.length, source: "user" },
+      "Using user-picked thumbnails for analysis",
+    );
+  } else {
+    thumbnailUrls = await fetchRecentThumbnails(
+      ctx.env,
+      channel.youtubeChannelId,
+      channel.channelThumbnailUrl,
+    );
+    ctx.logger.info(
+      { userId, thumbnailCount: thumbnailUrls.length, source: "auto" },
+      "Fetched thumbnails for analysis",
+    );
+  }
 
   if (thumbnailUrls.length === 0) {
-    const reason =
-      "[NO_THUMBNAILS] No recent thumbnails could be fetched from YouTube — cannot analyze style.";
+    const reason = isPersonalized
+      ? "[NO_USER_THUMBNAILS] User picked no thumbnail URLs — cannot analyze style."
+      : "[NO_THUMBNAILS] No recent thumbnails could be fetched from YouTube — cannot analyze style.";
     await markFailed(ctx, userId, reason);
     ctx.logger.warn(
       { userId, channelId: channel.youtubeChannelId },
@@ -236,11 +269,6 @@ export const processChannelStyleAnalyzeJob = async (
     );
     return;
   }
-
-  ctx.logger.info(
-    { userId, thumbnailCount: thumbnailUrls.length },
-    "Fetched thumbnails for analysis",
-  );
 
   // ---- Analyze with Gemini Vision ----
   if (canPublish) {
@@ -290,6 +318,31 @@ export const processChannelStyleAnalyzeJob = async (
   // ---- Parse the result ----
   const parsed = parseStyleAnalysis(analysisText);
 
+  // ---- Derive confidence ----
+  //
+  // HIGH = Gemini returned a parseable style JSON block with at least
+  // one non-default field. LOW = parseStyleAnalysis couldn't recover
+  // anything meaningful; downstream consumers (thumbnails.ts →
+  // buildStyleDescription) should fall back to the niche-only prompt
+  // so we never invent a style the creator didn't have.
+  const hasNonDefault =
+    parsed.dominantColors.length > 0 ||
+    parsed.textPlacement !== "center" ||
+    parsed.compositionStyle !== "text-heavy" ||
+    parsed.facePresence !== "sometimes" ||
+    parsed.brandElements.length > 0;
+  const confidence: "HIGH" | "LOW" = hasNonDefault ? "HIGH" : "LOW";
+  const lowConfidenceReason = confidence === "LOW"
+    ? "[VISION_PARTIAL_PARSE] Gemini returned no parseable style JSON; saved defaults."
+    : null;
+
+  if (confidence === "LOW") {
+    ctx.logger.warn(
+      { userId, pickedCount: thumbnailUrls.length, source: isPersonalized ? "user" : "auto" },
+      "Style analysis returned all-default fields (LOW confidence) — downstream will fall back to niche-only",
+    );
+  }
+
   // ---- Upsert the style row ----
   if (canPublish) {
     void ctx.events!.publish({
@@ -302,6 +355,13 @@ export const processChannelStyleAnalyzeJob = async (
     });
   }
 
+  // Always persist the URLs the user picked (or empty for the auto
+  // flow) — that way the settings page can show the user "you
+  // analyzed these 4 thumbnails last time" without re-fetching.
+  const selectedThumbnailUrls = isPersonalized
+    ? job.data.selectedThumbnailUrls ?? []
+    : [];
+
   try {
     await prisma.channelThumbnailStyle.upsert({
       where: { userId },
@@ -313,6 +373,10 @@ export const processChannelStyleAnalyzeJob = async (
         facePresence: parsed.facePresence,
         brandElements: parsed.brandElements as unknown as object,
         analysisRaw: parsed.analysisRaw,
+        styleOverride: "AUTO",
+        selectedThumbnailUrls,
+        confidence,
+        lowConfidenceReason,
         thumbnailCount: thumbnailUrls.length,
         lastAnalyzedAt: new Date(),
       },
@@ -323,6 +387,9 @@ export const processChannelStyleAnalyzeJob = async (
         facePresence: parsed.facePresence,
         brandElements: parsed.brandElements as unknown as object,
         analysisRaw: parsed.analysisRaw,
+        selectedThumbnailUrls,
+        confidence,
+        lowConfidenceReason,
         thumbnailCount: thumbnailUrls.length,
         lastAnalyzedAt: new Date(),
       },

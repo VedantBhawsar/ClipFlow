@@ -37,6 +37,9 @@ const YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3/videos";
 const YOUTUBE_THUMBNAILS_SET_ENDPOINT =
   "https://www.googleapis.com/upload/youtube/v3/thumbnails/set";
 
+const YOUTUBE_SEARCH_ENDPOINT =
+  "https://www.googleapis.com/youtube/v3/search";
+
 export interface VideoMetadataInput {
   title: string;
   description: string;
@@ -536,4 +539,103 @@ export const setYouTubeThumbnail = async (
       res.status,
     );
   }
+};
+
+/**
+ * One entry returned by {@link listChannelRecentVideos}.
+ *
+ * `thumbnailUrl` is `snippet.thumbnails.high.url` if YouTube returned
+ * one, falling back through medium and default. The UI renders it
+ * straight into an `<img src>` (or hands it to Gemini Vision for the
+ * personalized-style analysis).
+ */
+export interface ChannelRecentVideo {
+  videoId: string;
+  title: string;
+  thumbnailUrl: string;
+}
+
+export interface ListChannelRecentVideosOptions {
+  /** YouTube channel ID (`youtubeChannelId` on the local `YouTubeChannel` row). */
+  channelId: string;
+  /** Clamped to 1..8. Defaults to 8. */
+  maxResults?: number;
+}
+
+/**
+ * GET /youtube/v3/search?part=snippet&channelId=...&order=date&type=video
+ *
+ * Returns up to N most-recent video thumbnails for a channel. The
+ * `snippet.thumbnails.high.url` block is already what's needed for
+ * Gemini Vision input — no second `videos.list` round-trip required.
+ *
+ * The caller is responsible for providing the access token; the OAuth
+ * scopes already include `youtube.readonly`, which permits `search.list`.
+ *
+ * Failure modes (mirroring the rest of this file):
+ *  - 5xx / 408 / 429 / network → `TransientPublishError`
+ *  - other 4xx → `PermanentPublishError`
+ *
+ * @throws TransientPublishError on transient failures.
+ * @throws PermanentPublishError on permanent failures.
+ */
+export const listChannelRecentVideos = async (
+  accessToken: string,
+  options: ListChannelRecentVideosOptions,
+): Promise<ChannelRecentVideo[]> => {
+  const max = Math.min(Math.max(options.maxResults ?? 8, 1), 8);
+  const url =
+    `${YOUTUBE_SEARCH_ENDPOINT}` +
+    `?part=snippet` +
+    `&channelId=${encodeURIComponent(options.channelId)}` +
+    `&order=date&type=video&maxResults=${max}`;
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+  } catch (err) {
+    throw new TransientPublishError(
+      `Network failure fetching recent channel videos: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    if (isTransientHttpStatus(res.status)) {
+      throw new TransientPublishError(
+        `YouTube search.list transient failure (${res.status}): ${body.slice(0, 200)}`,
+        res.status,
+      );
+    }
+    throw new PermanentPublishError(
+      "FORBIDDEN",
+      `YouTube rejected channel-recent-videos (${res.status}): ${body.slice(0, 300)}`,
+      res.status,
+    );
+  }
+
+  const data = (await res.json()) as {
+    items?: Array<{
+      id?: { videoId?: string };
+      snippet?: {
+        title?: string;
+        thumbnails?: Record<string, { url: string } | undefined>;
+      };
+    }>;
+  };
+
+  return (data.items ?? [])
+    .map((item) => {
+      const videoId = item.id?.videoId;
+      const title = item.snippet?.title ?? "";
+      const t = item.snippet?.thumbnails ?? {};
+      const thumbnailUrl =
+        t.high?.url ?? t.medium?.url ?? t.default?.url ?? "";
+      return videoId && thumbnailUrl ? { videoId, title, thumbnailUrl } : null;
+    })
+    .filter((v): v is ChannelRecentVideo => v !== null);
 };

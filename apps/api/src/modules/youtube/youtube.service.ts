@@ -9,13 +9,21 @@
  * here for the few API-side callers that still want it from this path.
  */
 import type { Env } from "@clipflow/config";
-import type { YouTubeConnection } from "@clipflow/types";
+import type {
+  ChannelRecentThumbnail,
+  YouTubeConnection,
+} from "@clipflow/types";
 import type { YouTubeChannel } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { requireDatabase } from "../../lib/db-guard.js";
 import { encryptToken } from "../../lib/crypto.js";
 import { AppError } from "../../errors/AppError.js";
-import { refreshAccessToken as refreshAccessTokenInPackage } from "@clipflow/youtube-upload";
+import {
+  listChannelRecentVideos,
+  PermanentPublishError,
+  refreshAccessToken as refreshAccessTokenInPackage,
+  TransientPublishError,
+} from "@clipflow/youtube-upload";
 import {
   GOOGLE_AUTH_URL,
   GOOGLE_TOKEN_URL,
@@ -330,3 +338,79 @@ const disconnectedStub = (): YouTubeConnection => ({
   connectedAt: null,
   lastVerifiedAt: null,
 });
+
+/**
+ * Fetch the most recent video thumbnails for the connected channel.
+ *
+ * Used by the onboarding wizard's step 5 and the settings "Refresh my
+ * channel style" CTA to populate the 4×2 thumbnail-selection grid.
+ * Delegates the YouTube call to `listChannelRecentVideos` in the shared
+ * package; the OAuth scope (`youtube.readonly`) is already on the access
+ * token returned by {@link refreshAccessToken}.
+ *
+ * Errors from the package's YouTube call are translated to `AppError`
+ * so the central error middleware can serialize them with a meaningful
+ * status + code (mirrors the `mapYouTubeErrorToAppError` pattern in
+ * videos.service.ts — see the "Domain errors from @clipflow/youtube-upload
+ * MUST be mapped to AppError" do-not-repeat entry).
+ *
+ * @throws AppError 412 `YOUTUBE_NOT_CONNECTED` if the channel isn't
+ *   connected (this is distinct from `CHANNEL_NOT_CONNECTED` used inside
+ *   the publish path; here we want a clearer code for the wizard UI).
+ * @throws AppError translated from the package's PermanentPublishError /
+ *   TransientPublishError on YouTube API failures.
+ */
+export const getChannelRecentThumbnails = async (
+  userId: string,
+  maxResults: number,
+  env: Pick<
+    Env,
+    "GOOGLE_CLIENT_ID" | "GOOGLE_CLIENT_SECRET" | "ENCRYPTION_KEY"
+  >,
+): Promise<ChannelRecentThumbnail[]> => {
+  requireDatabase();
+
+  const channel = await prisma.youTubeChannel.findUnique({
+    where: { userId },
+  });
+
+  if (!channel || channel.status !== "CONNECTED") {
+    throw new AppError(
+      412,
+      "YOUTUBE_NOT_CONNECTED",
+      "Connect your YouTube channel to see your recent thumbnails.",
+    );
+  }
+
+  const { accessToken } = await refreshAccessToken(channel, env);
+
+  try {
+    return await listChannelRecentVideos(accessToken, {
+      channelId: channel.youtubeChannelId,
+      maxResults,
+    });
+  } catch (err) {
+    if (err instanceof PermanentPublishError) {
+      throw new AppError(
+        403,
+        "YOUTUBE_FORBIDDEN",
+        err.message || "YouTube rejected the thumbnail list request.",
+        err.httpStatus !== undefined
+          ? { upstreamStatus: err.httpStatus }
+          : undefined,
+      );
+    }
+    if (err instanceof TransientPublishError) {
+      throw new AppError(
+        503,
+        "YOUTUBE_TEMPORARILY_UNAVAILABLE",
+        err.message ||
+          "YouTube is temporarily unavailable. Please try again in a moment.",
+        err.httpStatus !== undefined
+          ? { upstreamStatus: err.httpStatus }
+          : undefined,
+      );
+    }
+    throw err;
+  }
+};
