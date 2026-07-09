@@ -588,7 +588,7 @@
 
 ## packages/db/
 
-- `Dockerfile.migrate` — One-shot Prisma migration runner for the docker-compose stack. (~718 tok)
+- `Dockerfile.migrate` — One-shot Prisma migration runner for the docker-compose stack. Single-stage `node:24.13.0-slim` + corepack pnpm + the `@clipflow/db` workspace package; CMD runs `packages/db/scripts/migrate.mjs`. Mirrors the install phase of `apps/api/Dockerfile` + `apps/worker/Dockerfile`. Used by the `migrate` service in `docker-compose.yml` with `restart: "no"` and `condition: service_completed_successfully` gates on `api` + `worker`. (~2.3k tok)
 - `package.json` — Node.js package manifest (~313 tok)
 - `prisma.config.ts` (~89 tok)
 - `schema.prisma` — packages/db/schema.prisma (~5957 tok)
@@ -652,7 +652,7 @@
 
 ## packages/db/scripts/
 
-- `migrate.mjs` — Apply pending Prisma migrations to the running Postgres container. (~1141 tok)
+- `migrate.mjs` — Apply pending Prisma migrations to the running Postgres container. Two-state logic: probes `SELECT 1 FROM "users"` to detect schema bootstrap (true first boot from `neon_backup.sql` vs. fresh DB). If schema exists, baselines every existing migration via `prisma migrate resolve --applied` (no SQL re-run) — then `prisma migrate deploy` is a no-op for already-applied migrations but picks up genuinely-new ones. If schema missing, runs `migrate deploy` from scratch. Invoked from `packages/db/Dockerfile.migrate`; safe to run locally for a sanity check.
 
 ## packages/db/src/
 

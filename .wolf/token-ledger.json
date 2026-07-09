@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-06-26T04:13:47.972Z",
   "lifetime": {
-    "total_tokens_estimated": 909267,
-    "total_reads": 341,
-    "total_writes": 317,
-    "total_sessions": 99,
-    "anatomy_hits": 277,
-    "anatomy_misses": 17,
-    "repeated_reads_blocked": 62,
-    "estimated_savings_vs_bare_cli": 344155
+    "total_tokens_estimated": 918161,
+    "total_reads": 351,
+    "total_writes": 322,
+    "total_sessions": 103,
+    "anatomy_hits": 283,
+    "anatomy_misses": 21,
+    "repeated_reads_blocked": 63,
+    "estimated_savings_vs_bare_cli": 347630
   },
   "sessions": [
     {
@@ -4381,6 +4381,108 @@
         "reads_count": 7,
         "writes_count": 2,
         "repeated_reads_blocked": 0,
+        "anatomy_lookups": 6
+      }
+    },
+    {
+      "id": "session-2026-07-09-2042",
+      "started": "2026-07-09T15:12:46.430Z",
+      "ended": "2026-07-09T15:23:17.161Z",
+      "reads": [
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/docker-compose.yml",
+          "tokens_estimated": 2275,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/Dockerfile",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/Dockerfile",
+          "tokens_estimated": 1163,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/db/prisma.config.ts",
+          "tokens_estimated": 89,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/db/package.json",
+          "tokens_estimated": 123,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/.env.example",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/pnpm-workspace.yaml",
+          "tokens_estimated": 12,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/.dockerignore",
+          "tokens_estimated": 136,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/db/.env",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/Dockerfile",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/Users/vedant/.claude/plans/shimmying-nibbling-cosmos.md",
+          "tokens_estimated": 1700,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/db/scripts/migrate.mjs",
+          "tokens_estimated": 1223,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/packages/db/Dockerfile.migrate",
+          "tokens_estimated": 769,
+          "action": "create"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/docker-compose.yml",
+          "tokens_estimated": 605,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/vedant/Documents/projects/ClipFlow/docker-compose.yml",
+          "tokens_estimated": 799,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 3798,
+        "output_tokens_estimated": 5096,
+        "reads_count": 10,
+        "writes_count": 5,
+        "repeated_reads_blocked": 1,
         "anatomy_lookups": 6
       }
     }

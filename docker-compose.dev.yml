@@ -1,0 +1,124 @@
+# Dev-only infrastructure for ClipFlow.
+#
+# Runs only infra + worker in Docker. API and web run locally via
+# `pnpm --filter api dev` and `pnpm --filter web dev` for fast iteration.
+#
+# Services:
+#   - Postgres 18  (Prisma data store)
+#   - Redis 7      (BullMQ queues)
+#   - MinIO        (S3-compatible object storage, dev stand-in for R2)
+#   - minio-init   (creates the videos bucket on first boot)
+#   - worker       (apps/worker — ffmpeg + node for video extraction etc.)
+#
+# Ports are exposed so the locally-running API/web can reach the services
+# via localhost. The worker (inside Docker) uses the Docker service names
+# (postgres, redis, minio) for internal connectivity.
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up -d
+#   docker compose -f docker-compose.dev.yml down -v
+#   docker compose -f docker-compose.dev.yml logs -f worker
+#
+# Then run apps locally:
+#   pnpm --filter api dev
+#   pnpm --filter web dev
+#
+# The root .env already has Docker hostnames. For the local API override:
+#   apps/api/.env:
+#     DATABASE_URL=postgresql://clipflow:clipflow@localhost:5432/clipflow
+#     REDIS_URL=redis://localhost:6379
+#     S3_ENDPOINT=http://localhost:9000
+#     S3_ACCESS_KEY_ID=minioadmin
+#     S3_SECRET_ACCESS_KEY=minioadmin
+#     S3_BUCKET=clipflow-videos
+#     S3_FORCE_PATH_STYLE=true
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: clipflow-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./docker/postgres/init/00-create-neondb-owner.sql:/docker-entrypoint-initdb.d/00-create-neondb-owner.sql:ro
+      - ./neon_backup.sql:/docker-entrypoint-initdb.d/10-neon_backup.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: clipflow-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: clipflow-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: clipflow-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
+        (mc mb -p local/${S3_BUCKET} || true) &&
+        mc anonymous set none local/${S3_BUCKET} &&
+        echo 'MinIO bucket ready.'
+      "
+    restart: "no"
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    container_name: clipflow-worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  miniodata:

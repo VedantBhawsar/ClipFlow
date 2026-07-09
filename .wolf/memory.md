@@ -1352,3 +1352,27 @@ Closed the loop on the user-driven publish trigger for `READY_FOR_REVIEW` (and r
 | 20:48 | Created packages/db/Dockerfile.migrate | — | ~718 |
 | 20:48 | Edited docker-compose.yml | expanded (+10 lines) | ~605 |
 | 20:49 | Edited docker-compose.yml | expanded (+29 lines) | ~799 |
+| 20:49 | Edited .wolf/anatomy.md | expanded descriptions for Dockerfile.migrate + migrate.mjs | ~250 |
+| 20:50 | Added one-shot Prisma migration runner to docker-compose: new `migrate` service builds from packages/db/Dockerfile.migrate, runs packages/db/scripts/migrate.mjs (probes `users` table → baselines via `prisma migrate resolve --applied` when schema exists from neon_backup.sql, else `migrate deploy` from scratch). api + worker now depend on `migrate: service_completed_successfully`. | docker-compose.yml + packages/db/Dockerfile.migrate + packages/db/scripts/migrate.mjs | plan approved; pending verification | ~5100 |
+
+| 20:53 | Session end: 5 writes across 4 files (shimmying-nibbling-cosmos.md, migrate.mjs, Dockerfile.migrate, docker-compose.yml) | 10 reads | ~8894 tok |
+
+## Session: 2026-07-09 20:53
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-09 20:53
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-09 20:53
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-09 21:11
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|

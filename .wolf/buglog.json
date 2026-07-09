@@ -3196,6 +3196,25 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-09T15:18:50.803Z"
+    },
+    {
+      "id": "bug-196",
+      "timestamp": "2026-07-09T15:21:40.000Z",
+      "error_message": "User-reported: docker-compose stack had no migration step. New Prisma migrations added under packages/db/prisma/migrations/ could not be applied to the running Postgres without `docker compose down -v` (wiping local data).",
+      "file": "docker-compose.yml",
+      "root_cause": "The Postgres container bootstraps from neon_backup.sql (pg_restore on first volume init) but no service in docker-compose ran `prisma migrate deploy` afterwards. Worker + api started against the dump-loaded schema, so newly-added migrations were silently skipped.",
+      "fix": "Added a one-shot `migrate` service: builds from packages/db/Dockerfile.migrate (single-stage node:24.13.0-slim + corepack pnpm + @clipflow/db), CMD runs packages/db/scripts/migrate.mjs. The script probes `SELECT 1 FROM \"users\" LIMIT 1` to detect schema bootstrap; if present (dump-loaded), it iterates prisma/migrations/*/ and runs `prisma migrate resolve --applied <dirname>` for each to populate _prisma_migrations without re-running SQL; if absent (truly fresh), it just runs `migrate deploy` from scratch. Then `migrate deploy` picks up any genuinely-new migrations. `restart: \"no\"` (mirrors minio-init), `api` + `worker` both gate on `migrate: service_completed_successfully`.",
+      "tags": [
+        "manual",
+        "docker-compose",
+        "prisma",
+        "migrations",
+        "postgres",
+        "one-shot-service"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-09T15:21:40.000Z"
     }
   ]
 }
