@@ -32,7 +32,7 @@ COPY turbo.json ./
 
 # Use --frozen-lockfile so a CI build with a stale lockfile fails loud
 # rather than silently rewriting it.
-RUN pnpm install --frozen-lockfile --filter worker... --filter @clipflow/db
+RUN pnpm install --frozen-lockfile --ignore-scripts --filter worker... --filter @clipflow/db
 
 # ---- Stage 2: build ----
 # tsconfig outDir is ./dist, so the compiled JS lands in apps/worker/dist.

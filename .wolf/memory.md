@@ -1332,3 +1332,23 @@ Closed the loop on the user-driven publish trigger for `READY_FOR_REVIEW` (and r
 | 08:49 | Created apps/api/.dockerignore | — | ~514 |
 | 09:30 | Authored `apps/api/Dockerfile` + `apps/api/.dockerignore`. Dockerfile mirrors `apps/web/Dockerfile` + `apps/worker/Dockerfile` (3-stage: deps with `pnpm install --frozen-lockfile --filter api...`, build with `pnpm --filter api... build` + `prisma:generate`, runtime with `apps/api/dist` + `apps/api/node_modules` for the pnpm-isolated-mode pitfall bug-048). node:24.13.0-slim base (no ffmpeg), non-root user, PORT=4000, CMD `node apps/api/dist/index.js`. .dockerignore adapted from web's (no Next.js entries, drops `.next/`/`out/`/`vercel`). | apps/api/Dockerfile, apps/api/.dockerignore | Dockerfile + .dockerignore in place; updated anatomy.md | ~3.5k |
 | 08:51 | Session end: 2 writes across 2 files (Dockerfile, .dockerignore) | 7 reads | ~5821 tok |
+
+## Session: 2026-07-09 13:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-09 13:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-09 20:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:47 | Created ../../../.claude/plans/shimmying-nibbling-cosmos.md | — | ~1587 |
+| 20:47 | Created packages/db/scripts/migrate.mjs | — | ~1141 |
+| 20:48 | Created packages/db/Dockerfile.migrate | — | ~718 |
+| 20:48 | Edited docker-compose.yml | expanded (+10 lines) | ~605 |
+| 20:49 | Edited docker-compose.yml | expanded (+29 lines) | ~799 |

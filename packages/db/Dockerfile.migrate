@@ -1,0 +1,60 @@
+# One-shot Prisma migration runner for the docker-compose stack.
+#
+# Mirrors the install phase of apps/api/Dockerfile (deps stage) and
+# apps/worker/Dockerfile. Single-stage because the service runs once
+# and exits — no need to slim down to a runtime image.
+#
+# Build context is the repo root (set by docker-compose.yml's
+# `context: .`). The Dockerfile COPY paths assume /app is the workspace
+# root so packages/, pnpm-workspace.yaml, and the root package.json
+# all resolve.
+#
+# Pre-conditions the host must satisfy for `docker build` to succeed:
+#   1. pnpm-lock.yaml is committed (frozen-lockfile refuses without it).
+#   2. DATABASE_URL is supplied at run time via env_file in docker-compose.
+#
+# What the image does at runtime:
+#   - Probes the running Postgres for the `users` table to detect
+#     whether the schema was bootstrapped from neon_backup.sql.
+#   - If yes: baselines every existing migration via
+#     `prisma migrate resolve --applied` (no SQL re-run).
+#   - If no: runs `prisma migrate deploy` from scratch.
+#   - In either case, then runs `prisma migrate deploy` so any
+#     genuinely-new migration added after the dump is applied.
+
+FROM node:24.13.0-slim
+
+# Pin pnpm to match the workspace's `packageManager` field exactly.
+# corepack reads package.json and fails loud on a drift, instead of
+# silently pulling whatever's on PATH.
+RUN corepack enable
+
+WORKDIR /app
+
+# Copy workspace manifests + the root lockfile first so the install
+# layer caches independently of source code changes. Every package's
+# package.json is needed because pnpm's workspace resolution reads
+# them all at install time (even when filtering with
+# `--filter @clipflow/db`).
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY turbo.json ./
+COPY packages ./packages
+COPY apps/api/package.json ./apps/api/package.json
+COPY apps/web/package.json ./apps/web/package.json
+COPY apps/worker/package.json ./apps/worker/package.json
+
+# Frozen lockfile so a CI build with a stale lockfile fails loud rather
+# than silently rewriting it. `--filter @clipflow/db` pulls just the
+# db package + its direct dependencies (pg, @prisma/client, etc.).
+RUN pnpm install --frozen-lockfile --filter @clipflow/db
+
+# Overwrite the packages/db copy above with the authoritative source
+# from the build context: schema.prisma, prisma.config.ts, the
+# migrations folder, and the migration script.
+COPY packages/db ./packages/db
+
+# Run the migration script. The script probes the DB, baselines if
+# needed, then runs `prisma migrate deploy`. Exits 0 on success so
+# downstream services (api, worker) unblock via
+# `condition: service_completed_successfully`.
+CMD ["node", "packages/db/scripts/migrate.mjs"]

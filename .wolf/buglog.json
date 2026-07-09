@@ -3180,6 +3180,22 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-07-09T08:34:00.000Z"
+    },
+    {
+      "id": "bug-195",
+      "timestamp": "2026-07-09T15:18:50.803Z",
+      "error_message": "Significant refactor of ",
+      "file": "docker-compose.yml",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 30→40 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "yml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-09T15:18:50.803Z"
     }
   ]
 }

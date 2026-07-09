@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-09T03:19:40.565Z
-> Files: 401 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-09T15:19:00.353Z
+> Files: 403 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../tmp/
 
@@ -19,6 +19,7 @@
 - `memoized-floating-dijkstra.md` — ClipFlow Dashboard UI Polish — Plan (~2700 tok)
 - `quirky-giggling-blanket.md` — Plan: In-place editing for video metadata + chapters (~2106 tok)
 - `radiant-prancing-quail.md` — Plan: Migrate image-gen-client to `@google/genai` SDK (~1818 tok)
+- `shimmying-nibbling-cosmos.md` — Plan: Run Prisma migrations before API/worker start in docker-compose (~1488 tok)
 - `witty-snuggling-seal.md` — Plan: Add Publish / Schedule UI for READY_FOR_REVIEW videos (~4526 tok)
 - `wondrous-meandering-diffie.md` — Plan: Show AI-generated thumbnails on the video detail page and wire selection (~1979 tok)
 - `zazzy-plotting-peacock.md` — Audio + Frame Extraction (`video-ingest` queue) (~3360 tok)
@@ -34,7 +35,7 @@
 - `.gitignore` — Git ignore rules (~136 tok)
 - `.npmrc` (~0 tok)
 - `CLAUDE.md` — OpenWolf (~3549 tok)
-- `docker-compose.yml` — Docker Compose services (~1816 tok)
+- `docker-compose.yml` — Docker Compose services (~2275 tok)
 - `neon_backup.sql` — PostgreSQL database dump (~6500 tok)
 - `package.json` — Node.js package manifest (~123 tok)
 - `pnpm-lock.yaml` — pnpm lock file (~100120 tok)
@@ -64,7 +65,6 @@
 
 - `.dockerignore` — Production-ready ignore file for the Express+TS API. Build artifacts (`dist/`, `*.tsbuildinfo`), tests (`*.test.*`, `vitest.config.*`), editor/OS noise, env files, Docker + CI configs, AI tool metadata (`.cursor/`, `.claude/`, `wolf/`, etc.). Mirrors the shape of `apps/web/.dockerignore` minus Next.js entries. (~580 tok)
 - `.gitignore` — Git ignore rules (~36 tok)
-- `Dockerfile` — Multi-stage Docker build for the ClipFlow API (Express 4 + TypeScript). 3 stages mirroring apps/web/Dockerfile + apps/worker/Dockerfile: deps (`pnpm install --frozen-lockfile --filter api...`) → build (`pnpm --filter api... build` + `prisma:generate`) → runtime (slim node + `apps/api/dist` + `apps/api/node_modules` to satisfy the pnpm-isolated-mode pitfall bug-048 + workspace packages, non-root user, CMD `node apps/api/dist/index.js`). node:24.13.0-slim base (no ffmpeg unlike worker). PORT=4000 default (matches `@clipflow/config`). (~3.5k tok)
 - `eslint.config.mjs` — ESLint flat configuration (~50 tok)
 - `package.json` — Node.js package manifest (~435 tok)
 - `tsconfig.json` — TypeScript configuration (~124 tok)
@@ -588,6 +588,7 @@
 
 ## packages/db/
 
+- `Dockerfile.migrate` — One-shot Prisma migration runner for the docker-compose stack. (~718 tok)
 - `package.json` — Node.js package manifest (~313 tok)
 - `prisma.config.ts` (~89 tok)
 - `schema.prisma` — packages/db/schema.prisma (~5957 tok)
@@ -648,6 +649,10 @@
 ## packages/db/prisma/migrations/20260708_personalized_thumbnail_style/
 
 - `migration.sql` — Personalized thumbnail-style analysis (onboarding step 5 + settings re-entry). (~252 tok)
+
+## packages/db/scripts/
+
+- `migrate.mjs` — Apply pending Prisma migrations to the running Postgres container. (~1141 tok)
 
 ## packages/db/src/
 

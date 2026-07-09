@@ -8,7 +8,9 @@
 #   - Redis 7   (BullMQ queues)
 #   - MinIO     (S3-compatible object storage, dev stand-in for R2)
 #   - minio-init (creates the videos bucket on first boot)
-#   - worker    (apps/worker in its own container — ffmpeg + node)
+#   - migrate    (baselines + applies pending Prisma migrations, one-shot)
+#   - worker     (apps/worker in its own container — ffmpeg + node)
+#   - api        (Express 4 + TypeScript)
 #
 # Postgres init scripts (mounted into /docker-entrypoint-initdb.d/) run
 # once, on first boot of an empty data volume, in lexical order:
@@ -16,9 +18,17 @@
 #      dump grants ownership to. Idempotent (uses IF NOT EXISTS).
 #   2. neon_backup.sql             — schema + data dumped from Neon.
 #
+# The `migrate` service then runs once Postgres is healthy. On a fresh
+# volume (schema already created by neon_backup.sql) it baselines every
+# existing migration via `prisma migrate resolve --applied` so
+# `prisma migrate deploy` only applies genuinely-new migrations on
+# subsequent restarts. On a true fresh DB it runs `migrate deploy` from
+# scratch.
+#
 # Usage:
-#   docker compose up -d            # start (imports neon_backup.sql on first boot)
+#   docker compose up -d            # start (imports neon_backup.sql + migrates on first boot)
 #   docker compose down -v          # stop + delete volumes (resets state; next up re-imports)
+#   docker compose up -d migrate    # re-run migrations only (e.g. after adding a new migration)
 #   docker compose logs -f worker   # tail worker logs (FFmpeg extraction events)
 #
 # To point the API at the local DB instead of Neon, swap DATABASE_URL in
@@ -114,6 +124,31 @@ services:
     networks:
       - clipflow
 
+  # One-shot migration runner. Builds from packages/db/Dockerfile.migrate
+  # (a single-stage node:24.13.0-slim + corepack pnpm + the @clipflow/db
+  # workspace package). The CMD runs packages/db/scripts/migrate.mjs
+  # which probes for the `users` table to detect schema bootstrap, then
+  # either baselines existing migrations (first boot from the dump) or
+  # applies them from scratch (truly fresh DB), and finally runs
+  # `prisma migrate deploy` so any genuinely-new migration is picked up.
+  #
+  # `restart: "no"` makes it a true one-shot, mirroring `minio-init`.
+  # The api and worker both gate on `service_completed_successfully` so
+  # they never start against a half-migrated database.
+  migrate:
+    build:
+      context: .
+      dockerfile: packages/db/Dockerfile.migrate
+    container_name: clipflow-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    restart: "no"
+    networks:
+      - clipflow
+
   # The BullMQ worker. Builds from apps/worker/Dockerfile (which installs
   # ffmpeg in the runtime stage) and uses the in-network hostnames so it
   # can reach postgres / redis / minio without publishing host ports.
@@ -138,10 +173,12 @@ services:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
     env_file:
       - .env
     restart: unless-stopped
-    networks: 
+    networks:
       - clipflow
 
   web:
@@ -149,11 +186,11 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
     container_name: clipflow-web
-    ports: 
+    ports:
       - "${WEB_PORT}:3000"
     depends_on:
-      - api 
-    env_file: 
+      - api
+    env_file:
       - .env
     restart: unless-stopped
 
@@ -162,7 +199,7 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     container_name: clipflow-api
-    ports: 
+    ports:
       - "${PORT}:${PORT}"
     depends_on:
       postgres:
@@ -173,10 +210,12 @@ services:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
-    env_file: 
+      migrate:
+        condition: service_completed_successfully
+    env_file:
         - .env
     restart: unless-stopped
-    networks: 
+    networks:
       - clipflow
 
 volumes:

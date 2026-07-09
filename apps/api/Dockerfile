@@ -48,7 +48,7 @@ COPY apps/worker/package.json ./apps/worker/package.json
 # @clipflow/crypto) in topological order — without the trailing `...`,
 # the workspace packages never reach apps/api/node_modules and the next
 # stage's `tsc` build would fail to resolve `@clipflow/db`.
-RUN pnpm install --frozen-lockfile --filter api...
+RUN pnpm install --frozen-lockfile --ignore-scripts --filter api...
 
 # ---- Stage 2: build ----
 # tsc outDir is ./dist, so the compiled JS lands in apps/api/dist.
@@ -122,6 +122,7 @@ COPY --from=build --chown=nodejs:nodejs /app/apps/api/package.json ./apps/api/pa
 COPY --from=build --chown=nodejs:nodejs /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=build --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=build --chown=nodejs:nodejs /app/packages ./packages
+RUN apt-get update -y && apt-get install -y openssl
 
 USER nodejs
 

@@ -52,7 +52,7 @@ COPY apps/worker/package.json ./apps/worker/package.json
 # topological order — without the trailing `...`, the workspace
 # packages never reach apps/web/node_modules and the next stage's
 # `next build` would fail to resolve `@clipflow/config`.
-RUN pnpm install --frozen-lockfile --filter web...
+RUN pnpm install --frozen-lockfile --ignore-scripts --filter web...
 
 # ---- Stage 2: build ----
 # `output: "standalone"` puts the production bundle at
