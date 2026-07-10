@@ -1,58 +1,11 @@
 {
-  "session_id": "session-2026-07-10-2020",
-  "started": "2026-07-10T14:50:07.416Z",
-  "files_read": {
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/youtube-connect/callback/page.tsx": {
-      "count": 1,
-      "tokens": 385,
-      "first_read": "2026-07-10T14:50:37.670Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/(auth)/signin/page.tsx": {
-      "count": 1,
-      "tokens": 282,
-      "first_read": "2026-07-10T14:50:37.707Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/hooks/use-billing.ts": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-07-10T14:50:37.723Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/hooks/use-checkout.ts": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-07-10T14:50:37.741Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/billing/success/page.tsx": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-07-10T14:51:36.845Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/billing/return/page.tsx": {
-      "count": 1,
-      "tokens": 0,
-      "first_read": "2026-07-10T14:52:53.472Z"
-    }
-  },
-  "files_written": [
-    {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/billing/page.tsx",
-      "action": "create",
-      "tokens": 946,
-      "at": "2026-07-10T14:51:05.834Z"
-    },
-    {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/billing/success/page.tsx",
-      "action": "create",
-      "tokens": 705,
-      "at": "2026-07-10T14:52:33.227Z"
-    }
-  ],
-  "edit_counts": {
-    "apps/web/app/billing/page.tsx": 1,
-    "apps/web/app/billing/success/page.tsx": 1
-  },
-  "anatomy_hits": 2,
-  "anatomy_misses": 4,
+  "session_id": "session-2026-07-10-2031",
+  "started": "2026-07-10T15:01:44.951Z",
+  "files_read": {},
+  "files_written": [],
+  "edit_counts": {},
+  "anatomy_hits": 0,
+  "anatomy_misses": 0,
   "repeated_reads_warned": 0,
   "cerebrum_warnings": 0,
   "stop_count": 0

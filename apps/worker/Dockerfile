@@ -47,6 +47,8 @@ WORKDIR /app
 COPY --from=deps /app /app
 COPY apps/worker ./apps/worker
 
+ARG DATABASE_URL
+
 RUN pnpm --filter @clipflow/db prisma:generate
 
 # IMPORTANT: build the worker AND every workspace package it depends on
