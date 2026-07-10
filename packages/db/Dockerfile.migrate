@@ -46,7 +46,7 @@ COPY apps/worker/package.json ./apps/worker/package.json
 # Frozen lockfile so a CI build with a stale lockfile fails loud rather
 # than silently rewriting it. `--filter @clipflow/db` pulls just the
 # db package + its direct dependencies (pg, @prisma/client, etc.).
-RUN pnpm install --frozen-lockfile --filter @clipflow/db
+RUN pnpm install --frozen-lockfile --ignore-scripts --filter @clipflow/db
 
 # Overwrite the packages/db copy above with the authoritative source
 # from the build context: schema.prisma, prisma.config.ts, the
