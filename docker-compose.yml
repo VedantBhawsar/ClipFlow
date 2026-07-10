@@ -199,6 +199,8 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     container_name: clipflow-api
+    args:
+      DATABASE_URL: ${DATABASE_URL}
     ports:
       - "${PORT}:${PORT}"
     depends_on:
@@ -213,7 +215,7 @@ services:
       migrate:
         condition: service_completed_successfully
     env_file:
-        - .env
+      - .env
     restart: unless-stopped
     networks:
       - clipflow
