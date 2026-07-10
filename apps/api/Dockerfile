@@ -70,6 +70,9 @@ COPY --from=deps /app /app
 COPY apps/api ./apps/api
 COPY packages ./packages
 
+
+ARG DATABASE_URL
+
 RUN pnpm --filter @clipflow/db prisma:generate
 
 # IMPORTANT: build the api AND every workspace package it depends on

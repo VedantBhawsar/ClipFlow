@@ -19,3 +19,5 @@
 [2026-07-09T15:49:01.907Z] [INFO] Dashboard server listening on port 18791
 [2026-07-09T15:49:03.140Z] [INFO] WebSocket client connected
 [2026-07-09T16:13:22.940Z] [INFO] WebSocket client connected
+[2026-07-09T16:35:17.171Z] [INFO] Daemon shutting down...
+[2026-07-09T16:35:17.186Z] [INFO] Daemon stopped

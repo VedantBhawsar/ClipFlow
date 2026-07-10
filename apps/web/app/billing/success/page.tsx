@@ -1,13 +1,12 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/hooks/use-api";
 import type { SubscriptionResponse } from "@clipflow/types";
 
 export default function BillingSuccessPage() {
-  const searchParams = useSearchParams();
   const router = useRouter();
   const api = useApi();
   const [planName, setPlanName] = useState<string | null>(null);

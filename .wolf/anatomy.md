@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-09T15:50:45.077Z
-> Files: 402 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-10T14:52:33.220Z
+> Files: 404 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../tmp/
 
@@ -37,7 +37,6 @@
 - `.npmrc` (~0 tok)
 - `CLAUDE.md` — OpenWolf (~3549 tok)
 - `docker-compose.yml` — Docker Compose services (~2275 tok)
-- `implementation.payment.md` — Plan: Dodo Payments integration for India region (Plan/Subscription/WebhookEvent schema, env, API surface, webhook HMAC + idempotency, plan-guard into videos.service.ts → createVideo, web billing pages, test plan) (~12k tok)
 - `neon_backup.sql` — PostgreSQL database dump (~6500 tok)
 - `package.json` — Node.js package manifest (~123 tok)
 - `pnpm-lock.yaml` — pnpm lock file (~100120 tok)
@@ -230,6 +229,14 @@
 ## apps/web/app/api/auth/[...nextauth]/
 
 - `route.ts` — NextAuth (Auth.js v5) route handler. (~169 tok)
+
+## apps/web/app/billing/
+
+- `page.tsx` — dynamic (~946 tok)
+
+## apps/web/app/billing/success/
+
+- `page.tsx` — BillingSuccessPage (~705 tok)
 
 ## apps/web/app/dashboard/
 

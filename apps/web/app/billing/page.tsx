@@ -1,7 +1,7 @@
 "use client";
 
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { usePlans, useSubscription } from "@/hooks/use-billing";
@@ -10,11 +10,12 @@ import { PlanCard } from "@/components/billing/plan-card";
 import { PRICING_PLANS, type PricingPlanId } from "@/lib/marketing/pricing";
 import type { PlanDto } from "@clipflow/types";
 
-function getPlanKey(id: PricingPlanId): string {
-  return id;
-}
 
-export default function BillingPage() {
+export const dynamic = 'force-dynamic'
+
+
+
+function BillingPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { data: session, status: sessionStatus } = useSession();
@@ -82,5 +83,13 @@ export default function BillingPage() {
         </p>
       )}
     </div>
+  );
+}
+
+export default function BillingPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><p className="text-[color:var(--ink-muted)]">Loading…</p></div>}>
+      <BillingPageInner />
+    </Suspense>
   );
 }
