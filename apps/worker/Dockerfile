@@ -48,6 +48,7 @@ COPY --from=deps /app /app
 COPY apps/worker ./apps/worker
 
 ARG DATABASE_URL
+ENV DATABASE_URL=$DATABASE_URL
 
 RUN pnpm --filter @clipflow/db prisma:generate
 
