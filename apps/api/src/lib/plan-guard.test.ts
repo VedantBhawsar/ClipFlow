@@ -75,7 +75,7 @@ describe("evaluateUploadAccess", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
       plan: STARTER_PLAN,
-    });
+    } as never);
 
     const { evaluateUploadAccess } = await import("./plan-guard.js");
     const result = await evaluateUploadAccess("user-1");
@@ -102,7 +102,7 @@ describe("evaluateUploadAccess", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
       plan: STARTER_PLAN,
-    });
+    } as never);
 
     const { assertWithinVideoLimit } = await import("./plan-guard.js");
     await expect(assertWithinVideoLimit("user-1")).rejects.toMatchObject({ code: "PLAN_LIMIT_REACHED" });
@@ -125,7 +125,7 @@ describe("evaluateUploadAccess", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
       plan: STARTER_PLAN,
-    });
+    } as never);
 
     const { assertWithinVideoLimit } = await import("./plan-guard.js");
     await expect(assertWithinVideoLimit("user-1")).rejects.toMatchObject({ code: "SUBSCRIPTION_INACTIVE" });
@@ -148,7 +148,7 @@ describe("evaluateUploadAccess", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
       plan: STARTER_PLAN,
-    });
+    } as never);
 
     const { evaluateUploadAccess } = await import("./plan-guard.js");
     const result = await evaluateUploadAccess("user-1");
@@ -172,7 +172,7 @@ describe("evaluateUploadAccess", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
       plan: FREE_PLAN,
-    });
+    } as never);
 
     const { evaluateUploadAccess } = await import("./plan-guard.js");
     const result = await evaluateUploadAccess("user-1");

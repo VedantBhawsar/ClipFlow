@@ -1,0 +1,2977 @@
+openapi: "3.0.3"
+info:
+  title: "ClipFlow API"
+  description: |
+    ClipFlow is a SaaS platform for YouTube creators that automates video scheduling,
+    thumbnail generation, and chapter-timestamp generation.
+
+    ## Response Envelope
+
+    Every endpoint returns a standard JSON envelope:
+
+    **Success (2xx):**
+    ```json
+    { "success": true, "message": "string", "data": <payload> }
+    ```
+
+    **Error (4xx/5xx):**
+    ```json
+    { "success": false, "message": "string", "data": null, "error": "ERROR_CODE", "details": {} }
+    ```
+
+    ## Authentication
+
+    Most endpoints require a JWT access token sent as `Authorization: Bearer <token>`.
+    The token is obtained via `POST /api/auth/register` or `POST /api/auth/login`.
+
+    ## Error Codes
+
+    | Code | HTTP Status | Meaning |
+    |------|-------------|---------|
+    | `VALIDATION_ERROR` | 400 | Zod schema validation failed. `details.issues[]` has field-level info. |
+    | `UNAUTHENTICATED` | 401 | Missing or invalid JWT access token. |
+    | `INVALID_TOKEN` | 401 | JWT verification failed (expired, bad signature, etc.). |
+    | `INVALID_CREDENTIALS` | 401 | Email/password mismatch. |
+    | `EMAIL_TAKEN` | 409 | Email already registered. |
+    | `NOT_FOUND` | 404 | Route or resource not found. |
+    | `RATE_LIMITED` | 429 | Too many requests. |
+    | `DATABASE_UNAVAILABLE` | 503 | Database not configured (dev fallback mode). |
+    | `INTERNAL_SERVER_ERROR` | 500 | Unexpected server error. |
+  version: "1.0.0"
+  contact:
+    name: "ClipFlow Team"
+
+servers:
+  - url: "http://localhost:4000"
+    description: "Local development"
+  - url: "https://api.clipflow.com"
+    description: "Production"
+
+tags:
+  - name: "Health"
+    description: "Service liveness and readiness probes"
+  - name: "Auth"
+    description: "Registration, login, token refresh, logout"
+  - name: "Password Reset"
+    description: "Forgot and reset password flow"
+  - name: "Onboarding"
+    description: "User onboarding wizard"
+  - name: "Settings"
+    description: "Aggregated user settings read"
+  - name: "Preferences"
+    description: "User notification and content preferences"
+  - name: "YouTube"
+    description: "YouTube OAuth connection and channel data"
+  - name: "Videos"
+    description: "Upload, manage, publish, and stream videos"
+  - name: "Thumbnails"
+    description: "Video thumbnail management and generation"
+  - name: "Thumbnail Style"
+    description: "Channel thumbnail style analysis and preferences"
+  - name: "Billing"
+    description: "Plans, subscriptions, checkout, and customer portal"
+
+paths:
+  # ────────────────────────────────────────────────────────────────────
+  #  HEALTH
+  # ────────────────────────────────────────────────────────────────────
+  /health:
+    get:
+      tags: ["Health"]
+      summary: "Liveness probe"
+      description: "Returns process liveness. Always 200 when the server is running."
+      operationId: "healthCheck"
+      responses:
+        "200":
+          description: "Server is alive"
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, message, data]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  message:
+                    type: string
+                    example: "OK"
+                  data:
+                    type: object
+                    required: [status, uptime, timestamp]
+                    properties:
+                      status:
+                        type: string
+                        enum: [ok]
+                      uptime:
+                        type: number
+                        description: "Process uptime in seconds"
+                      timestamp:
+                        type: string
+                        format: "date-time"
+
+  /health/ready:
+    get:
+      tags: ["Health"]
+      summary: "Readiness probe"
+      description: "Checks database reachability by pinging SELECT 1."
+      operationId: "healthReady"
+      responses:
+        "200":
+          description: "Database is reachable"
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, message, data]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  message:
+                    type: string
+                    example: "Database is reachable"
+                  data:
+                    type: object
+                    properties:
+                      db:
+                        type: string
+                        enum: ["ok"]
+        "503":
+          description: "Database is not reachable"
+
+  # ────────────────────────────────────────────────────────────────────
+  #  AUTH
+  # ────────────────────────────────────────────────────────────────────
+  /api/auth/register:
+    post:
+      tags: ["Auth"]
+      summary: "Register a new user"
+      description: "Creates a new account with email and password. Returns JWT access token and refresh token."
+      operationId: "authRegister"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: "email"
+                  description: "User email (trimmed and lowercased server-side)"
+                  example: "creator@example.com"
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  description: "Must contain at least one letter and one number"
+                  example: "mypassword1"
+                name:
+                  type: string
+                  description: "Optional display name"
+                  example: "My Channel"
+      responses:
+        "201":
+          description: "User registered successfully"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          description: "Email already taken"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiFailure"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        enum: [EMAIL_TAKEN]
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/auth/login:
+    post:
+      tags: ["Auth"]
+      summary: "Log in with email and password"
+      description: "Authenticates a user and returns a JWT access token pair with refresh token."
+      operationId: "authLogin"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: "email"
+                  example: "creator@example.com"
+                password:
+                  type: string
+                  minLength: 1
+                  example: "mypassword1"
+      responses:
+        "200":
+          description: "Login successful"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          description: "Invalid credentials"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiFailure"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        enum: [INVALID_CREDENTIALS]
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/auth/refresh:
+    post:
+      tags: ["Auth"]
+      summary: "Refresh access token"
+      description: "Exchange a valid refresh token for a new access token + rotated refresh token. Each refresh invalidates the presented token; presenting a revoked token revokes the entire family."
+      operationId: "authRefresh"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+                  description: "Opaque refresh token from a prior login or refresh response"
+      responses:
+        "200":
+          description: "Token refreshed"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/RefreshResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          description: "Invalid or revoked refresh token"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiFailure"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        enum: [INVALID_REFRESH_TOKEN]
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/auth/logout:
+    post:
+      tags: ["Auth"]
+      summary: "Log out"
+      description: "Revokes the refresh token server-side. Idempotent — revoking an already-revoked or nonexistent token is a no-op."
+      operationId: "authLogout"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+                  description: "Optional refresh token to revoke. Omit to only clear client-side session."
+      responses:
+        "200":
+          description: "Logged out"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiEmptySuccess"
+
+  /api/auth/google:
+    post:
+      tags: ["Auth"]
+      summary: "Google OAuth sign-in (stub)"
+      description: "Placeholder for Google OAuth authentication. Currently returns 501 Not Implemented."
+      operationId: "authGoogle"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idToken]
+              properties:
+                idToken:
+                  type: string
+                  description: "Google ID token"
+      responses:
+        "501":
+          description: "Not implemented"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiFailure"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        enum: [NOT_IMPLEMENTED]
+
+  /api/auth/forgot-password:
+    post:
+      tags: ["Password Reset"]
+      summary: "Request password reset"
+      description: "Sends a password reset email if the account exists. Returns success regardless of whether the email exists to prevent email enumeration."
+      operationId: "forgotPassword"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: "email"
+                  example: "creator@example.com"
+      responses:
+        "200":
+          description: "Reset email sent (or silently ignored if email not found)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiEmptySuccess"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/auth/reset-password:
+    post:
+      tags: ["Password Reset"]
+      summary: "Reset password with token"
+      description: "Resets the password using a reset token received via email. The token expires after 1 hour and can only be used once."
+      operationId: "resetPassword"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token:
+                  type: string
+                  description: "Password reset token received via email"
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  description: "Must contain at least one letter and one number"
+                  example: "newpassword1"
+      responses:
+        "200":
+          description: "Password reset successfully"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiEmptySuccess"
+        "400":
+          description: "Invalid, expired, or already used token"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiFailure"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        enum: [INVALID_RESET_TOKEN, TOKEN_EXPIRED, TOKEN_ALREADY_USED]
+
+  # ────────────────────────────────────────────────────────────────────
+  #  ONBOARDING
+  # ────────────────────────────────────────────────────────────────────
+  /api/onboarding/status:
+    get:
+      tags: ["Onboarding"]
+      summary: "Get onboarding status"
+      description: "Returns whether the user has completed onboarding and their current profile (if any)."
+      operationId: "getOnboardingStatus"
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: "Onboarding status"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/OnboardingStatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  /api/onboarding/profile:
+    post:
+      tags: ["Onboarding"]
+      summary: "Submit onboarding profile (full)"
+      description: "Creates or fully replaces the user's onboarding profile. Marks onboarding as completed."
+      operationId: "submitOnboardingProfile"
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileInput"
+      responses:
+        "200":
+          description: "Profile saved"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/UserProfile"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+    patch:
+      tags: ["Onboarding"]
+      summary: "Partial update onboarding profile"
+      description: "Partially updates the user's onboarding profile. At least one field required."
+      operationId: "patchOnboardingProfile"
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchProfileInput"
+      responses:
+        "200":
+          description: "Profile updated"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/UserProfile"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "404":
+          description: "Profile not found (cannot patch a nonexistent profile)"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiFailure"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        enum: [PROFILE_NOT_FOUND]
+
+  # ────────────────────────────────────────────────────────────────────
+  #  SETTINGS
+  # ────────────────────────────────────────────────────────────────────
+  /api/settings:
+    get:
+      tags: ["Settings"]
+      summary: "Get all user settings"
+      description: "Aggregated read of the user's profile, preferences, YouTube connection, and thumbnail style. Cached for 30 seconds."
+      operationId: "getSettings"
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: "Aggregated settings"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/SettingsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  # ────────────────────────────────────────────────────────────────────
+  #  PREFERENCES
+  # ────────────────────────────────────────────────────────────────────
+  /api/settings/preferences:
+    get:
+      tags: ["Preferences"]
+      summary: "Get user preferences"
+      description: "Returns the user's notification and content preferences. A row is auto-created with defaults on first read."
+      operationId: "getPreferences"
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: "User preferences"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/UserPreferences"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+    patch:
+      tags: ["Preferences"]
+      summary: "Update user preferences"
+      description: "Partially updates preferences. At least one field required. Omitted fields keep their current values."
+      operationId: "updatePreferences"
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePreferencesInput"
+      responses:
+        "200":
+          description: "Preferences updated"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/UserPreferences"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  /api/settings/change-password:
+    post:
+      tags: ["Preferences"]
+      summary: "Change password"
+      description: "Changes the user's password. Verifies the current password first. Rate-limited per user (5 requests per 15 minutes)."
+      operationId: "changePassword"
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordInput"
+      responses:
+        "200":
+          $ref: "#/components/schemas/ApiEmptySuccess"
+        "400":
+          description: "Password not set (Google-only account) or new password matches old"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiFailure"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        enum: [PASSWORD_NOT_SET, PASSWORD_REUSED]
+        "401":
+          description: "Current password is incorrect"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiFailure"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        enum: [INVALID_CREDENTIALS]
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  # ────────────────────────────────────────────────────────────────────
+  #  YOUTUBE
+  # ────────────────────────────────────────────────────────────────────
+  /api/youtube/oauth/url:
+    get:
+      tags: ["YouTube"]
+      summary: "Get YouTube OAuth URL"
+      description: "Returns the Google OAuth URL for connecting a YouTube channel. Requires GOOGLE_CLIENT_ID to be configured."
+      operationId: "getYouTubeOAuthUrl"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: redirect_uri
+          in: query
+          schema:
+            type: string
+            format: "uri"
+          description: "Optional custom redirect URI"
+      responses:
+        "200":
+          description: "OAuth URL"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [url, state]
+                        properties:
+                          url:
+                            type: string
+                            format: "uri"
+                            description: "Google OAuth consent URL"
+                          state:
+                            type: string
+                            description: "Anti-CSRF state token"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "503":
+          description: "Google OAuth not configured"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiFailure"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        enum: [GOOGLE_OAUTH_NOT_CONFIGURED]
+
+  /api/youtube/connect:
+    post:
+      tags: ["YouTube"]
+      summary: "Connect YouTube channel"
+      description: "Exchanges an OAuth authorization code for tokens, fetches channel info, and stores the connection. Rate-limited per user (10 per 15 minutes)."
+      operationId: "connectYouTube"
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  description: "Authorization code from Google OAuth redirect"
+      responses:
+        "200":
+          description: "YouTube channel connected"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/YouTubeConnection"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/youtube/disconnect:
+    delete:
+      tags: ["YouTube"]
+      summary: "Disconnect YouTube channel"
+      description: "Marks the connected YouTube channel as DISCONNECTED."
+      operationId: "disconnectYouTube"
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/schemas/ApiEmptySuccess"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  /api/youtube/connection:
+    get:
+      tags: ["YouTube"]
+      summary: "Get YouTube connection status"
+      description: "Returns the current YouTube channel connection status. Cached for 60 seconds."
+      operationId: "getYouTubeConnection"
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: "YouTube connection status"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/YouTubeConnection"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  /api/youtube/channel-recent-thumbnails:
+    get:
+      tags: ["YouTube"]
+      summary: "Get recent channel thumbnails"
+      description: "Fetches recent video thumbnails from the connected YouTube channel for style analysis."
+      operationId: "getChannelRecentThumbnails"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 8
+            default: 8
+          description: "Number of recent thumbnails to fetch (1-8)"
+      responses:
+        "200":
+          description: "Recent thumbnails"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ChannelRecentThumbnailsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "412":
+          description: "YouTube not connected"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiFailure"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        enum: [YOUTUBE_NOT_CONNECTED]
+
+  # ────────────────────────────────────────────────────────────────────
+  #  VIDEOS
+  # ────────────────────────────────────────────────────────────────────
+  /api/videos:
+    post:
+      tags: ["Videos"]
+      summary: "Create a video upload"
+      description: "Mints a pending upload ID and presigned S3 POST URLs for the video file and optional thumbnail. No Video row is created until finalization. Rate-limited per user (30 per 15 minutes)."
+      operationId: "createVideo"
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVideoInput"
+      responses:
+        "201":
+          description: "Upload credentials created"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/CreateVideoResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          description: "Plan limit reached or subscription inactive"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiFailure"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        enum: [PLAN_LIMIT_REACHED, SUBSCRIPTION_INACTIVE, SUBSCRIPTION_EXPIRED]
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+    get:
+      tags: ["Videos"]
+      summary: "List videos"
+      description: "Paginated list of the user's videos with optional status and text search filters."
+      operationId: "listVideos"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - UPLOADED
+              - READY
+              - EXTRACTING
+              - TRANSCRIBING
+              - GENERATING
+              - READY_FOR_REVIEW
+              - SCHEDULED
+              - PUBLISHING
+              - PUBLISHED
+              - PUBLISH_FAILED
+              - FAILED
+              - NOT_PUBLISHED
+          description: "Filter by status. NOT_PUBLISHED is a virtual status matching everything except PUBLISHED."
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: "Full-text search across title, description, and tags"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: "Page number (1-indexed)"
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 12
+          description: "Items per page"
+      responses:
+        "200":
+          description: "Paginated video list"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/PaginatedVideos"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  /api/videos/pending/{id}/upload-url:
+    post:
+      tags: ["Videos"]
+      summary: "Get fresh upload URL"
+      description: "Mints a new presigned POST URL for an expired in-flight pending upload. Rate-limited per user (30 per 15 minutes)."
+      operationId: "getUploadUrl"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^pu_[a-f0-9-]+$"
+          description: "Pending upload ID (pu_<uuid>)"
+      responses:
+        "200":
+          description: "Fresh upload URL"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/UploadUrlResponse"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/videos/pending/{id}/finalize:
+    post:
+      tags: ["Videos"]
+      summary: "Finalize video upload"
+      description: "Confirms the upload by HEAD-requesting the S3 file, creates the Video row, transitions it to EXTRACTING, and enqueues an ingest job. Rate-limited per user (30 per 15 minutes)."
+      operationId: "finalizeVideo"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^pu_[a-f0-9-]+$"
+          description: "Pending upload ID (pu_<uuid>)"
+      responses:
+        "200":
+          description: "Video finalized and ingest enqueued"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Video"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/videos/pending/{id}:
+    delete:
+      tags: ["Videos"]
+      summary: "Cancel pending upload"
+      description: "Cancels an in-flight upload by deleting the S3 objects and clearing the cache. Idempotent. Rate-limited per user (60 per 15 minutes)."
+      operationId: "cancelPendingUpload"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^pu_[a-f0-9-]+$"
+          description: "Pending upload ID (pu_<uuid>)"
+      responses:
+        "200":
+          $ref: "#/components/schemas/ApiEmptySuccess"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/videos/published:
+    get:
+      tags: ["Videos"]
+      summary: "List published videos"
+      description: "Paginated list of published videos with privacy status and date-range filters."
+      operationId: "listPublishedVideos"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: "Full-text search"
+        - name: privacy
+          in: query
+          schema:
+            type: string
+            enum: [private, unlisted, public, all]
+          description: "Filter by privacy status"
+        - name: since
+          in: query
+          schema:
+            type: string
+            format: "date"
+          description: "ISO8601 date — only videos published on or after this date"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 12
+      responses:
+        "200":
+          description: "Paginated published video list"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/PaginatedVideos"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  /api/videos/stream:
+    get:
+      tags: ["Videos"]
+      summary: "SSE stream for all user videos"
+      description: "Server-Sent Events endpoint that streams status updates, progress, and errors for all of the user's videos. Token is passed via `?token=` query parameter (EventSource does not support custom headers)."
+      operationId: "streamUserVideos"
+      security:
+        - SseTokenAuth: []
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "JWT access token (required because EventSource cannot set headers)"
+      responses:
+        "200":
+          description: "SSE event stream"
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: "SSE-formatted stream. Events: STATUS_UPDATE, PROGRESS, ERROR. Heartbeat every 30 seconds."
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  /api/videos/{id}:
+    get:
+      tags: ["Videos"]
+      summary: "Get video details"
+      description: "Returns a single video with presigned thumbnail URLs. Ownership-scoped."
+      operationId: "getVideo"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^vid_[a-f0-9-]+$"
+          description: "Video ID (vid_<uuid>)"
+      responses:
+        "200":
+          description: "Video details"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Video"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "404":
+          description: "Video not found"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiFailure"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        enum: [NOT_FOUND]
+    patch:
+      tags: ["Videos"]
+      summary: "Update video metadata"
+      description: "Updates video metadata inline. Only allowed when status is READY_FOR_REVIEW. All fields optional — merges on top of existing row."
+      operationId: "updateVideo"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^vid_[a-f0-9-]+$"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateVideoInput"
+      responses:
+        "200":
+          description: "Video updated"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Video"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "404":
+          description: "Video not found"
+        "409":
+          description: "Video is not in an editable state"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiFailure"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        enum: [NOT_EDITABLE]
+    delete:
+      tags: ["Videos"]
+      summary: "Delete a video"
+      description: "Deletes a video and its S3 objects. Only allowed when status is NOT PUBLISHED."
+      operationId: "deleteVideo"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^vid_[a-f0-9-]+$"
+      responses:
+        "200":
+          $ref: "#/components/schemas/ApiEmptySuccess"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "404":
+          description: "Video not found"
+        "409":
+          description: "Cannot delete a published video"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiFailure"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        enum: [CANNOT_DELETE_PUBLISHED]
+
+  /api/videos/{id}/playback-url:
+    get:
+      tags: ["Videos"]
+      summary: "Get playback URL"
+      description: "Returns a presigned S3 GET URL for video playback. Ownership-scoped."
+      operationId: "getPlaybackUrl"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^vid_[a-f0-9-]+$"
+      responses:
+        "200":
+          description: "Playback URL"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [url]
+                        properties:
+                          url:
+                            type: string
+                            format: "uri"
+                            description: "Presigned S3 GET URL"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "404":
+          description: "Video not found"
+
+  /api/videos/{id}/stream:
+    get:
+      tags: ["Videos"]
+      summary: "SSE stream for a single video"
+      description: "Server-Sent Events endpoint that streams status updates for a specific video. Token passed via `?token=` query parameter. Verifies ownership first."
+      operationId: "streamVideo"
+      security:
+        - SseTokenAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^vid_[a-f0-9-]+$"
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "JWT access token"
+      responses:
+        "200":
+          description: "SSE event stream for the video"
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "404":
+          description: "Video not found"
+
+  /api/videos/{id}/publish:
+    post:
+      tags: ["Videos"]
+      summary: "Publish a video"
+      description: "Publishes a video immediately or schedules it for future publish (15 min to 60 day window)."
+      operationId: "publishVideo"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^vid_[a-f0-9-]+$"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishVideoInput"
+      responses:
+        "200":
+          description: "Video published or scheduled"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Video"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "404":
+          description: "Video not found"
+
+  /api/videos/{id}/unpublish:
+    post:
+      tags: ["Videos"]
+      summary: "Unpublish a video"
+      description: "Flips the privacy status to private on YouTube and in the database."
+      operationId: "unpublishVideo"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^vid_[a-f0-9-]+$"
+      responses:
+        "200":
+          description: "Video unpublished"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Video"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "404":
+          description: "Video not found"
+
+  /api/videos/{id}/retry:
+    post:
+      tags: ["Videos"]
+      summary: "Retry failed video"
+      description: "Resets a FAILED video back to EXTRACTING and re-enqueues the ingest job."
+      operationId: "retryVideo"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^vid_[a-f0-9-]+$"
+      responses:
+        "200":
+          description: "Video retry enqueued"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Video"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "404":
+          description: "Video not found"
+        "409":
+          description: "Video is not in FAILED status"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiFailure"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        enum: [NOT_FAILED]
+
+  # ────────────────────────────────────────────────────────────────────
+  #  THUMBNAILS (per video)
+  # ────────────────────────────────────────────────────────────────────
+  /api/videos/{id}/thumbnails:
+    get:
+      tags: ["Thumbnails"]
+      summary: "List video thumbnails"
+      description: "Returns all thumbnail candidates for a video, ordered by creation date descending."
+      operationId: "listThumbnails"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^vid_[a-f0-9-]+$"
+      responses:
+        "200":
+          description: "Thumbnail list"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/ThumbnailDto"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "404":
+          description: "Video not found"
+
+  /api/videos/{id}/thumbnails/regenerate:
+    post:
+      tags: ["Thumbnails"]
+      summary: "Regenerate thumbnails"
+      description: "Triggers a new thumbnail generation for the video. Requires email verification. Only allowed when video is in GENERATING or READY_FOR_REVIEW status."
+      operationId: "regenerateThumbnails"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^vid_[a-f0-9-]+$"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                chapterTimestamps:
+                  type: array
+                  items:
+                    type: number
+                  description: "Specific chapter timestamps to generate thumbnails for (empty = all chapters)"
+                customPrompt:
+                  type: string
+                  description: "Optional custom prompt for the generation model"
+      responses:
+        "200":
+          description: "Thumbnail generation enqueued"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ThumbnailGenerationDto"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          description: "Email not verified"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiFailure"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        enum: [EMAIL_NOT_VERIFIED]
+        "409":
+          description: "Invalid video status for thumbnail generation"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiFailure"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        enum: [INVALID_VIDEO_STATUS]
+
+  /api/videos/{id}/thumbnails/{thumbnailId}/select:
+    post:
+      tags: ["Thumbnails"]
+      summary: "Select thumbnail"
+      description: "Sets a thumbnail as the selected one for the video. The publish path uses this selection."
+      operationId: "selectThumbnail"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^vid_[a-f0-9-]+$"
+        - name: thumbnailId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "Thumbnail candidate ID"
+      responses:
+        "200":
+          description: "Thumbnail selected"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiEmptySuccess"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "404":
+          description: "Video or thumbnail not found"
+
+  # ────────────────────────────────────────────────────────────────────
+  #  THUMBNAIL STYLE
+  # ────────────────────────────────────────────────────────────────────
+  /api/thumbnail-style:
+    get:
+      tags: ["Thumbnail Style"]
+      summary: "Get thumbnail style profile"
+      description: "Returns the personalized thumbnail style analysis for the user's channel, or null if never analyzed."
+      operationId: "getThumbnailStyle"
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: "Thumbnail style profile"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ChannelThumbnailStyleDto"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+    patch:
+      tags: ["Thumbnail Style"]
+      summary: "Update thumbnail style override"
+      description: "Sets a manual style override for the channel's thumbnail generation."
+      operationId: "updateThumbnailStyle"
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateThumbnailStyleInput"
+      responses:
+        "200":
+          description: "Style override saved"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ChannelThumbnailStyleDto"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  /api/thumbnail-style/analyze:
+    post:
+      tags: ["Thumbnail Style"]
+      summary: "Trigger style analysis"
+      description: "Triggers a channel style analysis job. If `selectedThumbnailUrls` is provided (1-4), runs a personalized analysis on those specific thumbnails. Otherwise auto-picks from the channel's recent videos."
+      operationId: "triggerStyleAnalysis"
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                selectedThumbnailUrls:
+                  type: array
+                  items:
+                    type: string
+                    format: "uri"
+                  minItems: 1
+                  maxItems: 4
+                  description: "1-4 specific thumbnail URLs for personalized analysis (must end in .png, .jpg, .jpeg, or .webp)"
+      responses:
+        "200":
+          description: "Analysis enqueued"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiEmptySuccess"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  # ────────────────────────────────────────────────────────────────────
+  #  BILLING
+  # ────────────────────────────────────────────────────────────────────
+  /api/billing/plans:
+    get:
+      tags: ["Billing"]
+      summary: "List available plans"
+      description: "Returns all subscription plans. Public — no authentication required."
+      operationId: "listPlans"
+      responses:
+        "200":
+          description: "Available plans"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/PlanDto"
+
+  /api/billing/subscription:
+    get:
+      tags: ["Billing"]
+      summary: "Get subscription details"
+      description: "Returns the user's current plan, subscription status, and usage. Auto-creates a free plan subscription if none exists."
+      operationId: "getSubscription"
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: "Subscription details"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/SubscriptionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  /api/billing/checkout:
+    post:
+      tags: ["Billing"]
+      summary: "Create checkout session"
+      description: "Creates a Dodo Payments checkout session for upgrading to a paid plan."
+      operationId: "createCheckout"
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCheckoutInput"
+      responses:
+        "200":
+          description: "Checkout session created"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/CheckoutSessionResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "409":
+          description: "Already subscribed to a paid plan"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiFailure"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        enum: [ALREADY_SUBSCRIBED]
+        "502":
+          description: "Dodo Payments checkout failed"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiFailure"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        enum: [DODO_CHECKOUT_FAILED]
+
+  /api/billing/customer-portal:
+    post:
+      tags: ["Billing"]
+      summary: "Open customer portal"
+      description: "Returns a Dodo Payments customer portal URL for managing the subscription (upgrade, downgrade, cancel, update payment method). Returns `{ available: false }` if no customer portal is configured."
+      operationId: "openCustomerPortal"
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: "Customer portal URL or unavailable indicator"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        oneOf:
+                          - $ref: "#/components/schemas/CustomerPortalResponse"
+                          - $ref: "#/components/schemas/CustomerPortalUnavailableResponse"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  /api/billing/cancel-scheduled:
+    post:
+      tags: ["Billing"]
+      summary: "Cancel subscription at period end"
+      description: "Schedules cancellation of the active paid subscription at the end of the current billing period."
+      operationId: "cancelScheduled"
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/schemas/ApiEmptySuccess"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "409":
+          description: "No active paid subscription"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiFailure"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        enum: [NO_ACTIVE_SUBSCRIPTION]
+        "502":
+          description: "Dodo Payments cancel failed"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiFailure"
+                  - type: object
+                    properties:
+                      error:
+                        type: string
+                        enum: [DODO_CANCEL_FAILED]
+
+  /api/billing/webhooks/dodo:
+    post:
+      tags: ["Billing"]
+      summary: "Dodo Payments webhook"
+      description: "Receives subscription lifecycle events from Dodo Payments. Idempotent via `provider_eventId` unique constraint and pg_advisory_xact_lock. Handles: subscription.active, subscription.renewed, subscription.plan_changed, subscription.on_hold, subscription.cancelled, payment.failed, refund.succeeded."
+      operationId: "dodoWebhook"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: "Dodo Payments webhook payload (signed HMAC-SHA256)"
+      responses:
+        "200":
+          description: "Webhook processed (or idempotent skip)"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received:
+                    type: boolean
+                    enum: [true]
+        "400":
+          description: "Invalid signature or payload"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "JWT access token obtained via login or register"
+    SseTokenAuth:
+      type: apiKey
+      in: query
+      name: token
+      description: "JWT access token passed as query parameter for SSE endpoints (EventSource limitation)"
+
+  schemas:
+    # ──────────── Response Envelope ────────────
+    ApiSuccess:
+      type: object
+      required: [success, message, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        message:
+          type: string
+        data:
+          description: "Endpoint-specific payload"
+
+    ApiEmptySuccess:
+      type: object
+      required: [success, message, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        message:
+          type: string
+        data:
+          type: "null"
+
+    ApiFailure:
+      type: object
+      required: [success, message, data]
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        message:
+          type: string
+        data:
+          type: "null"
+        error:
+          type: string
+          description: "Machine-readable error code"
+        details:
+          type: object
+          description: "Optional structured error details"
+
+    # ──────────── Auth ────────────
+    AuthUser:
+      type: object
+      required: [id, email, name, authProvider, emailVerifiedAt, createdAt]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: "email"
+        name:
+          type: string
+          nullable: true
+        authProvider:
+          type: string
+          enum: [EMAIL, GOOGLE]
+        emailVerifiedAt:
+          type: string
+          format: "date-time"
+          nullable: true
+        createdAt:
+          type: string
+          format: "date-time"
+
+    AuthResponse:
+      type: object
+      required:
+        - user
+        - accessToken
+        - refreshToken
+        - accessTokenExpiresAt
+        - refreshTokenExpiresAt
+        - onboardingCompleted
+        - displayName
+      properties:
+        user:
+          $ref: "#/components/schemas/AuthUser"
+        accessToken:
+          type: string
+          description: "JWT access token (15 min expiry)"
+        refreshToken:
+          type: string
+          description: "Opaque refresh token (7 day expiry, rotation on use)"
+        accessTokenExpiresAt:
+          type: integer
+          description: "Unix ms timestamp"
+        refreshTokenExpiresAt:
+          type: integer
+          description: "Unix ms timestamp"
+        onboardingCompleted:
+          type: boolean
+        displayName:
+          type: string
+          nullable: true
+
+    RefreshResponse:
+      type: object
+      required:
+        - accessToken
+        - refreshToken
+        - accessTokenExpiresAt
+        - refreshTokenExpiresAt
+        - onboardingCompleted
+        - displayName
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        accessTokenExpiresAt:
+          type: integer
+        refreshTokenExpiresAt:
+          type: integer
+        onboardingCompleted:
+          type: boolean
+        displayName:
+          type: string
+          nullable: true
+
+    # ──────────── Onboarding ────────────
+    UserProfile:
+      type: object
+      required:
+        - id
+        - displayName
+        - niche
+        - uploadFrequency
+        - primaryGoal
+        - recommendedPlanId
+        - onboardingCompletedAt
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+          nullable: true
+        niche:
+          type: string
+          nullable: true
+          enum:
+            - GAMING
+            - TECH_EDUCATION
+            - VLOG_LIFESTYLE
+            - BUSINESS_FINANCE
+            - ENTERTAINMENT_COMEDY
+            - OTHER
+        uploadFrequency:
+          type: string
+          nullable: true
+          enum:
+            - ONE_TO_FOUR
+            - FIVE_TO_TEN
+            - ELEVEN_TO_TWENTY
+            - TWENTY_PLUS
+        primaryGoal:
+          type: string
+          nullable: true
+          enum:
+            - SAVE_TIME_EDITING
+            - BETTER_THUMBNAILS_CTR
+            - CONSISTENT_SCHEDULE
+            - GROW_VIEWS
+        recommendedPlanId:
+          type: string
+          nullable: true
+        onboardingCompletedAt:
+          type: string
+          format: "date-time"
+          nullable: true
+
+    OnboardingStatusResponse:
+      type: object
+      required: [completed, profile]
+      properties:
+        completed:
+          type: boolean
+        profile:
+          $ref: "#/components/schemas/UserProfile"
+          nullable: true
+
+    UpdateProfileInput:
+      type: object
+      required: [niche, uploadFrequency, primaryGoal]
+      properties:
+        displayName:
+          type: string
+          maxLength: 60
+          description: "Display name (trimmed, min 1 char)"
+        niche:
+          type: string
+          enum:
+            - GAMING
+            - TECH_EDUCATION
+            - VLOG_LIFESTYLE
+            - BUSINESS_FINANCE
+            - ENTERTAINMENT_COMEDY
+            - OTHER
+        uploadFrequency:
+          type: string
+          enum:
+            - ONE_TO_FOUR
+            - FIVE_TO_TEN
+            - ELEVEN_TO_TWENTY
+            - TWENTY_PLUS
+        primaryGoal:
+          type: string
+          enum:
+            - SAVE_TIME_EDITING
+            - BETTER_THUMBNAILS_CTR
+            - CONSISTENT_SCHEDULE
+            - GROW_VIEWS
+
+    PatchProfileInput:
+      type: object
+      properties:
+        displayName:
+          type: string
+          nullable: true
+          maxLength: 60
+        niche:
+          type: string
+          enum:
+            - GAMING
+            - TECH_EDUCATION
+            - VLOG_LIFESTYLE
+            - BUSINESS_FINANCE
+            - ENTERTAINMENT_COMEDY
+            - OTHER
+        uploadFrequency:
+          type: string
+          enum:
+            - ONE_TO_FOUR
+            - FIVE_TO_TEN
+            - ELEVEN_TO_TWENTY
+            - TWENTY_PLUS
+        primaryGoal:
+          type: string
+          enum:
+            - SAVE_TIME_EDITING
+            - BETTER_THUMBNAILS_CTR
+            - CONSISTENT_SCHEDULE
+            - GROW_VIEWS
+
+    # ──────────── Settings ────────────
+    SettingsResponse:
+      type: object
+      required: [profile, preferences, youtubeConnection, channelThumbnailStyle]
+      properties:
+        profile:
+          $ref: "#/components/schemas/UserProfile"
+          nullable: true
+        preferences:
+          $ref: "#/components/schemas/UserPreferences"
+          nullable: true
+        youtubeConnection:
+          $ref: "#/components/schemas/YouTubeConnection"
+        channelThumbnailStyle:
+          $ref: "#/components/schemas/ChannelThumbnailStyleDto"
+          nullable: true
+
+    # ──────────── Preferences ────────────
+    UserPreferences:
+      type: object
+      required:
+        - id
+        - notifyProcessingComplete
+        - notifyPublished
+        - notifyPublishFailed
+        - notifyNeedsReauth
+        - notifyWeeklySummary
+        - defaultTimezone
+        - defaultPublishTime
+        - chapterBehavior
+        - thumbnailStyle
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        notifyProcessingComplete:
+          type: boolean
+        notifyPublished:
+          type: boolean
+        notifyPublishFailed:
+          type: boolean
+        notifyNeedsReauth:
+          type: boolean
+        notifyWeeklySummary:
+          type: boolean
+        defaultTimezone:
+          type: string
+        defaultPublishTime:
+          type: string
+          description: "HH:MM 24-hour format"
+        chapterBehavior:
+          type: string
+          enum: [ALWAYS_REVIEW, AUTO_APPLY_IF_VALID]
+        thumbnailStyle:
+          type: string
+          enum: [AUTO, BOLD, MINIMAL, TEXT_FORWARD]
+        createdAt:
+          type: string
+          format: "date-time"
+        updatedAt:
+          type: string
+          format: "date-time"
+
+    UpdatePreferencesInput:
+      type: object
+      properties:
+        notifyProcessingComplete:
+          type: boolean
+        notifyPublished:
+          type: boolean
+        notifyPublishFailed:
+          type: boolean
+        notifyNeedsReauth:
+          type: boolean
+        notifyWeeklySummary:
+          type: boolean
+        defaultTimezone:
+          type: string
+          description: "IANA timezone string"
+        defaultPublishTime:
+          type: string
+          description: "HH:MM 24-hour format"
+        chapterBehavior:
+          type: string
+          enum: [ALWAYS_REVIEW, AUTO_APPLY_IF_VALID]
+        thumbnailStyle:
+          type: string
+          enum: [AUTO, BOLD, MINIMAL, TEXT_FORWARD]
+
+    ChangePasswordInput:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 128
+          description: "Must contain at least one letter and one number"
+
+    # ──────────── YouTube ────────────
+    YouTubeConnection:
+      type: object
+      required: [status, channelId, channelTitle, channelThumbnailUrl, connectedAt, lastVerifiedAt]
+      properties:
+        status:
+          type: string
+          enum: [connected, needs_reauth, disconnected]
+        channelId:
+          type: string
+          nullable: true
+        channelTitle:
+          type: string
+          nullable: true
+        channelThumbnailUrl:
+          type: string
+          nullable: true
+          format: "uri"
+        connectedAt:
+          type: string
+          format: "date-time"
+          nullable: true
+        lastVerifiedAt:
+          type: string
+          format: "date-time"
+          nullable: true
+
+    ChannelRecentThumbnail:
+      type: object
+      required: [videoId, title, thumbnailUrl]
+      properties:
+        videoId:
+          type: string
+        title:
+          type: string
+        thumbnailUrl:
+          type: string
+          format: "uri"
+
+    ChannelRecentThumbnailsResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChannelRecentThumbnail"
+
+    # ──────────── Videos ────────────
+    CreateVideoInput:
+      type: object
+      required: [title, originalFilename, fileSizeBytes]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 5000
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 30
+          maxItems: 15
+        categoryId:
+          type: string
+          description: "YouTube category ID. Default: '22' (People & Blogs)"
+        privacyStatus:
+          type: string
+          enum: [private, unlisted, public]
+          default: private
+        scheduledPublishAt:
+          type: string
+          format: "date-time"
+          description: "ISO8601 datetime for scheduled publish"
+        madeForKids:
+          type: boolean
+          default: false
+        ageRestriction:
+          type: string
+          enum: [none, 18+]
+          default: none
+        embeddable:
+          type: boolean
+          default: true
+        license:
+          type: string
+          enum: [standard, creativeCommon]
+          default: standard
+        publicStatsViewable:
+          type: boolean
+          default: true
+        commentPolicy:
+          type: string
+          enum: [allowAll, holdAll, disable]
+          default: allowAll
+        originalFilename:
+          type: string
+          description: "Original filename of the video"
+        contentType:
+          type: string
+          description: "MIME type (must start with video/)"
+        fileSizeBytes:
+          type: integer
+          description: "File size in bytes"
+        thumbnailContentType:
+          type: string
+          description: "Thumbnail MIME type (image/jpeg or image/png only)"
+        thumbnailFileSizeBytes:
+          type: integer
+          description: "Thumbnail file size in bytes (max 2MB)"
+        thumbnailOriginalFilename:
+          type: string
+          description: "Original thumbnail filename"
+
+    CreateVideoResponse:
+      type: object
+      required:
+        - pendingUploadId
+        - s3KeyOriginal
+        - postUrl
+        - fields
+        - contentLengthMaxBytes
+        - thumbnail
+      properties:
+        pendingUploadId:
+          type: string
+        s3KeyOriginal:
+          type: string
+        postUrl:
+          type: string
+          format: "uri"
+        fields:
+          type: object
+          additionalProperties:
+            type: string
+        contentLengthMaxBytes:
+          type: integer
+        thumbnail:
+          type: object
+          nullable: true
+          required: [s3KeyThumbnail, postUrl, fields, contentLengthMaxBytes]
+          properties:
+            s3KeyThumbnail:
+              type: string
+            postUrl:
+              type: string
+              format: "uri"
+            fields:
+              type: object
+              additionalProperties:
+                type: string
+            contentLengthMaxBytes:
+              type: integer
+
+    UploadUrlResponse:
+      type: object
+      required: [postUrl, fields, contentLengthMaxBytes]
+      properties:
+        postUrl:
+          type: string
+          format: "uri"
+        fields:
+          type: object
+          additionalProperties:
+            type: string
+        contentLengthMaxBytes:
+          type: integer
+
+    Video:
+      type: object
+      required:
+        - id
+        - status
+        - title
+        - description
+        - tags
+        - categoryId
+        - privacyStatus
+        - madeForKids
+        - ageRestriction
+        - embeddable
+        - license
+        - publicStatsViewable
+        - commentPolicy
+        - originalFilename
+        - fileSizeBytes
+        - contentType
+        - s3KeyOriginal
+        - s3KeyThumbnail
+        - thumbnailContentType
+        - selectedThumbnailId
+        - thumbnails
+        - durationSeconds
+        - s3KeyAudio
+        - chaptersJson
+        - failureReason
+        - scheduledPublishAt
+        - youtubeVideoId
+        - createdAt
+        - updatedAt
+        - publishedAt
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum:
+            - UPLOADED
+            - READY
+            - EXTRACTING
+            - TRANSCRIBING
+            - GENERATING
+            - READY_FOR_REVIEW
+            - SCHEDULED
+            - PUBLISHING
+            - PUBLISHED
+            - PUBLISH_FAILED
+            - FAILED
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        categoryId:
+          type: string
+        privacyStatus:
+          type: string
+        madeForKids:
+          type: boolean
+        ageRestriction:
+          type: string
+          enum: [none, 18+]
+        embeddable:
+          type: boolean
+        license:
+          type: string
+          enum: [standard, creativeCommon]
+        publicStatsViewable:
+          type: boolean
+        commentPolicy:
+          type: string
+          enum: [allowAll, holdAll, disable]
+        originalFilename:
+          type: string
+        fileSizeBytes:
+          type: integer
+        contentType:
+          type: string
+        s3KeyOriginal:
+          type: string
+        s3KeyThumbnail:
+          type: string
+          nullable: true
+        thumbnailContentType:
+          type: string
+          nullable: true
+        selectedThumbnailId:
+          type: string
+          nullable: true
+        thumbnails:
+          type: array
+          items:
+            $ref: "#/components/schemas/ThumbnailWithUrl"
+        durationSeconds:
+          type: number
+          nullable: true
+        s3KeyAudio:
+          type: string
+          nullable: true
+        chaptersJson:
+          $ref: "#/components/schemas/ChaptersJson"
+          nullable: true
+        failureReason:
+          type: string
+          nullable: true
+        scheduledPublishAt:
+          type: string
+          format: "date-time"
+          nullable: true
+        youtubeVideoId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: "date-time"
+        updatedAt:
+          type: string
+          format: "date-time"
+        publishedAt:
+          type: string
+          format: "date-time"
+          nullable: true
+
+    ChaptersJson:
+      type: object
+      required: [summary, chapters]
+      properties:
+        summary:
+          type: string
+        chapters:
+          type: array
+          items:
+            type: object
+            required: [startMs, title]
+            properties:
+              startMs:
+                type: integer
+              title:
+                type: string
+
+    PaginatedVideos:
+      type: object
+      required: [videos, total, page, pageSize, totalPages]
+      properties:
+        videos:
+          type: array
+          items:
+            $ref: "#/components/schemas/Video"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalPages:
+          type: integer
+
+    UpdateVideoInput:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          nullable: true
+          maxLength: 5000
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 30
+          maxItems: 15
+        summary:
+          type: string
+          maxLength: 280
+          description: "Replaces the LLM-generated summary"
+        chapters:
+          type: array
+          minItems: 3
+          maxItems: 12
+          items:
+            type: object
+            required: [startMs, title]
+            properties:
+              startMs:
+                type: integer
+                minimum: 0
+                description: "Start time in milliseconds. First chapter must be 0."
+              title:
+                type: string
+                maxLength: 100
+          description: "Must have first chapter at 0ms, ≥10s gap between chapters, 3-12 chapters"
+        privacyStatus:
+          type: string
+          enum: [private, unlisted, public]
+        madeForKids:
+          type: boolean
+        embeddable:
+          type: boolean
+        license:
+          type: string
+          enum: [standard, creativeCommon]
+        publicStatsViewable:
+          type: boolean
+        commentPolicy:
+          type: string
+          enum: [allowAll, holdAll, disable]
+
+    PublishVideoInput:
+      type: object
+      properties:
+        scheduledPublishAt:
+          type: string
+          format: "date-time"
+          description: "ISO8601 datetime. Must be ≥15 min and ≤60 days from now. Omit for immediate publish."
+
+    # ──────────── Thumbnails ────────────
+    ThumbnailDto:
+      type: object
+      required: [id, videoId, s3Key, source, generationIndex, width, height, fileSizeBytes, createdAt]
+      properties:
+        id:
+          type: string
+        videoId:
+          type: string
+        s3Key:
+          type: string
+        source:
+          type: string
+          enum: [AI_GENERATED, USER_UPLOADED]
+        generationIndex:
+          type: integer
+        width:
+          type: integer
+          nullable: true
+        height:
+          type: integer
+          nullable: true
+        fileSizeBytes:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: "date-time"
+
+    ThumbnailWithUrl:
+      type: object
+      required: [id, source, generationIndex, width, height, label, url, createdAt]
+      properties:
+        id:
+          type: string
+        source:
+          type: string
+          enum: [AI_GENERATED, USER_UPLOADED]
+        generationIndex:
+          type: integer
+        width:
+          type: integer
+          nullable: true
+        height:
+          type: integer
+          nullable: true
+        label:
+          type: string
+          description: "Precomputed user-facing label (e.g. 'AI candidate 1', 'Your upload')"
+        url:
+          type: string
+          format: "uri"
+          description: "Presigned GET URL"
+        createdAt:
+          type: string
+          format: "date-time"
+
+    ThumbnailGenerationDto:
+      type: object
+      required:
+        - id
+        - videoId
+        - status
+        - promptText
+        - modelUsed
+        - chapterRefs
+        - frameRefs
+        - channelStyleId
+        - generatedIds
+        - errorCode
+        - errorMessage
+        - createdAt
+        - completedAt
+      properties:
+        id:
+          type: string
+        videoId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+        promptText:
+          type: string
+        modelUsed:
+          type: string
+        chapterRefs:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              startMs:
+                type: integer
+              title:
+                type: string
+        frameRefs:
+          type: array
+          nullable: true
+          items:
+            type: string
+        channelStyleId:
+          type: string
+          nullable: true
+        generatedIds:
+          type: array
+          items:
+            type: string
+        errorCode:
+          type: string
+          nullable: true
+        errorMessage:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: "date-time"
+        completedAt:
+          type: string
+          format: "date-time"
+          nullable: true
+
+    # ──────────── Thumbnail Style ────────────
+    ChannelThumbnailStyleDto:
+      type: object
+      required:
+        - id
+        - dominantColors
+        - textPlacement
+        - compositionStyle
+        - facePresence
+        - brandElements
+        - analysisRaw
+        - styleOverride
+        - selectedThumbnailUrls
+        - confidence
+        - lowConfidenceReason
+        - thumbnailCount
+        - lastAnalyzedAt
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        dominantColors:
+          type: array
+          nullable: true
+          items:
+            type: string
+        textPlacement:
+          type: string
+          nullable: true
+        compositionStyle:
+          type: string
+          nullable: true
+        facePresence:
+          type: string
+          nullable: true
+        brandElements:
+          type: array
+          nullable: true
+          items:
+            type: string
+        analysisRaw:
+          type: string
+          nullable: true
+        styleOverride:
+          type: string
+          enum: [AUTO, BOLD, MINIMAL, TEXT_FORWARD]
+        selectedThumbnailUrls:
+          type: array
+          items:
+            type: string
+        confidence:
+          type: string
+          enum: [HIGH, LOW]
+        lowConfidenceReason:
+          type: string
+          nullable: true
+        thumbnailCount:
+          type: integer
+        lastAnalyzedAt:
+          type: string
+          format: "date-time"
+          nullable: true
+        createdAt:
+          type: string
+          format: "date-time"
+        updatedAt:
+          type: string
+          format: "date-time"
+
+    UpdateThumbnailStyleInput:
+      type: object
+      required: [styleOverride]
+      properties:
+        styleOverride:
+          type: string
+          enum: [AUTO, BOLD, MINIMAL, TEXT_FORWARD]
+
+    # ──────────── Billing ────────────
+    PlanDto:
+      type: object
+      required: [id, key, name, priceUsd, videosPerMonth, thumbnailsPerVideo, isHighlighted, sortOrder]
+      properties:
+        id:
+          type: string
+        key:
+          type: string
+        name:
+          type: string
+        priceUsd:
+          type: number
+        videosPerMonth:
+          type: integer
+        thumbnailsPerVideo:
+          type: integer
+        isHighlighted:
+          type: boolean
+        sortOrder:
+          type: integer
+
+    SubscriptionDto:
+      type: object
+      required:
+        - id
+        - planKey
+        - status
+        - currentPeriodStart
+        - currentPeriodEnd
+        - cancelAtPeriodEnd
+        - videosUsedThisPeriod
+        - thumbnailsUsedThisPeriod
+        - paymentFailedAt
+      properties:
+        id:
+          type: string
+        planKey:
+          type: string
+        status:
+          type: string
+        currentPeriodStart:
+          type: string
+          format: "date-time"
+          nullable: true
+        currentPeriodEnd:
+          type: string
+          format: "date-time"
+          nullable: true
+        cancelAtPeriodEnd:
+          type: boolean
+        videosUsedThisPeriod:
+          type: integer
+        thumbnailsUsedThisPeriod:
+          type: integer
+        paymentFailedAt:
+          type: string
+          format: "date-time"
+          nullable: true
+
+    UsageDto:
+      type: object
+      required:
+        - videosUsed
+        - videosAllowed
+        - thumbnailsUsed
+        - thumbnailsAllowed
+        - periodEnd
+      properties:
+        videosUsed:
+          type: integer
+        videosAllowed:
+          type: integer
+        thumbnailsUsed:
+          type: integer
+        thumbnailsAllowed:
+          type: integer
+        periodEnd:
+          type: string
+          format: "date-time"
+          nullable: true
+
+    SubscriptionResponse:
+      type: object
+      required: [plan, subscription, usage]
+      properties:
+        plan:
+          $ref: "#/components/schemas/PlanDto"
+        subscription:
+          $ref: "#/components/schemas/SubscriptionDto"
+        usage:
+          $ref: "#/components/schemas/UsageDto"
+
+    CreateCheckoutInput:
+      type: object
+      required: [planId]
+      properties:
+        planId:
+          type: string
+          enum: [starter, creator, pro]
+        country:
+          type: string
+          description: "2-letter ISO country code"
+        billingCurrency:
+          type: string
+          enum: [INR, USD]
+
+    CheckoutSessionResponse:
+      type: object
+      required: [checkoutUrl, sessionId]
+      properties:
+        checkoutUrl:
+          type: string
+          format: "uri"
+        sessionId:
+          type: string
+
+    CustomerPortalResponse:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: "uri"
+
+    CustomerPortalUnavailableResponse:
+      type: object
+      required: [available]
+      properties:
+        available:
+          type: boolean
+          enum: [false]
+
+  responses:
+    ValidationError:
+      description: "Input validation failed"
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/ApiFailure"
+              - type: object
+                properties:
+                  error:
+                    type: string
+                    enum: [VALIDATION_ERROR]
+                  details:
+                    type: object
+                    properties:
+                      issues:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            path:
+                              type: string
+                            message:
+                              type: string
+                            code:
+                              type: string
+
+    Unauthenticated:
+      description: "Missing or invalid JWT access token"
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/ApiFailure"
+              - type: object
+                properties:
+                  error:
+                    type: string
+                    enum: [UNAUTHENTICATED]
+
+    RateLimited:
+      description: "Too many requests"
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/ApiFailure"
+              - type: object
+                properties:
+                  error:
+                    type: string
+                    enum: [RATE_LIMITED]

@@ -333,7 +333,7 @@ describe("videos.service", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         plan: FREE_PLAN,
-      });
+      } as never);
     });
 
     it("does not create a Video row, only writes to cache and returns a presigned URL", async () => {
@@ -430,7 +430,7 @@ describe("videos.service", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         plan: FREE_PLAN,
-      });
+      } as never);
       mockPlanFindUnique.mockResolvedValue(FREE_PLAN);
       mockSubUpdateMany.mockResolvedValue({ count: 1 });
     });
