@@ -38,7 +38,7 @@ interface ExpressLayerProto {
 // require throws and boot fails loud (preferable to silently
 // shipping an unpatched app).
 const requireCJS = createRequire(import.meta.url);
-const LayerModule = requireCJS("express/lib/router/Layer") as {
+const LayerModule = requireCJS("express/lib/router/layer") as {
   prototype: ExpressLayerProto;
 };
 

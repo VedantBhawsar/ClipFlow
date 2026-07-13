@@ -107,6 +107,9 @@ const baseEnv: Env = {
   REPLICATE_IMAGE_MODEL: "black-forest-labs/flux-pro",
   THUMBNAILS_PER_VIDEO: 5,
   THUMBNAIL_VISION_ENABLED: true,
+  DODO_PAYMENTS_API_KEY: "test-dodo-api-key-min-20-chars",
+  DODO_PAYMENTS_WEBHOOK_SECRET: "test-dodo-webhook-secret-min-20-chars",
+  DODO_PAYMENTS_ENVIRONMENT: "test_mode",
 };
 
 beforeEach(() => {
