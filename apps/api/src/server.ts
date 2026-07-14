@@ -48,6 +48,13 @@ export const startServer = (options: StartServerOptions): Promise<RunningServer>
       const addr = server.address();
       const resolvedPort =
         typeof addr === "object" && addr !== null && "port" in addr ? addr.port : port;
+      // Node-level socket timeout — the inner middleware
+      // (buildRequestTimeout) emits a structured 503 envelope before
+      // the socket is closed, but this is a second line of defense
+      // in case the inner middleware itself can't fire (e.g. a
+      // synchronous crash in another piece of middleware).
+      // 60 s gives the inner 30 s envelope a chance to flush first.
+      server.setTimeout(60_000);
       logger.info({ port: resolvedPort, hostname }, "API listening");
       resolve({
         server,

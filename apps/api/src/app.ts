@@ -20,6 +20,8 @@ import "./lib/async-handler.js";
 import { buildBillingRouter, buildBillingWebhookRouter } from "./modules/billing/routes.js";
 import { buildErrorHandler, notFoundHandler } from "./middleware/error.js";
 import { requestIdMiddleware } from "./middleware/request-id.js";
+import { responseGuard } from "./middleware/response-guard.js";
+import { buildRequestTimeout } from "./middleware/request-timeout.js";
 import { buildGlobalRateLimiter } from "./middleware/rate-limit.js";
 import { buildAuthRouter } from "./modules/auth/auth.routes.js";
 import { buildOnboardingRouter } from "./modules/onboarding/onboarding.routes.js";
@@ -59,6 +61,17 @@ export const createApp = ({ env, logger }: CreateAppOptions): Application => {
 
   // Request-ID must run before the logger so the log line can reference it.
   app.use(requestIdMiddleware);
+
+  // Response guard: defensive safety net that emits a 500 envelope if
+  // the connection drops without a response having been sent. Must be
+  // installed BEFORE the request-timeout and any router so it covers
+  // every exit path (controller throw, third-party error, abort, hang).
+  app.use(responseGuard);
+
+  // Per-request timeout. Caps every route at 30 s so an upstream hang
+  // (dead Prisma pool, blocked Redis, third-party fetch with no
+  // AbortSignal) can't leave the request pending forever.
+  app.use(buildRequestTimeout(30_000));
   app.use(
     pinoHttp({
       logger: log,
