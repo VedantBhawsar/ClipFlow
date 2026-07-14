@@ -18,7 +18,7 @@
  * so a client ALWAYS receives a structured error body — never a
  * silent hang on a pending socket.
  */
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import { AppError } from "../errors/AppError.js";
 import type { ApiFailure } from "@clipflow/types";
@@ -32,7 +32,7 @@ import type { Logger } from "../lib/logger.js";
  */
 export const buildErrorHandler = (logger: Logger) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 4 args required by Express
-  return (err: unknown, req: Request, res: Response): void => {
+  return (err: unknown, req: Request, res: Response, _next: NextFunction): void => {
     /**
      * Send the failure envelope without going through `res.json`'s
      * chain methods — used as a last-resort fallback when headers
