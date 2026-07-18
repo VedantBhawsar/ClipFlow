@@ -93,12 +93,12 @@ const saveBase64Image = async (
 /**
  * Build a short style description from the ChannelThumbnailStyle for use in prompts.
  *
- * Short-circuits to `null` when `confidence === "LOW"` — the personalized
- * analysis returned all-default fields (no parseable style JSON), so we
- * drop the style attribution rather than describe a "center / text-heavy /
- * sometimes-face" creator that doesn't actually exist. Downstream callers
- * fall back to the niche-only prompt and Gemini Vision has to do more
- * heavy lifting, but we never invent a style the creator didn't have.
+ * When `confidence === "LOW"` the structured fields (compositionStyle,
+ * facePresence, textPlacement) are likely defaults rather than genuine
+ * signal, so we omit them. However we still surface analysisRaw (the raw
+ * LLM response — may contain useful observations even when JSON parsing
+ * failed), dominantColors (extracted independently), and styleOverride
+ * (user-set preference, not from analysis).
  */
 const buildStyleDescription = (style: {
   dominantColors: unknown;
@@ -108,21 +108,56 @@ const buildStyleDescription = (style: {
   brandElements: unknown;
   analysisRaw: string | null;
   confidence?: string | null;
+  styleOverride?: string | null;
 }): string | null => {
-  if (style.confidence === "LOW") {
-    return null;
+  const parts: string[] = [];
+
+  // Always include dominant colors when they're non-empty (extracted
+  // independently of the JSON parse that drives confidence).
+  if (
+    style.dominantColors &&
+    Array.isArray(style.dominantColors) &&
+    style.dominantColors.length > 0
+  ) {
+    parts.push(`Dominant colors: ${style.dominantColors.join(", ")}`);
   }
 
-  const parts: string[] = [];
-  if (style.compositionStyle) parts.push(`Composition: ${style.compositionStyle}`);
-  if (style.facePresence) parts.push(`Face usage: ${style.facePresence}`);
-  if (style.textPlacement) parts.push(`Text placement: ${style.textPlacement}`);
-  if (style.analysisRaw) {
-    const parsed = style.analysisRaw.length > 500
-      ? style.analysisRaw.slice(0, 500) + "..."
-      : style.analysisRaw;
-    parts.push(`Full analysis: ${parsed}`);
+  // Include style override when user has explicitly chosen a direction.
+  if (style.styleOverride && style.styleOverride !== "AUTO") {
+    const styleGuide: Record<string, string> = {
+      BOLD: "Bold/high-contrast design with dramatic compositions",
+      MINIMAL: "Clean/minimal design with lots of negative space",
+      TEXT_FORWARD: "Text-forward design where text is the focal point",
+    };
+    parts.push(
+      `Style preference: ${styleGuide[style.styleOverride] ?? "Balanced design"}`,
+    );
   }
+
+  if (style.confidence !== "LOW") {
+    // HIGH confidence — structured fields are genuine signal.
+    if (style.compositionStyle)
+      parts.push(`Composition: ${style.compositionStyle}`);
+    if (style.facePresence) parts.push(`Face usage: ${style.facePresence}`);
+    if (style.textPlacement)
+      parts.push(`Text placement: ${style.textPlacement}`);
+    if (style.analysisRaw) {
+      const truncated =
+        style.analysisRaw.length > 500
+          ? style.analysisRaw.slice(0, 500) + "..."
+          : style.analysisRaw;
+      parts.push(`Full analysis: ${truncated}`);
+    }
+  } else if (style.analysisRaw) {
+    // LOW confidence — raw LLM response may still have useful observations
+    // even if it wasn't valid JSON.
+    const truncated =
+      style.analysisRaw.length > 500
+        ? style.analysisRaw.slice(0, 500) + "..."
+        : style.analysisRaw;
+    parts.push(`Raw analysis: ${truncated}`);
+  }
+
   return parts.length > 0 ? parts.join("; ") : null;
 };
 
@@ -198,6 +233,7 @@ export const processThumbnailsJob = async (
                 brandElements: true,
                 analysisRaw: true,
                 confidence: true,
+                styleOverride: true,
               },
             },
           },
@@ -347,6 +383,8 @@ export const processThumbnailsJob = async (
         });
       }
 
+      const hasReferenceFrame = !!(frameKey && visionEnabled);
+
       const { systemPrompt, userPrompt } = buildThumbnailPrompt({
         videoTitle: video.title,
         videoDescription: video.description,
@@ -355,6 +393,7 @@ export const processThumbnailsJob = async (
         channelStyle: styleDesc,
         niche,
         durationSeconds: video.durationSeconds ?? 0,
+        hasReferenceFrame,
       });
 
       const referenceUrl =
@@ -412,6 +451,17 @@ export const processThumbnailsJob = async (
         });
 
         generatedThumbnailIds.push(thumb.id);
+
+        // Publish per-thumbnail event so the detail page shows each
+        // thumbnail as it lands instead of waiting for the full batch.
+        if (canPublish) {
+          void ctx.events!.publish({
+            type: "THUMBNAILS_PUSH",
+            videoId,
+            userId: userId!,
+            timestamp: nowIso(),
+          });
+        }
       }
     }
 
@@ -444,6 +494,12 @@ export const processThumbnailsJob = async (
           videoId,
           userId: userId!,
           status: "READY_FOR_REVIEW",
+          timestamp: nowIso(),
+        });
+        void ctx.events!.publish({
+          type: "THUMBNAILS_PUSH",
+          videoId,
+          userId: userId!,
           timestamp: nowIso(),
         });
       }

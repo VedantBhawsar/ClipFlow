@@ -43,7 +43,27 @@ export interface VideoErrorEvent {
   timestamp: string;
 }
 
-export type VideoEvent = VideoStatusEvent | VideoProgressEvent | VideoErrorEvent;
+export interface VideoChaptersPushEvent {
+  type: "CHAPTERS_PUSH";
+  videoId: string;
+  userId: string;
+  chaptersJson: unknown;
+  timestamp: string;
+}
+
+export interface VideoThumbnailsPushEvent {
+  type: "THUMBNAILS_PUSH";
+  videoId: string;
+  userId: string;
+  timestamp: string;
+}
+
+export type VideoEvent =
+  | VideoStatusEvent
+  | VideoProgressEvent
+  | VideoErrorEvent
+  | VideoChaptersPushEvent
+  | VideoThumbnailsPushEvent;
 
 // ---------- Backend abstraction ----------
 

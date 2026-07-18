@@ -90,9 +90,15 @@ export function VideoCard({
         ) : (
           <div className="flex h-16 w-28 shrink-0 items-center justify-center rounded-md bg-[color:var(--muted)] text-xs text-[color:var(--ink-muted)]">
             {video.status === "PUBLISHING" ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2
+                className="size-5 animate-spin"
+                strokeWidth={1.75}
+              />
             ) : hasError ? (
-              <AlertCircle className="h-5 w-5 text-[color:var(--status-error)]" />
+              <AlertCircle
+                className="size-5 text-[color:var(--status-error)]"
+                strokeWidth={1.75}
+              />
             ) : (
               "—"
             )}
@@ -182,9 +188,17 @@ export function VideoCard({
             aria-label={`Retry processing for ${video.title}`}
           >
             {isRetrying ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              <Loader2
+                className="size-4 animate-spin"
+                strokeWidth={1.75}
+                aria-hidden="true"
+              />
             ) : (
-              <RefreshCw className="h-4 w-4" aria-hidden="true" />
+              <RefreshCw
+                className="size-4"
+                strokeWidth={1.75}
+                aria-hidden="true"
+              />
             )}
             Retry
           </Button>
@@ -196,7 +210,7 @@ export function VideoCard({
               target="_blank"
               rel="noopener noreferrer"
             >
-              <ExternalLink className="h-4 w-4" />
+              <ExternalLink className="size-4" strokeWidth={1.75} />
               View on YouTube
             </a>
           </Button>
@@ -210,7 +224,10 @@ export function VideoCard({
             className="text-[color:var(--ink-muted)] hover:text-[color:var(--status-error)]"
           >
             {isCancelling ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2
+                className="size-4 animate-spin"
+                strokeWidth={1.75}
+              />
             ) : (
               "Cancel"
             )}

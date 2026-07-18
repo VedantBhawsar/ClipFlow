@@ -412,6 +412,20 @@ export const processGenerateJob = async (
       },
     });
 
+    // Publish CHAPTERS_PUSH so the detail page can show chapters immediately
+    if (canPublish) {
+      void ctx.events!.publish({
+        type: "CHAPTERS_PUSH",
+        videoId,
+        userId: userId!,
+        chaptersJson: toChaptersJson(validated.output) as unknown as {
+          summary: string;
+          chapters: { startMs: number; title: string }[];
+        },
+        timestamp: nowIso(),
+      });
+    }
+
     ctx.logger.info(
       {
         videoId,

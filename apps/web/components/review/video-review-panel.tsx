@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import ArtPlayer from "artplayer";
-import { Save, X } from "lucide-react";
+import { Loader2, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import type { ChaptersJson } from "@clipflow/types";
 import { VideoPlayer } from "@/components/review/video-player";
@@ -14,6 +14,12 @@ interface VideoReviewPanelProps {
   videoId: string;
   chaptersJson: ChaptersJson;
   durationSeconds: number | null;
+  /**
+   * When true the save/discard buttons are hidden and a processing
+   * indicator is shown instead. The video player and chapters display
+   * remain fully interactive so the user can preview while waiting.
+   */
+  readOnly?: boolean;
 }
 
 /**
@@ -38,6 +44,7 @@ export function VideoReviewPanel({
   videoId,
   chaptersJson,
   durationSeconds,
+  readOnly = false,
 }: VideoReviewPanelProps) {
   const artRef = React.useRef<ArtPlayer | null>(null);
   const [currentTime, setCurrentTime] = React.useState(0);
@@ -132,27 +139,36 @@ export function VideoReviewPanel({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {isDirty ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDiscard}
-              disabled={saving}
-            >
-              <X className="h-3.5 w-3.5" />
-              Discard
-            </Button>
-          ) : null}
-          <Button
-            variant="default"
-            size="sm"
-            onClick={handleSave}
-            disabled={!isDirty || saving}
-            data-testid="review-save"
-          >
-            <Save className="h-3.5 w-3.5" />
-            {saving ? "Saving…" : "Save changes"}
-          </Button>
+          {readOnly ? (
+            <span className="inline-flex items-center gap-1.5 text-[12px] text-[color:var(--ink-muted)]">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Processing — available for review soon
+            </span>
+          ) : (
+            <>
+              {isDirty ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleDiscard}
+                  disabled={saving}
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Discard
+                </Button>
+              ) : null}
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleSave}
+                disabled={!isDirty || saving}
+                data-testid="review-save"
+              >
+                <Save className="h-3.5 w-3.5" />
+                {saving ? "Saving…" : "Save changes"}
+              </Button>
+            </>
+          )}
         </div>
       </div>
 

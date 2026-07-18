@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-10T14:52:33.220Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-18T03:26:38.427Z
 > Files: 404 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../tmp/
@@ -210,7 +210,7 @@
 
 ## apps/web/app/
 
-- `globals.css` — Styles: 23 rules, 110 vars (~3090 tok)
+- `globals.css` — Styles: 23 rules, 110 vars (~3167 tok)
 - `layout.tsx` — interTight (~506 tok)
 - `page.tsx` — Marketing landing. (~845 tok)
 
@@ -240,7 +240,7 @@
 
 ## apps/web/app/dashboard/
 
-- `dashboard-content.tsx` — Dashboard home (client component). Welcome header with data-driven subline, YouTube connect card, DashboardStats, in-progress list. Imports IN_FLIGHT/FINAL_STATUSES + isFailedStatus from `lib/video-status.ts`. (~2836 tok)
+- `dashboard-content.tsx` — Dashboard home (client component). (~2977 tok)
 - `layout.tsx` — Dashboard chrome. Desktop fixed sidebar (`lg+`) + sticky mobile top bar (`<lg`) with `<MobileNav>`. Body scroll on mobile, `min-h-svh`, content capped at `max-w-5xl`. (~582 tok)
 - `page.tsx` — Dashboard route entry. Stays a server component so we can export (~190 tok)
 
@@ -331,19 +331,19 @@
 ## apps/web/components/dashboard/
 
 - `create-video-dialog.tsx` — Optional custom thumbnail. JPEG / PNG only, 2 MB max — matches (~14698 tok)
-- `dashboard-stats.tsx` — Three small stat cards (In flight / Ready to publish / Failed) summarizing the in-progress pipeline. Tabular mono values, tone ribbons, "Ready to publish" deep-links to first ready row. (~1956 tok)
+- `dashboard-stats.tsx` — Rows the worker is still actively processing or hasn't yet been (~2170 tok)
 - `detail-row.tsx` — Definition-list row used by the video detail page's metadata block. `span={2}` for free-form fields, `muted` for technical block. (~355 tok)
-- `mobile-nav.tsx` — Mobile navigation — left-edge Sheet drawer containing the same `<SidebarContent>`. Trigger button visible at `<lg`. Auto-closes on route change via `usePathname()`. VisuallyHidden title for a11y. (~697 tok)
+- `mobile-nav.tsx` — Mobile navigation — left-edge drawer containing the same `<SidebarContent>` (~703 tok)
 - `processing-substeps.tsx` — Sub-stage breakdown for the "Processing" bucket of the 5-stage (~1804 tok)
 - `publish-sheet.tsx` — Which fields the sheet needs off the `Video` row. The page passes (~2743 tok)
 - `published-video-card.tsx` — One row in the `/dashboard/published` library. Tags + filename + privacy pill + audience flags. Token-only — "private" uses `--status-scheduled` deliberately. (~2035 tok)
 - `published-video-list.tsx` — `/dashboard/published` — interactive library view with client-side search + filters + pagination. Token-only empty states (`--surface` + dashed `--line`). (~4376 tok)
-- `sidebar-content.tsx` — Shared sidebar body reused by desktop `<Sidebar>` and mobile `<MobileNav>`. Nav items, channel indicator, profile link, sign-out. `onNavigate` callback to dismiss the drawer. (~2045 tok)
+- `sidebar-content.tsx` — Show as a real link vs. a "coming soon" placeholder. (~2164 tok)
 - `sidebar.test.tsx` — mockUseSession (~1377 tok)
 - `sidebar.tsx` — Desktop dashboard sidebar shell (`hidden lg:flex`) wrapping `<SidebarContent>`. (~200 tok)
 - `status-pill.tsx` — Status chip using Design.md's `--status-*` tokens — no ad-hoc colors. Processing tone gets a `motion-safe:animate-pulse` dot. (~512 tok)
 - `status-timeline.tsx` — Visual pipeline stages shown in the timeline strip — the signature (~1429 tok)
-- `video-card.tsx` — Latest SSE events for real-time progress display (~2489 tok)
+- `video-card.tsx` — Latest SSE events for real-time progress display (~2595 tok)
 - `video-detail-live-progress.tsx` — Ambient real-time progress strip for the detail page. Per Design.md (~627 tok)
 - `video-details-dialog.tsx` — Which fields can be patched via PATCH /api/videos/:id. (~4494 tok)
 - `video-list.tsx` — The already-fetched videos to render. In the SSR dashboard flow (~1424 tok)
@@ -351,7 +351,7 @@
 - `video-metadata-editor.test.tsx` — Tests for the in-place title/description/tags editor. (~4300 tok)
 - `video-metadata-editor.tsx` — In-place editor for the user-supplied metadata on the review screen (~2854 tok)
 - `video-metadata-editor.tsx` — In-place title/description/tags editor for the review screen. Per-section dirty state + Save. Calls useUpdateVideo + router.refresh. (~3550 tok)
-- `youtube-connect-card.tsx` — Persistent channel-connection card. Three states symmetric (`CardHeader + CardContent`). Tokens only — needs_reauth uses `--status-error`. (~2837 tok)
+- `youtube-connect-card.tsx` — Persistent channel-connection card. Per Design.md, channel-connection (~2943 tok)
 
 ## apps/web/components/landing/
 

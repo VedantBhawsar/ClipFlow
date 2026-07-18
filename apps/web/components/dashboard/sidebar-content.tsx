@@ -18,6 +18,10 @@ import { cn } from "@/lib/utils";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { useYouTubeConnection } from "@/hooks/use-youtube-connection";
 
+// Dashboard-wide icon stroke — matches dashboard-stats and dashboard-content
+// so the nav icons read at the same visual weight as everything else.
+const ICON_STROKE = 1.75;
+
 interface NavItem {
   href: string;
   label: string;
@@ -137,7 +141,11 @@ export function SidebarContent({
                     title="Coming soon"
                     className={className}
                   >
-                    <Icon className="h-4 w-4" aria-hidden="true" />
+                    <Icon
+                      className="size-4"
+                      strokeWidth={ICON_STROKE}
+                      aria-hidden="true"
+                    />
                     {item.label}
                   </span>
                 </li>
@@ -150,7 +158,11 @@ export function SidebarContent({
                   className={className}
                   onClick={() => onNavigate?.()}
                 >
-                  <Icon className="h-4 w-4" aria-hidden="true" />
+                  <Icon
+                    className="size-4"
+                    strokeWidth={ICON_STROKE}
+                    aria-hidden="true"
+                  />
                   {item.label}
                 </Link>
               </li>
@@ -197,7 +209,7 @@ export function SidebarContent({
             }}
             aria-label="Sign out"
           >
-            <LogOut aria-hidden="true" />
+            <LogOut strokeWidth={ICON_STROKE} aria-hidden="true" />
           </Button>
         </div>
       </div>

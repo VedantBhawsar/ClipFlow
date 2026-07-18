@@ -20,7 +20,11 @@
   --bg: #FAFAF8;
   --surface: #FFFFFF;
   --ink: #1A1B18;
-  --ink-muted: #6B6D66;
+  /* Lifted from #6B6D66 → #5F6159 for a comfortable WCAG AA margin
+     (~5.1:1 → ~6.1:1) at text-xs / text-sm on --bg / --surface.
+     Every muted-text label on the dashboard chrome routes through
+     this single token, so a single lift raises contrast everywhere. */
+  --ink-muted: #5F6159;
   --line: #E4E3DC;
 
   /* shadcn base neutral — light. Aliased to the Design.md tokens

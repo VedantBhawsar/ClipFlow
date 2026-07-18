@@ -160,13 +160,17 @@ export function YouTubeConnectCard({ className }: { className?: string }) {
             />
           ) : (
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--muted)]">
-              <Youtube className="h-5 w-5 text-[color:var(--ink-muted)]" />
+              <Youtube
+                className="size-5 text-[color:var(--ink-muted)]"
+                strokeWidth={1.75}
+              />
             </div>
           )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <Check
-                className="h-4 w-4 text-[color:var(--status-ready)]"
+                className="size-4 text-[color:var(--status-ready)]"
+                strokeWidth={1.75}
                 aria-hidden="true"
               />
               <CardTitle className="text-sm font-medium">
@@ -185,9 +189,12 @@ export function YouTubeConnectCard({ className }: { className?: string }) {
             className="text-[color:var(--ink-muted)] hover:text-[color:var(--status-error)]"
           >
             {disconnectMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2
+                className="size-4 animate-spin"
+                strokeWidth={1.75}
+              />
             ) : (
-              <Unlink className="h-4 w-4" />
+              <Unlink className="size-4" strokeWidth={1.75} />
             )}
             Disconnect
           </Button>
@@ -224,15 +231,18 @@ export function YouTubeConnectCard({ className }: { className?: string }) {
         <CardContent className="pt-0">
           <Button onClick={handleConnect} disabled={isBusy}>
             {isBusy ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2
+                className="size-4 animate-spin"
+                strokeWidth={1.75}
+              />
             ) : (
-              <Youtube aria-hidden="true" />
+              <Youtube strokeWidth={1.75} aria-hidden="true" />
             )}
             Reconnect channel
           </Button>
           {error && (
             <p className="mt-2 flex items-center gap-1 text-xs text-[color:var(--status-error)]">
-              <AlertCircle className="h-3 w-3" />
+              <AlertCircle className="size-3" strokeWidth={1.75} />
               {error}
             </p>
           )}
@@ -269,15 +279,18 @@ export function YouTubeConnectCard({ className }: { className?: string }) {
       <CardContent className="pt-0">
         <Button onClick={handleConnect} disabled={isBusy}>
           {isBusy ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2
+              className="size-4 animate-spin"
+              strokeWidth={1.75}
+            />
           ) : (
-            <Youtube aria-hidden="true" />
+            <Youtube strokeWidth={1.75} aria-hidden="true" />
           )}
           Connect your channel
         </Button>
         {error && (
           <p className="mt-2 flex items-center gap-1 text-xs text-[color:var(--status-error)]">
-            <AlertCircle className="h-3 w-3" />
+            <AlertCircle className="size-3" strokeWidth={1.75} />
             {error}
           </p>
         )}

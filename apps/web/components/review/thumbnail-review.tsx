@@ -1,27 +1,21 @@
 "use client";
 
 import * as React from "react";
-import { RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThumbnailCard, type ThumbnailOption } from "./thumbnail-card";
 
 interface ThumbnailReviewProps {
   options: ThumbnailOption[];
-  /** id of the currently active option — falls back to `options[0]`. */
   selectedId?: string | null;
-  /** Called when the user clicks a candidate tile. Callers can no-op
-   *  this while the underlying data model can only store a single
-   *  thumbnail — the visual state still updates locally. */
   onSelect?: (id: string) => void;
-  /** Called when the user clicks the Regenerate action. */
   onRegenerate?: () => void;
-  /** Copy for the regen counter — Design.md Section 3 wants the tier
-   *  limit visible near the action so it never surprises the creator. */
   regenerationsUsed: number;
   regenerationsAllowed: number;
-  /** Disable both selection and the regenerate action (published,
-   *  processing, etc.). */
   disabled?: boolean;
+  /** Show loading indicators on placeholder tiles — set while the
+   *  worker is generating new thumbnails. */
+  regenerating?: boolean;
 }
 
 /**
@@ -39,10 +33,11 @@ export function ThumbnailReview({
   regenerationsUsed,
   regenerationsAllowed,
   disabled = false,
+  regenerating = false,
 }: ThumbnailReviewProps) {
   const activeId = selectedId ?? options[0]?.id ?? null;
   const regenExhausted = regenerationsUsed >= regenerationsAllowed;
-  const regenDisabled = disabled || regenExhausted || !onRegenerate;
+  const regenDisabled = disabled || regenExhausted || !onRegenerate || regenerating;
 
   return (
     <section
@@ -58,8 +53,9 @@ export function ThumbnailReview({
             Thumbnails
           </h2>
           <p className="text-[13px] text-[color:var(--ink-muted)]">
-            Pick the thumbnail that goes to YouTube. The selected tile
-            has a green border.
+            {regenerating
+              ? "Generating fresh options — they'll appear here automatically."
+              : "Pick the thumbnail that goes to YouTube. The selected tile has a green border."}
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5">
@@ -70,12 +66,17 @@ export function ThumbnailReview({
             onClick={onRegenerate}
             disabled={regenDisabled}
           >
-            <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-            Regenerate options
+            {regenerating ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+            {regenerating ? "Generating…" : "Regenerate options"}
           </Button>
           <span className="font-mono text-[11px] text-[color:var(--ink-muted)]">
-            {regenerationsUsed} of {regenerationsAllowed} regenerations used
-            {regenExhausted ? " · limit reached" : ""}
+            {regenerating
+              ? "In progress…"
+              : `${regenerationsUsed} of ${regenerationsAllowed} regenerations used${regenExhausted ? " · limit reached" : ""}`}
           </span>
         </div>
       </div>
@@ -87,8 +88,9 @@ export function ThumbnailReview({
             option={option}
             selected={option.id === activeId}
             onSelect={onSelect}
-            disabled={disabled}
+            disabled={disabled || regenerating}
             index={index}
+            loading={regenerating && option.src === null}
           />
         ))}
       </div>

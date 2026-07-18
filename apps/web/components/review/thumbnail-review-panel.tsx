@@ -62,22 +62,29 @@ export function ThumbnailReviewPanel({
   regenerationsAllowed,
   disabled = false,
 }: ThumbnailReviewPanelProps) {
-  // Local mirror of the server's `selectedThumbnailId`. Seeded
-  // from the SSR-provided value so the first paint shows the
-  // correct selection; the server is still the source of truth
-  // and overrides local state on every refetch.
   const [selectedId, setSelectedId] = React.useState<string | null>(
     initialSelectedId,
   );
+  const [isRegenerating, setIsRegenerating] = React.useState(false);
 
   // Keep local state in sync if the server-side value changes
-  // (e.g. another tab picks a thumbnail, or the SSE-driven
-  // refetch lands a fresher value). We only follow the server
-  // when the two are out of sync, so a fast in-flight optimistic
-  // update isn't clobbered by a slow refetch.
   React.useEffect(() => {
     setSelectedId((prev) => (prev === initialSelectedId ? prev : initialSelectedId));
   }, [initialSelectedId]);
+
+  // Clear regenerating state when options change (new thumbnails
+  // arrived via SSE-driven refetch). Compare serialized ids so we
+  // don't reset on every render — only when the set of tiles changes.
+  const optionsKey = React.useMemo(
+    () => options.map((o) => o.id).join(","),
+    [options],
+  );
+  React.useEffect(() => {
+    if (isRegenerating) {
+      setIsRegenerating(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [optionsKey]);
 
   const selectMutation = useSelectThumbnail();
   const regenerateMutation = useRegenerateThumbnails();
@@ -85,15 +92,13 @@ export function ThumbnailReviewPanel({
   const handleSelect = React.useCallback(
     (id: string) => {
       if (disabled) return;
-      if (id === selectedId) return; // no-op tap
+      if (id === selectedId) return;
       const previousId = selectedId;
-      setSelectedId(id); // optimistic
+      setSelectedId(id);
       selectMutation.mutate(
         { videoId, thumbnailId: id },
         {
           onError: (err) => {
-            // Revert on failure so the green border returns to
-            // whatever the server last acknowledged.
             setSelectedId(previousId);
             toast.error(
               err.message || "Couldn't save that thumbnail. Try again.",
@@ -107,15 +112,12 @@ export function ThumbnailReviewPanel({
 
   const handleRegenerate = React.useCallback(() => {
     if (disabled) return;
+    setIsRegenerating(true);
     regenerateMutation.mutate(
       { videoId },
       {
-        onSuccess: () => {
-          toast.success(
-            "Generating fresh options. We'll refresh the grid when they're ready.",
-          );
-        },
         onError: (err) => {
+          setIsRegenerating(false);
           toast.error(
             err.message || "Couldn't start a new generation. Try again.",
           );
@@ -132,7 +134,8 @@ export function ThumbnailReviewPanel({
       onRegenerate={handleRegenerate}
       regenerationsUsed={regenerationsUsed}
       regenerationsAllowed={regenerationsAllowed}
-      disabled={disabled}
+      disabled={disabled || regenerateMutation.isPending}
+      regenerating={isRegenerating}
     />
   );
 }

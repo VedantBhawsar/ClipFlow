@@ -6,6 +6,11 @@ import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
+// Dashboard-wide icon stroke width. Lucide's default is 2; the dashboard
+// chrome sits at 1.75 to feel slightly lighter, matching the calm
+// design tone (same value used in the marketing Hero).
+const ICON_STROKE = 1.75;
+
 interface DashboardStatsProps {
   /** Rows the worker is still actively processing or hasn't yet been
    *  queued for (UPLOADED, READY, EXTRACTING, TRANSCRIBING, GENERATING,
@@ -169,24 +174,31 @@ function StatCard({
           ribbonClass,
         )}
       />
-      <div className="space-y-1.5">
-        <p className="text-[12px] font-medium uppercase tracking-wide text-[color:var(--ink-muted)]">
+      <div className="space-y-2">
+        {/* Label is intentionally small + uppercase + tracked — the
+            visual hierarchy puts the number below it as the focal
+            element. Reaches --ink-muted which sits at ~6:1 against
+            the card surface (see globals.css --ink-muted comment). */}
+        <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[color:var(--ink-muted)]">
           {label}
         </p>
         <p
           className={cn(
-            "font-mono text-[28px] leading-none tabular-nums",
+            "font-mono text-2xl font-semibold leading-none tabular-nums",
             loading ? "text-[color:var(--ink-muted)]" : valueClass,
           )}
         >
           {loading ? "—" : value}
         </p>
-        <p className="text-xs text-[color:var(--ink-muted)]">{sublabel}</p>
+        <p className="text-xs leading-snug text-[color:var(--ink-muted)]">
+          {sublabel}
+        </p>
       </div>
       <Icon
         aria-hidden="true"
+        strokeWidth={ICON_STROKE}
         className={cn(
-          "absolute right-3 top-3 h-3.5 w-3.5",
+          "absolute right-3 top-3 size-4",
           active ? valueClass : "text-[color:var(--ink-muted)]",
           tone === "processing" && active && "motion-safe:animate-spin",
         )}
@@ -194,10 +206,13 @@ function StatCard({
     </>
   );
 
+  // Elevation via subtle shadow + the existing surface/bg lightness
+  // delta — no border needed for the stat tiles. The left-edge ribbon
+  // carries the tone signal so a border was redundant. Hover lifts
+  // the shadow so the link card has a clear affordance.
   const cardClass = cn(
-    "relative overflow-hidden rounded-xl border border-[color:var(--line)] bg-[color:var(--surface)] p-4 pl-5",
-    "transition-colors",
-    href && "hover:border-[color:var(--ink)]/20 focus-within:border-[color:var(--ink)]/30",
+    "relative overflow-hidden rounded-xl bg-[color:var(--surface)] p-4 pl-5 shadow-sm transition-shadow",
+    href && "hover:shadow-md",
   );
 
   if (href) {

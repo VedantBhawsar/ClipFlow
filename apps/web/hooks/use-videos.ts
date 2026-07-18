@@ -129,6 +129,20 @@ export function useDeleteVideo() {
 }
 
 /**
+ * Fetch a single video by id with TanStack Query caching.
+ * Used by the video detail page for SSE-driven reactivity.
+ */
+export function useVideoDetail(id: string, initialData?: Video) {
+  const api = useApi();
+  return useQuery<Video>({
+    queryKey: queryKeys.videos.detail(id),
+    queryFn: () => api.getVideo(id),
+    enabled: !!api && !!id,
+    initialData,
+  });
+}
+
+/**
  * List the current user's PUBLISHED videos, paginated. Powers the
  * `/dashboard/published` page. Accepts the same `q` / `page` /
  * `pageSize` filters as the generic list endpoint so the published

@@ -23,11 +23,12 @@ interface ThumbnailCardProps {
   option: ThumbnailOption;
   selected: boolean;
   onSelect?: (id: string) => void;
-  /** Per-row stagger index — plugs into the review-reveal animation. */
   index?: number;
-  /** Disable selection (e.g. published state — nothing to change). */
   disabled?: boolean;
   className?: string;
+  /** Show a skeleton loading pulse — used when regeneration is in
+   *  flight and the slot is still a placeholder. */
+  loading?: boolean;
 }
 
 /**
@@ -47,16 +48,27 @@ export function ThumbnailCard({
   index = 0,
   disabled = false,
   className,
+  loading = false,
 }: ThumbnailCardProps) {
   const isPlaceholder = option.src == null;
-  const interactive = !disabled && onSelect && !isPlaceholder;
+  const interactive = !disabled && onSelect && !isPlaceholder && !loading;
 
   const inner = (
     <>
-      <div className="relative aspect-video w-full overflow-hidden rounded-md bg-[color:var(--muted)]">
-        {option.src ? (
-          // Poster images are decorative context — the caption below
-          // carries the label so the alt copy stays short.
+      <div
+        className={cn(
+          "relative aspect-video w-full overflow-hidden rounded-md",
+          loading
+            ? "motion-safe:animate-pulse bg-[color:var(--muted)]"
+            : "bg-[color:var(--muted)]",
+        )}
+      >
+        {loading ? (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-[11px] text-[color:var(--ink-muted)]">
+            <span className="font-mono uppercase tracking-wide">Generating</span>
+            <span>Please wait…</span>
+          </div>
+        ) : option.src ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={option.src}

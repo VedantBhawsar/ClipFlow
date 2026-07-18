@@ -20,6 +20,10 @@ import {
   isFailedStatus,
 } from "@/lib/video-status";
 
+// Dashboard-wide icon stroke width — mirrors the marketing Hero. Lucide's
+// default is 2; 1.75 keeps the chrome visually lighter.
+const ICON_STROKE = 1.75;
+
 /**
  * Dashboard home (client component).
  *
@@ -152,7 +156,11 @@ export function DashboardContent() {
       <header className="space-y-3">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <div className="min-w-0 space-y-1">
-            <h1 className="text-[28px] font-medium tracking-tight text-[color:var(--ink)]">
+            {/* Welcome heading intentionally sits at text-xl (20px) —
+                the stat row below carries the real "what's happening"
+                signal so the greeting becomes a quiet orientation
+                beat instead of the visual anchor. */}
+            <h1 className="text-xl font-medium tracking-tight text-[color:var(--ink)]">
               Welcome back, {firstName}.
             </h1>
             <div className="flex flex-wrap items-center gap-2">
@@ -166,7 +174,11 @@ export function DashboardContent() {
             href="/dashboard/settings"
             className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-[color:var(--ink-muted)] transition-colors hover:bg-[color:var(--surface)] hover:text-[color:var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            <SettingsIcon className="h-3.5 w-3.5" aria-hidden="true" />
+            <SettingsIcon
+              className="size-4"
+              strokeWidth={ICON_STROKE}
+              aria-hidden="true"
+            />
             Settings
           </Link>
         </div>

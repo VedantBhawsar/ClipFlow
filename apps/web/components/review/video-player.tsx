@@ -79,7 +79,7 @@ export function VideoPlayer({
       backdrop: true,
       hotkey: true,
       playsInline: true,
-      highlight: highlights.length > 0 ? highlights : undefined,
+      highlight: highlights,
     });
 
     artRef.current = art;

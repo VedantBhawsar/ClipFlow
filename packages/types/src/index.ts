@@ -730,7 +730,27 @@ export interface SseErrorEvent {
   timestamp: string;
 }
 
-export type SseVideoEvent = SseStatusUpdateEvent | SseProgressEvent | SseErrorEvent;
+export interface SseChaptersPushEvent {
+  type: "CHAPTERS_PUSH";
+  videoId: string;
+  userId: string;
+  chaptersJson: ChaptersJson;
+  timestamp: string;
+}
+
+export interface SseThumbnailsPushEvent {
+  type: "THUMBNAILS_PUSH";
+  videoId: string;
+  userId: string;
+  timestamp: string;
+}
+
+export type SseVideoEvent =
+  | SseStatusUpdateEvent
+  | SseProgressEvent
+  | SseErrorEvent
+  | SseChaptersPushEvent
+  | SseThumbnailsPushEvent;
 
 // ---------- Thumbnail generation ----------
 

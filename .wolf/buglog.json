@@ -3215,6 +3215,70 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-09T15:21:40.000Z"
+    },
+    {
+      "id": "bug-197",
+      "timestamp": "2026-07-18T03:25:02.131Z",
+      "error_message": "CSS fix: --ink-muted",
+      "file": "apps/web/app/globals.css",
+      "root_cause": "--ink-muted: #6B6D66 → #5F6159",
+      "fix": "Changed --ink-muted: #6B6D66 → #5F6159",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "css"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-18T03:25:02.131Z"
+    },
+    {
+      "id": "bug-198",
+      "timestamp": "2026-07-18T03:25:19.106Z",
+      "error_message": "Type error",
+      "file": "apps/web/components/dashboard/dashboard-stats.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-18T03:25:19.106Z"
+    },
+    {
+      "id": "bug-199",
+      "timestamp": "2026-07-18T03:25:42.706Z",
+      "error_message": "Type error",
+      "file": "apps/web/components/dashboard/sidebar-content.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-18T03:25:42.706Z"
+    },
+    {
+      "id": "bug-200",
+      "timestamp": "2026-07-18T03:26:29.246Z",
+      "error_message": "CSS fix: color",
+      "file": "apps/web/components/dashboard/video-card.tsx",
+      "root_cause": "color: var(--status-error)]\" /> → var(--status-error)]\"",
+      "fix": "Changed color: var(--status-error)]\" /> → var(--status-error)]\"",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-18T03:26:29.246Z"
     }
   ]
 }

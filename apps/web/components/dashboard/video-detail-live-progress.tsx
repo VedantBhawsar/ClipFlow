@@ -24,12 +24,13 @@ export function VideoDetailLiveProgress({
   const latest = events.at(-1);
 
   useEffect(() => {
-    if (latest?.type === "STATUS_UPDATE") {
-      // Trigger re-fetch of video data
-      const evt = new CustomEvent("video-status-changed", {
-        detail: { videoId, status: latest.status },
-      });
-      window.dispatchEvent(evt);
+    if (latest && latest.type !== "PROGRESS") {
+      // Trigger re-fetch of video data for any meaningful event
+      window.dispatchEvent(
+        new CustomEvent("video-status-changed", {
+          detail: { videoId },
+        }),
+      );
     }
   }, [latest, videoId]);
 

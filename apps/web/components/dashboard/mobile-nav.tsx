@@ -50,7 +50,7 @@ export function MobileNav() {
           aria-label="Open navigation"
           className="lg:hidden"
         >
-          <Menu aria-hidden="true" />
+          <Menu strokeWidth={1.75} aria-hidden="true" />
         </Button>
       </SheetTrigger>
       <SheetContent
