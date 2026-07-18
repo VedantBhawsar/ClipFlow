@@ -72,6 +72,7 @@ const mockEnv: Env = {
   OPENAI_API_KEY: undefined,
   NVIDIA_API_KEY: undefined,
   NVIDIA_BASE_URL: "https://integrate.api.nvidia.com/v1",
+  NVIDIA_IMAGE_MODEL: "black-forest-labs/flux.1-dev",
   LLM_MODEL: "claude-3-5-haiku-latest",
   TRANSCRIBE_POLL_MS: 2000,
   TRANSCRIBE_TIMEOUT_MS: 15 * 60_000,
