@@ -47,7 +47,7 @@ WORKDIR /app
 COPY --from=deps /app /app
 COPY apps/worker ./apps/worker
 
-ARG DATABASE_URL
+ARG DATABASE_URL=postgresql://dummy:dummy@dummy:5432/dummy
 ENV DATABASE_URL=$DATABASE_URL
 
 RUN pnpm --filter @clipflow/db prisma:generate

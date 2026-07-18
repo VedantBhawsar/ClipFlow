@@ -261,6 +261,7 @@ type StubVideo = {
   chaptersJson: Prisma.JsonValue | null;
   status: "UPLOADED" | "READY" | "EXTRACTING" | "TRANSCRIBING" | "GENERATING" | "READY_FOR_REVIEW" | "SCHEDULED" | "PUBLISHING" | "PUBLISHED" | "PUBLISH_FAILED" | "FAILED";
   failureReason: string | null;
+  retryCount: number;
   scheduledPublishAt: Date | null;
   youtubeVideoId: string | null;
   createdAt: Date;
@@ -302,6 +303,7 @@ const stubCreatedVideo: StubVideo = {
   chaptersJson: null,
   status: "UPLOADED",
   failureReason: null,
+  retryCount: 0,
   scheduledPublishAt: null,
   youtubeVideoId: null,
   createdAt: new Date(),

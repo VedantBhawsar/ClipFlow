@@ -17,7 +17,7 @@
  * error middleware emits the failure body in the same shape as every
  * other error.
  */
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import type { Env } from "@clipflow/config";
 import { cache } from "../../lib/cache.js";
 import { sendEmpty, sendOk } from "../../lib/response.js";
@@ -61,25 +61,30 @@ const requireUser = (req: Request): string => {
 export const getOAuthUrlController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  const env = requireEnv(req);
+  try {
+    const env = requireEnv(req);
 
-  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_REDIRECT_URI) {
-    throw new AppError(
-      503,
-      "GOOGLE_OAUTH_UNAVAILABLE",
-      "Google OAuth is not configured on this server.",
-    );
+    if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_REDIRECT_URI) {
+      throw new AppError(
+        503,
+        "GOOGLE_OAUTH_UNAVAILABLE",
+        "Google OAuth is not configured on this server.",
+      );
+    }
+
+    // Generate a state parameter for CSRF protection
+    const state = Buffer.from(
+      JSON.stringify({ redirect_uri: req.query.redirect_uri ?? "/" }),
+    ).toString("base64");
+
+    const url = buildOAuthUrl(env, env.GOOGLE_REDIRECT_URI, state);
+
+    sendOk(res, { url }, "OAuth URL minted.");
+  } catch (err) {
+    next(err);
   }
-
-  // Generate a state parameter for CSRF protection
-  const state = Buffer.from(
-    JSON.stringify({ redirect_uri: req.query.redirect_uri ?? "/" }),
-  ).toString("base64");
-
-  const url = buildOAuthUrl(env, env.GOOGLE_REDIRECT_URI, state);
-
-  sendOk(res, { url }, "OAuth URL minted.");
 };
 
 /**
@@ -91,36 +96,41 @@ export const getOAuthUrlController = async (
 export const connectController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  const userId = requireUser(req);
-  const env = requireEnv(req);
+  try {
+    const userId = requireUser(req);
+    const env = requireEnv(req);
 
-  const { code } = req.body as { code?: string };
-  if (!code || typeof code !== "string") {
-    throw new AppError(400, "INVALID_REQUEST", "Authorization code is required.");
+    const { code } = req.body as { code?: string };
+    if (!code || typeof code !== "string") {
+      throw new AppError(400, "INVALID_REQUEST", "Authorization code is required.");
+    }
+
+    if (
+      !env.GOOGLE_CLIENT_ID ||
+      !env.GOOGLE_CLIENT_SECRET ||
+      !env.GOOGLE_REDIRECT_URI
+    ) {
+      throw new AppError(
+        503,
+        "GOOGLE_OAUTH_UNAVAILABLE",
+        "Google OAuth is not configured on this server.",
+      );
+    }
+
+    const result = await connectYouTubeChannel(userId, code, env);
+    if (!result) {
+      throw new Error("Account Not found");
+    }
+
+    // Invalidate the lazy settings cache since YouTube connection changed.
+    await cache.del(`settings:${userId}`);
+
+    sendOk(res, result.connection, "YouTube channel connected.");
+  } catch (err) {
+    next(err);
   }
-
-  if (
-    !env.GOOGLE_CLIENT_ID ||
-    !env.GOOGLE_CLIENT_SECRET ||
-    !env.GOOGLE_REDIRECT_URI
-  ) {
-    throw new AppError(
-      503,
-      "GOOGLE_OAUTH_UNAVAILABLE",
-      "Google OAuth is not configured on this server.",
-    );
-  }
-
-  const result = await connectYouTubeChannel(userId, code, env);
-  if (!result) {
-    throw new Error("Account Not found");
-  }
-
-  // Invalidate the lazy settings cache since YouTube connection changed.
-  await cache.del(`settings:${userId}`);
-
-  sendOk(res, result.connection, "YouTube channel connected.");
 };
 
 /**
@@ -131,15 +141,20 @@ export const connectController = async (
 export const disconnectController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  const userId = requireUser(req);
+  try {
+    const userId = requireUser(req);
 
-  await disconnectYouTubeChannel(userId);
+    await disconnectYouTubeChannel(userId);
 
-  // Invalidate the lazy settings cache since YouTube connection changed.
-  await cache.del(`settings:${userId}`);
+    // Invalidate the lazy settings cache since YouTube connection changed.
+    await cache.del(`settings:${userId}`);
 
-  sendEmpty(res, "YouTube channel disconnected.");
+    sendEmpty(res, "YouTube channel disconnected.");
+  } catch (err) {
+    next(err);
+  }
 };
 
 /**
@@ -151,28 +166,33 @@ export const disconnectController = async (
 export const getConnectionController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  const userId = requireUser(req);
+  try {
+    const userId = requireUser(req);
 
-  const cacheKey = `youtube:connection:${userId}`;
-  const cached = await cache.get(cacheKey);
+    const cacheKey = `youtube:connection:${userId}`;
+    const cached = await cache.get(cacheKey);
 
-  if (cached) {
-    res.setHeader("X-Cache", "HIT");
-    sendOk(
-      res,
-      JSON.parse(cached) as YouTubeConnection,
-      "YouTube connection retrieved.",
-    );
-    return;
+    if (cached) {
+      res.setHeader("X-Cache", "HIT");
+      sendOk(
+        res,
+        JSON.parse(cached) as YouTubeConnection,
+        "YouTube connection retrieved.",
+      );
+      return;
+    }
+
+    const connection = await getYouTubeConnectionByUserId(userId);
+
+    await cache.set(cacheKey, JSON.stringify(connection), CONNECTION_CACHE_TTL_SECONDS);
+
+    res.setHeader("X-Cache", "MISS");
+    sendOk(res, connection, "YouTube connection retrieved.");
+  } catch (err) {
+    next(err);
   }
-
-  const connection = await getYouTubeConnectionByUserId(userId);
-
-  await cache.set(cacheKey, JSON.stringify(connection), CONNECTION_CACHE_TTL_SECONDS);
-
-  res.setHeader("X-Cache", "MISS");
-  sendOk(res, connection, "YouTube connection retrieved.");
 };
 
 /**
@@ -190,13 +210,18 @@ export const getConnectionController = async (
 export const channelRecentThumbnailsController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  const userId = requireUser(req);
-  const env = requireEnv(req);
-  const { limit } = req.query as unknown as ChannelRecentThumbnailsQuery;
-  const clampedLimit = Math.min(Math.max(limit ?? 8, 1), 8);
+  try {
+    const userId = requireUser(req);
+    const env = requireEnv(req);
+    const { limit } = req.query as unknown as ChannelRecentThumbnailsQuery;
+    const clampedLimit = Math.min(Math.max(limit ?? 8, 1), 8);
 
-  const items = await getChannelRecentThumbnails(userId, clampedLimit, env);
-  const payload: ChannelRecentThumbnailsResponse = { items };
-  sendOk(res, payload, "Channel thumbnails retrieved.");
+    const items = await getChannelRecentThumbnails(userId, clampedLimit, env);
+    const payload: ChannelRecentThumbnailsResponse = { items };
+    sendOk(res, payload, "Channel thumbnails retrieved.");
+  } catch (err) {
+    next(err);
+  }
 };

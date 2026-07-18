@@ -66,7 +66,13 @@ import { AppError } from "../../errors/AppError.js";
 import { prisma } from "../../lib/prisma.js";
 import { requireDatabase } from "../../lib/db-guard.js";
 import { cache } from "../../lib/cache.js";
-import { enqueueIngestJob, enqueuePublishJob } from "../../lib/queue.js";
+import {
+  enqueueIngestJob,
+  enqueuePublishJob,
+  enqueueTranscriptionJob,
+  enqueueGenerateJob,
+  enqueueThumbnailsJob,
+} from "../../lib/queue.js";
 import { assertWithinVideoLimit } from "../../lib/plan-guard.js";
 import { buildThumbnailLabel, toVideoDto } from "./videos.types.js";
 import type {
@@ -1068,27 +1074,55 @@ export const publishVideoNow = async (
 };
 
 /**
- * Retry a `FAILED` video. The user clicked the "Retry" button on a
- * row that exhausted all of BullMQ's retries (e.g. a permanent FFmpeg
- * error or an out-of-credits upstream). We reset the row to
- * `EXTRACTING`, clear the failure reason, and re-enqueue the ingest
- * job with a deterministic jobId so BullMQ dedupes.
+ * Per-step retry for a video that hit a permanent failure.
  *
- * Why reset to `EXTRACTING` (and not `UPLOADED`):
- *  - The S3 upload already succeeded; re-ingesting is all that's
- *    needed.
- *  - `EXTRACTING` matches the post-finalize state the worker expects
- *    so any side effects (e.g. the recovery pass picking it up on a
- *    worker crash) keep working unchanged.
- *  - The ingest worker's `s3KeyAudio` idempotency check (set? skip)
- *    is the natural short-circuit if a previous run actually finished
- *    extraction and only the DB write failed.
+ * Instead of always resetting to `EXTRACTING`, we parse the
+ * `failureReason` error code to determine which step actually failed
+ * and reset + re-enqueue only that step. This means:
  *
- * Status guard: `FAILED` only. A `PUBLISH_FAILED` row has nothing
- * wrong with the video itself — only the publish failed — so the
- * existing `POST /publish` endpoint is the right place to retry that
- * (and it's already wired up to accept `PUBLISH_FAILED`).
+ *   - FFmpeg / extraction failure → retry from `EXTRACTING`
+ *     (re-enqueue `video-ingest` job).
+ *   - AssemblyAI / transcription failure → retry from `TRANSCRIBING`
+ *     (re-enqueue `transcription` job; audio is already on S3).
+ *   - LLM / chapter generation failure → retry from `GENERATING`
+ *     (re-enqueue `generate` job; transcript is already on S3).
+ *   - Image gen / thumbnail failure → retry from `GENERATING`
+ *     (re-enqueue `thumbnails` job; chapters are already done).
+ *
+ * Idempotency guards: each worker job skips if its output artifact
+ * already exists (`s3KeyAudio`, `transcriptS3Key`, `chaptersJson`,
+ * existing `ThumbnailGeneration` rows), so re-running a step that
+ * actually succeeded on a previous attempt is a no-op.
+ *
+ * Status guard: `FAILED` only. `PUBLISH_FAILED` rows are retried
+ * via `POST /publish`.
+ *
+ * Retry limit: `MAX_RETRIES` (4) per video. Once exhausted, the
+ * endpoint returns 429 `MAX_RETRIES_EXCEEDED` and we show a support-
+ * oriented message to the user.
  */
+const MAX_RETRIES = 4;
+
+type FailedStep = "EXTRACTING" | "TRANSCRIBING" | "GENERATING";
+
+const FAILURE_CODE_TO_STEP: Record<string, FailedStep> = {
+  FFMPEG: "EXTRACTING",
+  AAI: "TRANSCRIBING",
+  LLM: "GENERATING",
+  GEN: "GENERATING",
+  IMG: "GENERATING",
+  THUMBNAIL: "GENERATING",
+  REPLICATE: "GENERATING",
+  GEMINI: "GENERATING",
+};
+
+const detectFailedStep = (failureReason: string | null): FailedStep => {
+  if (!failureReason) return "EXTRACTING";
+  const code = failureReason.match(/^\[([A-Z_]+)\]/)?.[1] ?? "";
+  const prefix = code.split("_")[0] ?? "";
+  return FAILURE_CODE_TO_STEP[prefix] ?? "EXTRACTING";
+};
+
 export const retryVideo = async (
   userId: string,
   videoId: string,
@@ -1096,18 +1130,66 @@ export const retryVideo = async (
 ): Promise<Video> => {
   requireDatabase();
   const existing = await loadVideoForOwner(userId, videoId);
-  if (existing.status !== "FAILED") {
+
+  // Two admission paths:
+  //   1. FAILED — standard permanent-failure retry. Step is detected
+  //      from the failureReason code.
+  //   2. GENERATING — thumbnails failed but chapters succeeded. The
+  //      video is stuck at GENERATING because the thumbnails job
+  //      exhausted retries without flipping to READY_FOR_REVIEW.
+  if (existing.status !== "FAILED" && existing.status !== "GENERATING") {
     throw new AppError(
       409,
       "NOT_RETRYABLE",
       "Only failed processing can be retried.",
     );
   }
+
+  if (existing.retryCount >= MAX_RETRIES) {
+    throw new AppError(
+      429,
+      "MAX_RETRIES_EXCEEDED",
+      `This video has been retried ${MAX_RETRIES} times. Please contact support if the issue persists.`,
+    );
+  }
+
+  const isThumbnailRetry = existing.status === "GENERATING";
+  const failedStep = isThumbnailRetry ? "GENERATING" : detectFailedStep(existing.failureReason);
+
   const updated = await prisma.video.update({
     where: { id: existing.id },
-    data: { status: "EXTRACTING", failureReason: null },
+    data: {
+      status: failedStep,
+      failureReason: null,
+      retryCount: { increment: 1 },
+    },
   });
-  await enqueueIngestJob(existing.id, env);
+
+  if (isThumbnailRetry) {
+    // Chapters are already done — re-enqueue only the thumbnails job.
+    // The worker idempotency check skips re-generating chapters.
+    await enqueueThumbnailsJob(existing.id, env);
+  } else {
+    switch (failedStep) {
+      case "EXTRACTING":
+        await enqueueIngestJob(existing.id, env);
+        break;
+      case "TRANSCRIBING":
+        // Audio is already on S3; the transcription worker's
+        // idempotency guard (`transcriptS3Key` already set) will
+        // short-circuit if a previous run actually completed.
+        await enqueueTranscriptionJob(existing.id, env);
+        break;
+      case "GENERATING":
+        // Transcript is already on S3; the generate worker's
+        // idempotency guard (`chaptersJson` already set) will
+        // short-circuit if chapters were already written.
+        // If chapters were never written, the LLM call re-runs.
+        await enqueueGenerateJob(existing.id, env);
+        break;
+    }
+  }
+
   return toVideoDto(updated);
 };
 

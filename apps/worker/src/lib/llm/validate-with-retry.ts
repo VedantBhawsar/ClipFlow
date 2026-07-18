@@ -74,8 +74,11 @@ export const validateWithRetry = async (
 
     const result = await opts.client.complete(requestForAttempt);
     lastRawText = result.text;
+    console.log("result", result)
     try {
       const output = parseLlmOutput(result.text, durationMs);
+
+      console.log("output", output)
       return { output, attempts: attempt, lastRawText };
     } catch (err) {
       if (err instanceof LlmParseError) {

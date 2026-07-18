@@ -684,6 +684,8 @@ export interface Video {
   /** LLM-generated chapters + summary (set by GENERATING worker). */
   chaptersJson: ChaptersJson | null;
   failureReason: string | null;
+  /** How many retry attempts the user has triggered for this video. */
+  retryCount: number;
   scheduledPublishAt: string | null;
   youtubeVideoId: string | null;
   createdAt: string;

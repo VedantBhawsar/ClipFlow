@@ -190,6 +190,9 @@ export default async function VideoDetailPage({ params }: PageProps) {
                 />
                 <span className="min-w-0 flex-1">
                   <span className="block">{friendly.message}</span>
+                  <span className="mt-0.5 block text-[12px] text-[color:var(--ink-muted)]">
+                    Failed during {friendly.stepLabel}
+                  </span>
                   {friendly.hint ? (
                     <span className="mt-1 block text-[12px] text-[color:var(--ink-muted)]">
                       {friendly.hint}
@@ -199,6 +202,24 @@ export default async function VideoDetailPage({ params }: PageProps) {
               </div>
             );
           })()
+        ) : video.status === "GENERATING" ? (
+          <div className="mt-4 flex items-start gap-2 text-[13px] text-[color:var(--status-error)]">
+            <AlertCircle
+              className="mt-0.5 h-4 w-4 shrink-0"
+              aria-hidden="true"
+            />
+            <span className="min-w-0 flex-1">
+              <span className="block">
+                Thumbnail generation failed.
+              </span>
+              <span className="mt-0.5 block text-[12px] text-[color:var(--ink-muted)]">
+                Failed during thumbnail generation — chapters are done.
+              </span>
+              <span className="mt-1 block text-[12px] text-[color:var(--ink-muted)]">
+                Try again — the retry will pick up from the thumbnail step.
+              </span>
+            </span>
+          </div>
         ) : null}
 
         {inFlight ? (
@@ -318,6 +339,13 @@ export default async function VideoDetailPage({ params }: PageProps) {
               <DetailRow label="Video ID" muted>
                 <span className="font-mono text-[12px]">{video.id}</span>
               </DetailRow>
+              {video.retryCount != null && video.retryCount > 0 ? (
+                <DetailRow label="Retries" muted>
+                  <span className="font-mono text-[12px]">
+                    {video.retryCount} / 4
+                  </span>
+                </DetailRow>
+              ) : null}
               {video.youtubeVideoId ? (
                 <DetailRow label="YouTube ID" muted>
                   <span className="font-mono text-[12px]">
@@ -408,8 +436,14 @@ function ActionPanel({
       {channelConnected && video.status === "PUBLISHED" ? (
         <UnpublishButton videoId={video.id} />
       ) : null}
-      {video.status === "FAILED" ? (
-        <RetryButton videoId={video.id} videoTitle={video.title} />
+      {video.status === "FAILED" || video.status === "GENERATING" ? (
+        <RetryButton
+          videoId={video.id}
+          videoTitle={video.title}
+          status={video.status}
+          failureReason={video.failureReason}
+          retryCount={video.retryCount}
+        />
       ) : null}
       {canCancel ? <CancelButton videoId={video.id} /> : null}
     </div>

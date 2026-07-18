@@ -8,7 +8,7 @@
  * cache so a subsequent `GET /api/settings` doesn't return stale
  * preferences.
  */
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import { sendEmpty, sendOk } from "../../lib/response.js";
 import { AppError } from "../../errors/AppError.js";
 import * as preferencesService from "./preferences.service.js";
@@ -27,12 +27,17 @@ import "../auth/auth.types.js";
 export const getPreferencesController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  if (!req.user) {
-    throw new AppError(401, "UNAUTHENTICATED", "Authentication required.");
+  try {
+    if (!req.user) {
+      throw new AppError(401, "UNAUTHENTICATED", "Authentication required.");
+    }
+    const result: UserPreferences = await preferencesService.getPreferences(req.user.id);
+    sendOk(res, result, "Preferences retrieved.");
+  } catch (err) {
+    next(err);
   }
-  const result: UserPreferences = await preferencesService.getPreferences(req.user.id);
-  sendOk(res, result, "Preferences retrieved.");
 };
 
 /**
@@ -41,14 +46,19 @@ export const getPreferencesController = async (
 export const updatePreferencesController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  if (!req.user) {
-    throw new AppError(401, "UNAUTHENTICATED", "Authentication required.");
+  try {
+    if (!req.user) {
+      throw new AppError(401, "UNAUTHENTICATED", "Authentication required.");
+    }
+    const input = req.body as UpdatePreferencesInput;
+    const result = await preferencesService.updatePreferences(req.user.id, input);
+    await invalidateSettingsCache(req.user.id);
+    sendOk(res, result, "Preferences updated.");
+  } catch (err) {
+    next(err);
   }
-  const input = req.body as UpdatePreferencesInput;
-  const result = await preferencesService.updatePreferences(req.user.id, input);
-  await invalidateSettingsCache(req.user.id);
-  sendOk(res, result, "Preferences updated.");
 };
 
 /**
@@ -57,12 +67,17 @@ export const updatePreferencesController = async (
 export const changePasswordController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  if (!req.user) {
-    throw new AppError(401, "UNAUTHENTICATED", "Authentication required.");
+  try {
+    if (!req.user) {
+      throw new AppError(401, "UNAUTHENTICATED", "Authentication required.");
+    }
+    const input = req.body as ChangePasswordInput;
+    await preferencesService.changePassword(req.user.id, input);
+    await invalidateSettingsCache(req.user.id);
+    sendEmpty(res, "Password updated.");
+  } catch (err) {
+    next(err);
   }
-  const input = req.body as ChangePasswordInput;
-  await preferencesService.changePassword(req.user.id, input);
-  await invalidateSettingsCache(req.user.id);
-  sendEmpty(res, "Password updated.");
 };

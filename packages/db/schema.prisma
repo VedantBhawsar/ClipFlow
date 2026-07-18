@@ -462,6 +462,10 @@ model Video {
 
   status          VideoStatus   @default(UPLOADED)
   failureReason   String?
+  /// How many times the user has requested a retry for this video.
+  /// Resets to 0 when the video successfully reaches READY_FOR_REVIEW.
+  /// Capped at MAX_RETRIES (4) server-side.
+  retryCount      Int           @default(0)
 
   scheduledPublishAt DateTime?
   youtubeVideoId  String?       @unique

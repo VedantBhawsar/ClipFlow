@@ -161,6 +161,8 @@ export class OpenAICompatLlmClient {
       };
     }
 
+    
+
     return { text, raw: completion, usage };
   }
 }

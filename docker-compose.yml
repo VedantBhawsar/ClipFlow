@@ -163,6 +163,8 @@ services:
     build:
       context: .
       dockerfile: apps/worker/Dockerfile
+      args:
+        DATABASE_URL: ${DATABASE_URL}
     container_name: clipflow-worker
     depends_on:
       postgres:

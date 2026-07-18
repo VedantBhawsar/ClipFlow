@@ -27,6 +27,7 @@ import {
   recoverOrphanedGenerateJobs,
   recoverOrphanedIngestJobs,
   recoverOrphanedPublishingJobs,
+  recoverOrphanedThumbnailsJobs,
   recoverOrphanedTranscriptionJobs,
 } from "./startup-recovery.js";
 import { prisma } from "@clipflow/db";
@@ -268,25 +269,25 @@ const main = async (): Promise<void> => {
     logger,
   );
 
-  // Pass 4: reconcile any rows orphaned in GENERATING. If chaptersJson
-  // is set the generate run finished but the READY_FOR_REVIEW write
-  // was lost — advance. Otherwise re-enqueue the generate job (the
-  // job itself checks for transcript presence and fails permanent if
-  // missing).
+  // Pass 4: reconcile any rows orphaned in GENERATING before
+  // `chaptersJson` was written. These are videos where the LLM call
+  // never completed — re-enqueue the generate job. This pass
+  // deliberately does NOT finalize rows where chaptersJson is set;
+  // the next pass owns that case so thumbnails don't get skipped.
   const generateOrphans = await recoverOrphanedGenerateJobs(
     generateQueue,
     logger,
   );
 
-  // Pass 5: reconcile any rows orphaned in GENERATING where chapters exist
-  // but thumbnails never enqueued. If chaptersJson is set, re-enqueue the
-  // thumbnails job. Note: we pass through to the standard generate orphans
-  // handler which resets to UPLOADED if chapters are missing — but if chapters
-  // exist AND status is still GENERATING, we need the thumbnails job.
-  // The thumbnails job itself checks for chaptersJson presence.
-  const thumbnailsOrphans = await recoverOrphanedGenerateJobs(
-    generateQueue,
-    logger, // Re-use the generate orphans logic — it handles GENERATING rows
+  // Pass 5: reconcile any rows orphaned in GENERATING after
+  // `chaptersJson` was written but before the final READY_FOR_REVIEW
+  // flip. If a completed ThumbnailGeneration exists, finalize;
+  // otherwise re-enqueue the thumbnails job onto the thumbnails
+  // queue. This is the pass that makes sure thumbnails actually
+  // get generated when the worker dies mid-pipeline.
+  const thumbnailsOrphans = await recoverOrphanedThumbnailsJobs(
+    thumbnailsQueue,
+    logger,
   );
 
   // Pass 6: re-enqueue READY/SCHEDULED rows whose publish time has

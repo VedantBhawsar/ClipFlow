@@ -8,7 +8,7 @@
  * Every response is routed through the centralized `sendOk` helper so
  * the wire envelope matches every other module.
  */
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import { cache } from "../../lib/cache.js";
 import { sendOk } from "../../lib/response.js";
 import { AppError } from "../../errors/AppError.js";
@@ -24,20 +24,25 @@ const SETTINGS_CACHE_TTL_SECONDS = 30;
 export const getSettingsController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  if (!req.user) {
-    throw new AppError(401, "UNAUTHENTICATED", "Authentication required.");
+  try {
+    if (!req.user) {
+      throw new AppError(401, "UNAUTHENTICATED", "Authentication required.");
+    }
+    const userId = req.user.id;
+    const key = settingsCacheKey(userId);
+    const cached = await cache.get(key);
+    if (cached) {
+      res.setHeader("X-Cache", "HIT");
+      sendOk(res, JSON.parse(cached) as SettingsResponse, "Settings retrieved.");
+      return;
+    }
+    const result = await getSettings(userId);
+    await cache.set(key, JSON.stringify(result), SETTINGS_CACHE_TTL_SECONDS);
+    res.setHeader("X-Cache", "MISS");
+    sendOk(res, result, "Settings retrieved.");
+  } catch (err) {
+    next(err);
   }
-  const userId = req.user.id;
-  const key = settingsCacheKey(userId);
-  const cached = await cache.get(key);
-  if (cached) {
-    res.setHeader("X-Cache", "HIT");
-    sendOk(res, JSON.parse(cached) as SettingsResponse, "Settings retrieved.");
-    return;
-  }
-  const result = await getSettings(userId);
-  await cache.set(key, JSON.stringify(result), SETTINGS_CACHE_TTL_SECONDS);
-  res.setHeader("X-Cache", "MISS");
-  sendOk(res, result, "Settings retrieved.");
 };

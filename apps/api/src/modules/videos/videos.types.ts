@@ -51,6 +51,7 @@ export const toVideoDto = (v: {
   s3KeyAudio?: string | null;
   chaptersJson?: unknown;
   failureReason: string | null;
+  retryCount: number;
   scheduledPublishAt: Date | null;
   youtubeVideoId: string | null;
   createdAt: Date;
@@ -82,6 +83,7 @@ export const toVideoDto = (v: {
   s3KeyAudio: v.s3KeyAudio ?? null,
   chaptersJson: parseChaptersJson(v.chaptersJson),
   failureReason: v.failureReason,
+  retryCount: v.retryCount,
   scheduledPublishAt: v.scheduledPublishAt?.toISOString() ?? null,
   youtubeVideoId: v.youtubeVideoId,
   createdAt: v.createdAt.toISOString(),

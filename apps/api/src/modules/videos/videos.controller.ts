@@ -16,7 +16,7 @@
  *   GET /api/videos/stream        → all events for the current user
  *   GET /api/videos/:id/stream    → events for a specific video
  */
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import type { Env } from "@clipflow/config";
 import { sendCreated, sendEmpty, sendOk } from "../../lib/response.js";
 import { AppError } from "../../errors/AppError.js";
@@ -65,12 +65,17 @@ const requireEnv = (req: Request): Env => {
 export const createVideoController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  const userId = requireUser(req);
-  const env = requireEnv(req);
-  const input = req.body as CreateVideoInput;
-  const result = await videosService.createVideo(userId, input, env);
-  sendCreated(res, result, "Video upload ready.");
+  try {
+    const userId = requireUser(req);
+    const env = requireEnv(req);
+    const input = req.body as CreateVideoInput;
+    const result = await videosService.createVideo(userId, input, env);
+    sendCreated(res, result, "Video upload ready.");
+  } catch (err) {
+    next(err);
+  }
 };
 
 /**
@@ -82,15 +87,20 @@ export const createVideoController = async (
 export const getUploadUrlController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  const userId = requireUser(req);
-  const env = requireEnv(req);
-  const id = (req.params as { id?: string }).id;
-  if (!id) {
-    throw new AppError(400, "INVALID_REQUEST", "Pending upload id is required.");
+  try {
+    const userId = requireUser(req);
+    const env = requireEnv(req);
+    const id = (req.params as { id?: string }).id;
+    if (!id) {
+      throw new AppError(400, "INVALID_REQUEST", "Pending upload id is required.");
+    }
+    const result = await videosService.getUploadUrl(userId, id, env);
+    sendOk(res, result, "Upload URL minted.");
+  } catch (err) {
+    next(err);
   }
-  const result = await videosService.getUploadUrl(userId, id, env);
-  sendOk(res, result, "Upload URL minted.");
 };
 
 /**
@@ -101,15 +111,20 @@ export const getUploadUrlController = async (
 export const finalizeVideoController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  const userId = requireUser(req);
-  const env = requireEnv(req);
-  const id = (req.params as { id?: string }).id;
-  if (!id) {
-    throw new AppError(400, "INVALID_REQUEST", "Pending upload id is required.");
+  try {
+    const userId = requireUser(req);
+    const env = requireEnv(req);
+    const id = (req.params as { id?: string }).id;
+    if (!id) {
+      throw new AppError(400, "INVALID_REQUEST", "Pending upload id is required.");
+    }
+    const result = await videosService.finalizeUpload(userId, id, env);
+    sendOk(res, result, "Upload finalized.");
+  } catch (err) {
+    next(err);
   }
-  const result = await videosService.finalizeUpload(userId, id, env);
-  sendOk(res, result, "Upload finalized.");
 };
 
 /**
@@ -122,15 +137,20 @@ export const finalizeVideoController = async (
 export const cancelPendingUploadController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  const userId = requireUser(req);
-  const env = requireEnv(req);
-  const id = (req.params as { id?: string }).id;
-  if (!id) {
-    throw new AppError(400, "INVALID_REQUEST", "Pending upload id is required.");
+  try {
+    const userId = requireUser(req);
+    const env = requireEnv(req);
+    const id = (req.params as { id?: string }).id;
+    if (!id) {
+      throw new AppError(400, "INVALID_REQUEST", "Pending upload id is required.");
+    }
+    await videosService.cancelPendingUpload(userId, id, env);
+    sendEmpty(res, "Pending upload cancelled.");
+  } catch (err) {
+    next(err);
   }
-  await videosService.cancelPendingUpload(userId, id, env);
-  sendEmpty(res, "Pending upload cancelled.");
 };
 
 /**
@@ -148,16 +168,21 @@ export const cancelPendingUploadController = async (
 export const listVideosController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  const userId = requireUser(req);
-  // The validate middleware has already parsed `req.query` through
-  // `listVideosQuerySchema` (with its transforms that turn string
-  // query params into numbers). `req.query`'s static type is still
-  // `ParsedQs`, so we cast through `unknown` to land on the parsed
-  // shape without an `as any`.
-  const query = (req.query ?? {}) as unknown as ListVideosQuery;
-  const result = await videosService.listVideos(userId, query);
-  sendOk(res, result, "Videos retrieved.");
+  try {
+    const userId = requireUser(req);
+    // The validate middleware has already parsed `req.query` through
+    // `listVideosQuerySchema` (with its transforms that turn string
+    // query params into numbers). `req.query`'s static type is still
+    // `ParsedQs`, so we cast through `unknown` to land on the parsed
+    // shape without an `as any`.
+    const query = (req.query ?? {}) as unknown as ListVideosQuery;
+    const result = await videosService.listVideos(userId, query);
+    sendOk(res, result, "Videos retrieved.");
+  } catch (err) {
+    next(err);
+  }
 };
 
 /**
@@ -176,13 +201,18 @@ export const listVideosController = async (
 export const listPublishedVideosController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  const userId = requireUser(req);
-  // Same `ParsedQs` → parsed shape cast as `listVideosController`
-  // — see the comment there for the rationale.
-  const query = (req.query ?? {}) as unknown as ListPublishedVideosQuery;
-  const result = await videosService.listPublishedVideos(userId, query);
-  sendOk(res, result, "Published videos retrieved.");
+  try {
+    const userId = requireUser(req);
+    // Same `ParsedQs` → parsed shape cast as `listVideosController`
+    // — see the comment there for the rationale.
+    const query = (req.query ?? {}) as unknown as ListPublishedVideosQuery;
+    const result = await videosService.listPublishedVideos(userId, query);
+    sendOk(res, result, "Published videos retrieved.");
+  } catch (err) {
+    next(err);
+  }
 };
 
 /**
@@ -191,15 +221,20 @@ export const listPublishedVideosController = async (
 export const getVideoController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  const userId = requireUser(req);
-  const env = requireEnv(req);
-  const id = (req.params as { id?: string }).id;
-  if (!id) {
-    throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
+  try {
+    const userId = requireUser(req);
+    const env = requireEnv(req);
+    const id = (req.params as { id?: string }).id;
+    if (!id) {
+      throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
+    }
+    const result = await videosService.getVideo(userId, id, env);
+    sendOk(res, result, "Video retrieved.");
+  } catch (err) {
+    next(err);
   }
-  const result = await videosService.getVideo(userId, id, env);
-  sendOk(res, result, "Video retrieved.");
 };
 
 /**
@@ -212,15 +247,20 @@ export const getVideoController = async (
 export const updateVideoController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  const userId = requireUser(req);
-  const id = (req.params as { id?: string }).id;
-  if (!id) {
-    throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
+  try {
+    const userId = requireUser(req);
+    const id = (req.params as { id?: string }).id;
+    if (!id) {
+      throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
+    }
+    const input = req.body as UpdateVideoInput;
+    const result = await videosService.updateVideo(userId, id, input);
+    sendOk(res, result, "Video updated.");
+  } catch (err) {
+    next(err);
   }
-  const input = req.body as UpdateVideoInput;
-  const result = await videosService.updateVideo(userId, id, input);
-  sendOk(res, result, "Video updated.");
 };
 
 /**
@@ -233,15 +273,20 @@ export const updateVideoController = async (
 export const getPlaybackUrlController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  const userId = requireUser(req);
-  const env = requireEnv(req);
-  const id = (req.params as { id?: string }).id;
-  if (!id) {
-    throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
+  try {
+    const userId = requireUser(req);
+    const env = requireEnv(req);
+    const id = (req.params as { id?: string }).id;
+    if (!id) {
+      throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
+    }
+    const result = await videosService.getPlaybackUrl(userId, id, env);
+    sendOk(res, result, "Playback URL minted.");
+  } catch (err) {
+    next(err);
   }
-  const result = await videosService.getPlaybackUrl(userId, id, env);
-  sendOk(res, result, "Playback URL minted.");
 };
 
 /**
@@ -250,15 +295,20 @@ export const getPlaybackUrlController = async (
 export const deleteVideoController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  const userId = requireUser(req);
-  const env = requireEnv(req);
-  const id = (req.params as { id?: string }).id;
-  if (!id) {
-    throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
+  try {
+    const userId = requireUser(req);
+    const env = requireEnv(req);
+    const id = (req.params as { id?: string }).id;
+    if (!id) {
+      throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
+    }
+    await videosService.deleteVideo(userId, id, env);
+    sendEmpty(res, "Video deleted.");
+  } catch (err) {
+    next(err);
   }
-  await videosService.deleteVideo(userId, id, env);
-  sendEmpty(res, "Video deleted.");
 };
 
 /**
@@ -281,16 +331,21 @@ export const deleteVideoController = async (
 export const publishVideoController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  const userId = requireUser(req);
-  const env = requireEnv(req);
-  const id = (req.params as { id?: string }).id;
-  if (!id) {
-    throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
+  try {
+    const userId = requireUser(req);
+    const env = requireEnv(req);
+    const id = (req.params as { id?: string }).id;
+    if (!id) {
+      throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
+    }
+    const input = (req.body ?? {}) as PublishVideoInput;
+    const result = await videosService.publishVideo(userId, id, input, env);
+    sendOk(res, result, "Video published.");
+  } catch (err) {
+    next(err);
   }
-  const input = (req.body ?? {}) as PublishVideoInput;
-  const result = await videosService.publishVideo(userId, id, input, env);
-  sendOk(res, result, "Video published.");
 };
 
 /**
@@ -307,15 +362,20 @@ export const publishVideoController = async (
 export const unpublishVideoController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  const userId = requireUser(req);
-  const env = requireEnv(req);
-  const id = (req.params as { id?: string }).id;
-  if (!id) {
-    throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
+  try {
+    const userId = requireUser(req);
+    const env = requireEnv(req);
+    const id = (req.params as { id?: string }).id;
+    if (!id) {
+      throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
+    }
+    const result = await videosService.unpublishVideo(userId, id, env);
+    sendOk(res, result, "Video unpublished.");
+  } catch (err) {
+    next(err);
   }
-  const result = await videosService.unpublishVideo(userId, id, env);
-  sendOk(res, result, "Video unpublished.");
 };
 
 /**
@@ -334,15 +394,20 @@ export const unpublishVideoController = async (
 export const retryVideoController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  const userId = requireUser(req);
-  const env = requireEnv(req);
-  const id = (req.params as { id?: string }).id;
-  if (!id) {
-    throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
+  try {
+    const userId = requireUser(req);
+    const env = requireEnv(req);
+    const id = (req.params as { id?: string }).id;
+    if (!id) {
+      throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
+    }
+    const result = await videosService.retryVideo(userId, id, env);
+    sendOk(res, result, "Video retry queued.");
+  } catch (err) {
+    next(err);
   }
-  const result = await videosService.retryVideo(userId, id, env);
-  sendOk(res, result, "Video retry queued.");
 };
 
 /**
@@ -355,34 +420,39 @@ export const retryVideoController = async (
 export const streamUserVideosController = (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): void => {
-  const userId = requireUser(req);
+  try {
+    const userId = requireUser(req);
 
-  res.writeHead(200, {
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive",
-    "X-Accel-Buffering": "no",
-  });
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
 
-  // Send initial connection event
-  sseWrite(res, "connected", JSON.stringify({ userId }));
+    // Send initial connection event
+    sseWrite(res, "connected", JSON.stringify({ userId }));
 
-  // Subscribe to user-level event bus
-  const unsubscribe = eventBus.subscribe(userId, null, (event: VideoEvent) => {
-    sseWrite(res, event.type.toLowerCase(), JSON.stringify(event));
-  });
+    // Subscribe to user-level event bus
+    const unsubscribe = eventBus.subscribe(userId, null, (event: VideoEvent) => {
+      sseWrite(res, event.type.toLowerCase(), JSON.stringify(event));
+    });
 
-  // Heartbeat every 30 s
-  const heartbeat = setInterval(() => {
-    sseWrite(res, "heartbeat", JSON.stringify({ ts: Date.now() }));
-  }, 30_000);
+    // Heartbeat every 30 s
+    const heartbeat = setInterval(() => {
+      sseWrite(res, "heartbeat", JSON.stringify({ ts: Date.now() }));
+    }, 30_000);
 
-  // Clean up on client disconnect
-  req.on("close", () => {
-    unsubscribe();
-    clearInterval(heartbeat);
-  });
+    // Clean up on client disconnect
+    req.on("close", () => {
+      unsubscribe();
+      clearInterval(heartbeat);
+    });
+  } catch (err) {
+    next(err);
+  }
 };
 
 /**
@@ -394,19 +464,28 @@ export const streamUserVideosController = (
 export const streamVideoController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  const userId = requireUser(req);
-  const env = requireEnv(req);
-  const videoId = (req.params as { id?: string }).id;
-  if (!videoId) {
-    throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
-  }
+  let userId: string;
+  let videoId: string;
+  try {
+    userId = requireUser(req);
+    const env = requireEnv(req);
+    const rawId = (req.params as { id?: string }).id;
+    if (!rawId) {
+      throw new AppError(400, "INVALID_REQUEST", "Video id is required.");
+    }
+    videoId = rawId;
 
-  // Verify ownership before streaming. We don't need the DTO back
-  // here — the SSE handler owns its own envelope — but the
-  // ownership check still has to run, and throwing inside the
-  // service is what enforces it.
-  await videosService.getVideo(userId, videoId, env);
+    // Verify ownership before streaming. We don't need the DTO back
+    // here — the SSE handler owns its own envelope — but the
+    // ownership check still has to run, and throwing inside the
+    // service is what enforces it.
+    await videosService.getVideo(userId, videoId, env);
+  } catch (err) {
+    next(err);
+    return;
+  }
 
   res.writeHead(200, {
     "Content-Type": "text/event-stream",

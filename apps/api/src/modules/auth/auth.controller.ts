@@ -7,7 +7,7 @@
  * / `sendEmpty` helpers — there is no inline `res.status().json()`
  * in this file, by design.
  */
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import type { Env } from "@clipflow/config";
 import { sendCreated, sendEmpty, sendOk } from "../../lib/response.js";
 import { AppError } from "../../errors/AppError.js";
@@ -23,18 +23,26 @@ import "./auth.types.js";
 
 export const registerController =
   (env: Env) =>
-  async (req: Request, res: Response): Promise<void> => {
-    const input = req.body as RegisterInput;
-    const result = await authService.register(input, env);
-    sendCreated(res, result, "Account created.");
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const input = req.body as RegisterInput;
+      const result = await authService.register(input, env);
+      sendCreated(res, result, "Account created.");
+    } catch (err) {
+      next(err);
+    }
   };
 
 export const loginController =
   (env: Env) =>
-  async (req: Request, res: Response): Promise<void> => {
-    const input = req.body as LoginInput;
-    const result = await authService.login(input, env);
-    sendOk(res, result, "Signed in.");
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const input = req.body as LoginInput;
+      const result = await authService.login(input, env);
+      sendOk(res, result, "Signed in.");
+    } catch (err) {
+      next(err);
+    }
   };
 
 /**
@@ -49,28 +57,40 @@ export const loginController =
  */
 export const refreshController =
   (env: Env) =>
-  async (req: Request, res: Response): Promise<void> => {
-    const input = req.body as RefreshInput;
-    const result = await authService.refresh(input.refreshToken, env);
-    sendOk(res, result, "Token refreshed.");
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const input = req.body as RefreshInput;
+      const result = await authService.refresh(input.refreshToken, env);
+      sendOk(res, result, "Token refreshed.");
+    } catch (err) {
+      next(err);
+    }
   };
 
-export const logoutController = async (req: Request, res: Response): Promise<void> => {
-  const input = (req.body ?? {}) as LogoutInput;
-  await authService.logout(input);
-  sendEmpty(res, "Signed out.");
+export const logoutController = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const input = (req.body ?? {}) as LogoutInput;
+    await authService.logout(input);
+    sendEmpty(res, "Signed out.");
+  } catch (err) {
+    next(err);
+  }
 };
 
-export const googleController = async (req: Request, _res: Response): Promise<void> => {
+export const googleController = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
   void _res;
-  const input = req.body as GoogleAuthInput;
-  await authService.googleSignIn(input.idToken);
-  // 501 Not Implemented — wraps the original AppError thrown inside the
-  // service so it travels through the central error handler in the
-  // envelope shape. (No need to throw here; service already throws.)
-  throw new AppError(
-    501,
-    "NOT_IMPLEMENTED",
-    "Google sign-in ships in the next slice.",
-  );
+  try {
+    const input = req.body as GoogleAuthInput;
+    await authService.googleSignIn(input.idToken);
+    // 501 Not Implemented — wraps the original AppError thrown inside the
+    // service so it travels through the central error handler in the
+    // envelope shape.
+    throw new AppError(
+      501,
+      "NOT_IMPLEMENTED",
+      "Google sign-in ships in the next slice.",
+    );
+  } catch (err) {
+    next(err);
+  }
 };

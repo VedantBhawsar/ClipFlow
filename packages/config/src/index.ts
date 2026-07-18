@@ -135,7 +135,7 @@ const envSchema = z.object({
 
   // Image generation (thumbnails)
   /// Which provider to use: "gemini" (default, free tier) or "replicate" (paid fallback).
-  IMAGE_GEN_PROVIDER: z.enum(["gemini", "replicate"]).default("gemini"),
+  IMAGE_GEN_PROVIDER: z.enum(["gemini", "replicate", "nvidia"]).default("gemini"),
   /// Google Gemini API key. Required when IMAGE_GEN_PROVIDER=gemini.
   GEMINI_API_KEY: z.string().min(1).optional(),
   /// Gemini model for image generation. Native image output via
@@ -150,6 +150,8 @@ const envSchema = z.object({
   REPLICATE_API_TOKEN: z.string().min(1).optional(),
   /// Replicate model for image generation (e.g. flux, sdxl).
   REPLICATE_IMAGE_MODEL: z.string().default("black-forest-labs/flux-1.1-pro"),
+  /// Nvidia model for image generation. Defaults to black-forest-labs/flux.1-dev.
+  NVIDIA_IMAGE_MODEL: z.string().default("black-forest-labs/flux.1-dev"),
   /// Default max thumbnails to generate per video. Per-plan caps override this.
   THUMBNAILS_PER_VIDEO: z.coerce.number().int().positive().default(4),
   /// When disabled, thumbnails are generated from prompt alone without

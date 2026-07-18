@@ -79,11 +79,13 @@ import { ImageGenClient } from "./image-gen-client.js";
 const fakeEnv = (
   overrides: Partial<{
     GEMINI_API_KEY: string | undefined;
-    IMAGE_GEN_PROVIDER: "gemini" | "replicate";
+    IMAGE_GEN_PROVIDER: "gemini" | "replicate" | "nvidia";
     GEMINI_IMAGE_MODEL: string;
     GEMINI_VISION_MODEL: string;
     REPLICATE_API_TOKEN: string | undefined;
     REPLICATE_IMAGE_MODEL: string;
+    NVIDIA_API_KEY: string | undefined;
+    NVIDIA_IMAGE_MODEL: string;
   }> = {},
 ): Env => ({
   IMAGE_GEN_PROVIDER: "gemini",
@@ -92,6 +94,8 @@ const fakeEnv = (
   GEMINI_VISION_MODEL: "gemini-2.5-flash",
   REPLICATE_API_TOKEN: undefined,
   REPLICATE_IMAGE_MODEL: "black-forest-labs/flux-1.1-pro",
+  NVIDIA_API_KEY: undefined,
+  NVIDIA_IMAGE_MODEL: "black-forest-labs/flux.1-dev",
   ...overrides,
 }) as unknown as Env;
 
@@ -489,11 +493,10 @@ describe("ImageGenClient.generateImage — Replicate", () => {
 
     const call = mocks.replicateRun.mock.calls[0];
     expect(call?.[0]).toBe("black-forest-labs/flux-1.1-pro");
-    const opts = call?.[1] as { input: Record<string, unknown>; wait: { mode: string } };
+    const opts = call?.[1] as { input: Record<string, unknown> };
     expect(opts.input.prompt).toBe("p");
     expect(opts.input.aspect_ratio).toBe("4:3");
     expect(opts.input.num_outputs).toBe(3);
-    expect(opts.wait.mode).toBe("block");
   });
 
   it("omits num_outputs when count=1 (default)", async () => {
@@ -652,6 +655,171 @@ describe("ImageGenClient.generateImage — Replicate", () => {
 
     await expect(client.generateImage({ prompt: "p" })).rejects.toMatchObject({
       code: "REPLICATE_UPSTREAM",
+    });
+  });
+
+  // ---- generateImage (Nvidia) ----
+
+  describe("ImageGenClient.generateImage — Nvidia", () => {
+    let originalFetch: typeof globalThis.fetch;
+    let mockFetch: any;
+
+    beforeEach(() => {
+      originalFetch = globalThis.fetch;
+      mockFetch = vi.fn();
+      globalThis.fetch = mockFetch;
+    });
+
+    afterEach(() => {
+      globalThis.fetch = originalFetch;
+    });
+
+    it("throws NVIDIA_AUTH when IMAGE_GEN_PROVIDER=nvidia but no API key", () => {
+      expect(() =>
+        new ImageGenClient(
+          fakeEnv({
+            IMAGE_GEN_PROVIDER: "nvidia",
+            NVIDIA_API_KEY: undefined,
+          }),
+        ),
+      ).toThrow(ImageGenError);
+    });
+
+    it("returns base64 data URIs from artifacts array", async () => {
+      const fakeArtifact = { base64: "YWJjZA==" }; // "abcd" in base64
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ artifacts: [fakeArtifact] }),
+      });
+
+      const client = new ImageGenClient(
+        fakeEnv({
+          IMAGE_GEN_PROVIDER: "nvidia",
+          NVIDIA_API_KEY: "test-nvidia-key-1234567890",
+        }),
+      );
+
+      const result = await client.generateImage({ prompt: "draw a cat" });
+      expect(result.provider).toBe("nvidia");
+      expect(result.modelUsed).toBe("black-forest-labs/flux.1-dev");
+      expect(result.images).toEqual(["data:image/png;base64,YWJjZA=="]);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [url, init] = mockFetch.mock.calls[0];
+      expect(url).toBe("https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-dev");
+      expect(init.method).toBe("POST");
+      expect(init.headers).toEqual({
+        "Authorization": "Bearer test-nvidia-key-1234567890",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+      });
+      const body = JSON.parse(init.body);
+      expect(body.prompt).toBe("draw a cat");
+      expect(body.mode).toBe("base");
+      expect(body.cfg_scale).toBe(3.5);
+      expect(body.steps).toBe(50);
+      expect(body.seed).toBeGreaterThanOrEqual(0);
+    });
+
+    it("passes custom mode and reference image to canny mode", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ artifacts: [{ base64: "YWJjZA==" }] }),
+      });
+
+      const client = new ImageGenClient(
+        fakeEnv({
+          IMAGE_GEN_PROVIDER: "nvidia",
+          NVIDIA_API_KEY: "test-nvidia-key-1234567890",
+        }),
+      );
+
+      const result = await client.generateImage({
+        prompt: "draw a cat",
+        mode: "canny",
+        referenceImages: ["data:image/png;base64,ref123"],
+      });
+
+      expect(result.images).toEqual(["data:image/png;base64,YWJjZA=="]);
+      const [, init] = mockFetch.mock.calls[0];
+      const body = JSON.parse(init.body);
+      expect(body.mode).toBe("canny");
+      expect(body.image).toBe("data:image/png;base64,ref123");
+    });
+
+    it("throws NVIDIA_BAD_REQUEST when canny mode is used without reference image", async () => {
+      const client = new ImageGenClient(
+        fakeEnv({
+          IMAGE_GEN_PROVIDER: "nvidia",
+          NVIDIA_API_KEY: "test-nvidia-key-1234567890",
+        }),
+      );
+
+      await expect(
+        client.generateImage({
+          prompt: "draw a cat",
+          mode: "canny",
+        }),
+      ).rejects.toMatchObject({
+        code: "NVIDIA_BAD_REQUEST",
+      });
+    });
+
+    it("maps HTTP status 429 to NVIDIA_RATE_LIMIT", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        text: async () => "Rate limit exceeded",
+      });
+
+      const client = new ImageGenClient(
+        fakeEnv({
+          IMAGE_GEN_PROVIDER: "nvidia",
+          NVIDIA_API_KEY: "test-nvidia-key-1234567890",
+        }),
+      );
+
+      await expect(client.generateImage({ prompt: "p" })).rejects.toMatchObject({
+        code: "NVIDIA_RATE_LIMIT",
+      });
+    });
+
+    it("maps HTTP status 401 to NVIDIA_AUTH", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        text: async () => "Unauthorized",
+      });
+
+      const client = new ImageGenClient(
+        fakeEnv({
+          IMAGE_GEN_PROVIDER: "nvidia",
+          NVIDIA_API_KEY: "test-nvidia-key-1234567890",
+        }),
+      );
+
+      await expect(client.generateImage({ prompt: "p" })).rejects.toMatchObject({
+        code: "NVIDIA_AUTH",
+      });
+    });
+
+    it("maps HTTP status 500 to NVIDIA_UPSTREAM", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        text: async () => "Internal Server Error",
+      });
+
+      const client = new ImageGenClient(
+        fakeEnv({
+          IMAGE_GEN_PROVIDER: "nvidia",
+          NVIDIA_API_KEY: "test-nvidia-key-1234567890",
+        }),
+      );
+
+      await expect(client.generateImage({ prompt: "p" })).rejects.toMatchObject({
+        code: "NVIDIA_UPSTREAM",
+      });
     });
   });
 });

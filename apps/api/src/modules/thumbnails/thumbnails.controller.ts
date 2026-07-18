@@ -122,8 +122,7 @@ export const triggerStyleAnalysisController = async (
       res.json({
         success: true,
         data: result,
-        message:
-          "Style analysis started. We'll let you know when it's ready.",
+        message: "Style analysis started. We'll let you know when it's ready.",
       });
       return;
     }

@@ -1,7 +1,7 @@
 /**
  * Worker startup-recovery scan.
  *
- * Five passes, run in order:
+ * Six passes, run in order:
  *
  *   1. `recoverOrphanedPublishingJobs` — videos left in `PUBLISHING`
  *      when a previous worker process died. If a YouTube video id is
@@ -25,27 +25,45 @@
  *      resets to UPLOADED, because the audio might still be present).
  *
  *   4. `recoverOrphanedGenerateJobs` — videos left in `GENERATING`
- *      when a previous worker died. If `chaptersJson` is set, the
- *      generate run finished and only the READY_FOR_REVIEW write was
- *      lost — advance. Otherwise re-enqueue the generate job (which
- *      will fail permanent via `[GEN_TRANSCRIPT_MISSING]` if the
- *      transcript is genuinely gone — same "re-enqueue, never reset"
- *      stance as the transcription pass).
+ *      when a previous worker died and `chaptersJson` is still null
+ *      (the LLM call never completed). Re-enqueue the generate job
+ *      (which will fail permanent via `[GEN_TRANSCRIPT_MISSING]` if
+ *      the transcript is genuinely gone — same "re-enqueue, never
+ *      reset" stance as the transcription pass).
  *
- *   5. `recoverMissedScheduledJobs` — READY/SCHEDULED rows whose
+ *      Note: this pass deliberately does NOT finalize the row when
+ *      `chaptersJson` is set. Doing so would skip the thumbnails
+ *      job — the `generate` job only enqueues the thumbnails job
+ *      AFTER writing `chaptersJson`, and a crashed worker may have
+ *      written chapters but died before that enqueue. That case is
+ *      handled by the next pass.
+ *
+ *   5. `recoverOrphanedThumbnailsJobs` — videos left in `GENERATING`
+ *      with `chaptersJson` set when a previous worker died. If a
+ *      COMPLETED `ThumbnailGeneration` row exists for the video, both
+ *      chapters and thumbnails are done and only the final
+ *      READY_FOR_REVIEW write was lost — finalize. Otherwise
+ *      re-enqueue the thumbnails job with a deterministic jobId so
+ *      BullMQ deduplicates against any stale job already in the
+ *      queue. The job itself checks for chapters + frames and fails
+ *      permanent via `[THUMBNAIL_PREREQ_MISSING]` / `[NO_CHAPTERS]`
+ *      if the prerequisites are genuinely gone.
+ *
+ *   6. `recoverMissedScheduledJobs` — READY/SCHEDULED rows whose
  *      publish time has come and gone, never enqueued or lost when
  *      Redis was flushed. Re-enqueue with a deterministic jobId so
  *      BullMQ dedupes if a stale job is already in the queue.
  *
- * All five passes run on every boot — first boot, worker restart after
+ * All six passes run on every boot — first boot, worker restart after
  * a crash, and Redis flush / queue data loss.
  */
 import type { Queue } from "bullmq";
-import { prisma } from "@clipflow/db";
+import { Prisma, prisma } from "@clipflow/db";
 import type { Logger } from "./config/logger.js";
 import type { PublishJobData } from "./jobs/youtube-publish.js";
 import type { TranscriptionJobData } from "./jobs/transcription.js";
 import type { GenerateJobData } from "./jobs/generate.js";
+import type { ThumbnailsJobData } from "./jobs/thumbnails.js";
 
 export interface StartupRecoveryReport {
   /** Videos that were PUBLISHING and finalized to PUBLISHED. */
@@ -60,10 +78,12 @@ export interface StartupRecoveryReport {
   transcriptionFinalized: number;
   /** Videos that were TRANSCRIBING and re-enqueued for another attempt. */
   transcriptionReset: number;
-  /** Videos that were GENERATING and finalized to READY_FOR_REVIEW. */
-  generateFinalized: number;
-  /** Videos that were GENERATING and re-enqueued for another attempt. */
+  /** Videos that were GENERATING with no chapters and re-enqueued for generation. */
   generateReset: number;
+  /** Videos that were GENERATING with chapters + completed thumbnails and finalized to READY_FOR_REVIEW. */
+  thumbnailsFinalized: number;
+  /** Videos that were GENERATING with chapters but no thumbnails, re-enqueued for thumbnail generation. */
+  thumbnailsReset: number;
   /** Videos re-enqueued from the READY/SCHEDULED recovery pass. */
   reEnqueued: number;
 }
@@ -287,56 +307,46 @@ export const recoverOrphanedTranscriptionJobs = async (
 };
 
 /**
- * Reconcile rows orphaned in `GENERATING` by a crashed worker.
+ * Reconcile rows orphaned in `GENERATING` by a crashed worker before
+ * `chaptersJson` was written.
  *
- * Two outcomes:
- *   - `chaptersJson` is set → the generate run finished and only the
- *     READY_FOR_REVIEW write didn't land. Finalize to READY_FOR_REVIEW.
- *   - `chaptersJson` is null → the LLM call never completed. Re-enqueue
- *     the generate job with a deterministic jobId so BullMQ
- *     deduplicates against any stale job already in the queue. The
- *     job itself checks for transcript presence and fails permanent
- *     with `[GEN_TRANSCRIPT_MISSING]` if the transcript is genuinely
- *     gone — startup-recovery deliberately does NOT reset to
- *     TRANSCRIBING, because doing so would re-trigger an expensive
+ * One outcome:
+ *   - `chaptersJson` is null → the LLM call never completed.
+ *     Re-enqueue the generate job with a deterministic jobId so
+ *     BullMQ deduplicates against any stale job already in the queue.
+ *     The job itself checks for transcript presence and fails
+ *     permanent with `[GEN_TRANSCRIPT_MISSING]` if the transcript is
+ *     genuinely gone — startup-recovery deliberately does NOT reset
+ *     to TRANSCRIBING, because doing so would re-trigger an expensive
  *     AssemblyAI run when the transcript is actually present and
  *     only the LLM output is missing.
  *
- * Returns `{ generateFinalized, generateReset }` so the caller can
- * log both buckets.
+ *   - `chaptersJson` is set → leave the row alone. The `generate`
+ *     job only enqueues the `thumbnails` job AFTER writing
+ *     `chaptersJson`, so a crashed worker may have written chapters
+ *     but died before that enqueue landed. That case is handled by
+ *     `recoverOrphanedThumbnailsJobs` in the next pass — finalizing
+ *     the row here would skip the thumbnails job entirely.
+ *
+ * Returns `{ generateReset }` so the caller can log the count.
  */
 export const recoverOrphanedGenerateJobs = async (
   queue: Queue<GenerateJobData>,
   logger: Logger,
-): Promise<Pick<StartupRecoveryReport, "generateFinalized" | "generateReset">> => {
+): Promise<Pick<StartupRecoveryReport, "generateReset">> => {
   const orphans = await prisma.video.findMany({
-    where: { status: "GENERATING" },
-    select: { id: true, chaptersJson: true },
+    where: { status: "GENERATING", chaptersJson: { equals: Prisma.JsonNull } },
+    select: { id: true },
   });
 
   if (orphans.length === 0) {
-    logger.info("Startup recovery: no orphaned GENERATING rows.");
-    return { generateFinalized: 0, generateReset: 0 };
+    logger.info("Startup recovery: no orphaned GENERATING rows missing chaptersJson.");
+    return { generateReset: 0 };
   }
 
-  let generateFinalized = 0;
   let generateReset = 0;
 
   for (const v of orphans) {
-    if (v.chaptersJson !== null && v.chaptersJson !== undefined) {
-      // Generation completed but the READY_FOR_REVIEW update was lost.
-      await prisma.video.update({
-        where: { id: v.id },
-        data: { status: "READY_FOR_REVIEW", failureReason: null },
-      });
-      generateFinalized++;
-      logger.warn(
-        { videoId: v.id },
-        "Orphaned GENERATING row finalized to READY_FOR_REVIEW",
-      );
-      continue;
-    }
-
     // Re-enqueue with a recovery-prefixed jobId so the worker can
     // tell crash-recovery enqueues apart from the standard enqueue
     // path in any future log analysis. BullMQ dedupes against any
@@ -354,10 +364,94 @@ export const recoverOrphanedGenerateJobs = async (
   }
 
   logger.info(
-    { generateFinalized, generateReset },
-    "Startup recovery: reconciled orphaned GENERATING rows",
+    { generateReset },
+    "Startup recovery: reconciled orphaned GENERATING rows missing chaptersJson",
   );
-  return { generateFinalized, generateReset };
+  return { generateReset };
+};
+
+/**
+ * Reconcile rows orphaned in `GENERATING` by a crashed worker after
+ * `chaptersJson` was written but before the final READY_FOR_REVIEW
+ * status flip. This is the pass that makes sure thumbnails actually
+ * get generated when the worker dies mid-pipeline.
+ *
+ * Two outcomes:
+ *   - A COMPLETED `ThumbnailGeneration` row exists for the video →
+ *     both chapters and thumbnails are done and only the final
+ *     READY_FOR_REVIEW write didn't land. Finalize to READY_FOR_REVIEW.
+ *   - No COMPLETED `ThumbnailGeneration` row exists → the
+ *     thumbnails job never completed (or never ran). Re-enqueue
+ *     the thumbnails job with a deterministic jobId so BullMQ
+ *     deduplicates against any stale job already in the queue. The
+ *     job itself checks for chapters + frames and fails permanent
+ *     via `[THUMBNAIL_PREREQ_MISSING]` / `[NO_CHAPTERS]` if the
+ *     prerequisites are genuinely gone.
+ *
+ * Returns `{ thumbnailsFinalized, thumbnailsReset }` so the caller
+ * can log both buckets.
+ */
+export const recoverOrphanedThumbnailsJobs = async (
+  queue: Queue<ThumbnailsJobData>,
+  logger: Logger,
+): Promise<
+  Pick<StartupRecoveryReport, "thumbnailsFinalized" | "thumbnailsReset">
+> => {
+  const orphans = await prisma.video.findMany({
+    where: { status: "GENERATING", chaptersJson: { not: Prisma.JsonNull } },
+    select: { id: true },
+  });
+
+  if (orphans.length === 0) {
+    logger.info(
+      "Startup recovery: no orphaned GENERATING rows with chaptersJson.",
+    );
+    return { thumbnailsFinalized: 0, thumbnailsReset: 0 };
+  }
+
+  let thumbnailsFinalized = 0;
+  let thumbnailsReset = 0;
+
+  for (const v of orphans) {
+    const completedCount = await prisma.thumbnailGeneration.count({
+      where: { videoId: v.id, status: "COMPLETED" },
+    });
+
+    if (completedCount > 0) {
+      // Thumbnails completed but the READY_FOR_REVIEW update was lost.
+      await prisma.video.update({
+        where: { id: v.id },
+        data: { status: "READY_FOR_REVIEW", failureReason: null },
+      });
+      thumbnailsFinalized++;
+      logger.warn(
+        { videoId: v.id, completedCount },
+        "Orphaned GENERATING row with completed thumbnails finalized to READY_FOR_REVIEW",
+      );
+      continue;
+    }
+
+    // Re-enqueue with a recovery-prefixed jobId so the worker can
+    // tell crash-recovery enqueues apart from the standard enqueue
+    // path in any future log analysis. BullMQ dedupes against any
+    // stale job that's still in the queue from the previous worker.
+    await queue.add(
+      "thumbnails",
+      { videoId: v.id },
+      { jobId: `recovery-thumbnails-${v.id}` },
+    );
+    thumbnailsReset++;
+    logger.warn(
+      { videoId: v.id },
+      "Orphaned GENERATING row re-enqueued for thumbnail generation retry",
+    );
+  }
+
+  logger.info(
+    { thumbnailsFinalized, thumbnailsReset },
+    "Startup recovery: reconciled orphaned GENERATING rows with chaptersJson",
+  );
+  return { thumbnailsFinalized, thumbnailsReset };
 };
 
 /**

@@ -106,7 +106,9 @@ export const regenerateThumbnails = async (
       promptText: "Manual regeneration request",
       modelUsed: env.IMAGE_GEN_PROVIDER === "gemini"
         ? env.GEMINI_IMAGE_MODEL
-        : env.REPLICATE_IMAGE_MODEL,
+        : env.IMAGE_GEN_PROVIDER === "replicate"
+          ? env.REPLICATE_IMAGE_MODEL
+          : env.NVIDIA_IMAGE_MODEL,
     },
   });
 

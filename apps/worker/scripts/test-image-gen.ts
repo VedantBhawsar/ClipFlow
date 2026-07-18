@@ -33,6 +33,11 @@ const PROVIDER_FLAG = "--provider";
 const providerOverride =
   args.indexOf(PROVIDER_FLAG) !== -1 ? args[args.indexOf(PROVIDER_FLAG) + 1] : undefined;
 
+const MODE_FLAG = "--mode";
+const modeOverride =
+  args.indexOf(MODE_FLAG) !== -1 ? args[args.indexOf(MODE_FLAG) + 1] : undefined;
+const mode = modeOverride === "canny" || modeOverride === "depth" || modeOverride === "base" ? modeOverride : undefined;
+
 // ---- 2. Lightweight .env loader (avoids pulling in the worker's Redis-required env) ----
 
 const loadDotEnvIfPresent = (): void => {
@@ -59,7 +64,12 @@ const loadDotEnvIfPresent = (): void => {
 };
 
 loadDotEnvIfPresent();
-if (providerOverride && (providerOverride === "gemini" || providerOverride === "replicate")) {
+if (
+  providerOverride &&
+  (providerOverride === "gemini" ||
+    providerOverride === "replicate" ||
+    providerOverride === "nvidia")
+) {
   process.env.IMAGE_GEN_PROVIDER = providerOverride;
 }
 
@@ -82,8 +92,15 @@ try {
 console.log("\n=== Image generation smoke test ===");
 console.log(`Provider : ${env.IMAGE_GEN_PROVIDER}`);
 console.log(`Model    : ${
-  env.IMAGE_GEN_PROVIDER === "gemini" ? env.GEMINI_IMAGE_MODEL : env.REPLICATE_IMAGE_MODEL
+  env.IMAGE_GEN_PROVIDER === "gemini"
+    ? env.GEMINI_IMAGE_MODEL
+    : env.IMAGE_GEN_PROVIDER === "replicate"
+      ? env.REPLICATE_IMAGE_MODEL
+      : env.NVIDIA_IMAGE_MODEL
 }`);
+if (mode) {
+  console.log(`Mode     : ${mode}`);
+}
 console.log(`Prompt   : "${userPrompt}"`);
 console.log("");
 
@@ -94,7 +111,17 @@ const client = new ImageGenClient(env);
 const start = Date.now();
 let result: Awaited<ReturnType<typeof client.generateImage>>;
 try {
-  result = await client.generateImage({ prompt: userPrompt, aspectRatio: "16:9" });
+  let referenceImages: string[] | undefined;
+  if (mode === "canny" || mode === "depth") {
+    // Simple solid white 32x32 image data URI as conditioning input
+    referenceImages = ["data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAALUlEQVRYR2NkYGD4z0AEYGJiGFWDUQ1GNUFUw0D4D4VqGKqGoWog1DPw30C3BgBSA5n9m8AAAAAElFTkSuQmCC"];
+  }
+  result = await client.generateImage({
+    prompt: userPrompt,
+    aspectRatio: "16:9",
+    mode,
+    referenceImages,
+  });
 } catch (err) {
   const classified = classifyImageGenError(err);
   console.error("❌ Image generation FAILED");

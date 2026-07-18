@@ -13,6 +13,9 @@ const PERMANENT_CODES = [
   "REPLICATE_AUTH",
   "REPLICATE_MODEL_NOT_FOUND",
   "REPLICATE_BAD_REQUEST",
+  "NVIDIA_AUTH",
+  "NVIDIA_MODEL_NOT_FOUND",
+  "NVIDIA_BAD_REQUEST",
   "IMG_UNSUPPORTED_FORMAT",
   "IMG_TOO_LARGE",
   "IMG_CONTENT_FILTERED",
@@ -25,6 +28,9 @@ const TRANSIENT_CODES = [
   "REPLICATE_RATE_LIMIT",
   "REPLICATE_UPSTREAM",
   "REPLICATE_TIMEOUT",
+  "NVIDIA_RATE_LIMIT",
+  "NVIDIA_UPSTREAM",
+  "NVIDIA_TIMEOUT",
   "IMG_NETWORK",
 ];
 
@@ -109,3 +115,25 @@ export const mapSdkApiError = (err: unknown): ImageGenError => {
  */
 export const mapSdkErrorToImageGenError = async (err: unknown): Promise<ImageGenError> =>
   mapSdkApiError(err);
+
+/**
+ * Translate Nvidia API HTTP status codes and error responses to ImageGenError.
+ */
+export const mapNvidiaApiError = (status: number, message: string): ImageGenError => {
+  if (status === 429) {
+    return new ImageGenError("NVIDIA_RATE_LIMIT", `NVIDIA rate limit: ${message}`);
+  }
+  if (status === 401 || status === 403) {
+    return new ImageGenError("NVIDIA_AUTH", `NVIDIA auth error: ${message}`);
+  }
+  if (status === 404) {
+    return new ImageGenError("NVIDIA_MODEL_NOT_FOUND", `NVIDIA model not found: ${message}`);
+  }
+  if (status === 400 || status === 422) {
+    return new ImageGenError("NVIDIA_BAD_REQUEST", `NVIDIA bad request: ${message}`);
+  }
+  if (status >= 500) {
+    return new ImageGenError("NVIDIA_UPSTREAM", `NVIDIA upstream error: ${message}`);
+  }
+  return new ImageGenError("NVIDIA_UPSTREAM", `NVIDIA error (${status}): ${message}`);
+};

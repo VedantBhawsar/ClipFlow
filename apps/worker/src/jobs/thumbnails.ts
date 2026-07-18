@@ -278,7 +278,9 @@ export const processThumbnailsJob = async (
       promptText: "",
       modelUsed: ctx.env.IMAGE_GEN_PROVIDER === "gemini"
         ? ctx.env.GEMINI_IMAGE_MODEL
-        : ctx.env.REPLICATE_IMAGE_MODEL,
+        : ctx.env.IMAGE_GEN_PROVIDER === "replicate"
+          ? ctx.env.REPLICATE_IMAGE_MODEL
+          : ctx.env.NVIDIA_IMAGE_MODEL,
       chapterRefs: chaptersToUse.map((c) => ({
         startMs: c.startMs,
         title: c.title,

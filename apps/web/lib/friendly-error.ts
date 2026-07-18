@@ -25,12 +25,44 @@
  * own string and is what we want to swap out.
  */
 
+/**
+ * Which pipeline step a failure happened in. Extracted from the error
+ * code prefix so the error UI can show step-specific copy.
+ */
+export type FailedStep = "extraction" | "transcription" | "generation" | "thumbnails" | "publish" | "unknown";
+
+export const extractFailedStep = (raw: string | null | undefined): FailedStep => {
+  if (!raw) return "unknown";
+  const code = raw.match(/^\[([A-Z_]+)\]/)?.[1] ?? "";
+  const prefix = code.split("_")[0] ?? "";
+  switch (prefix) {
+    case "FFMPEG": return "extraction";
+    case "AAI": return "transcription";
+    case "LLM":
+    case "GEN": return "generation";
+    case "THUMBNAIL":
+    case "NO_CHAPTERS":
+    case "IMG":
+    case "REPLICATE":
+    case "GEMINI": return "thumbnails";
+    case "QUOTA":
+    case "YOUTUBE": return "publish";
+    default: return "unknown";
+  }
+};
+
+const STEP_LABEL: Record<FailedStep, string> = {
+  extraction: "audio and frame extraction",
+  transcription: "transcription",
+  generation: "chapter generation",
+  thumbnails: "thumbnail generation",
+  publish: "publishing to YouTube",
+  unknown: "processing",
+};
+
 const FRIENDLY_RULES: ReadonlyArray<{
-  /** Substring match (case-insensitive) against the raw message. */
   match: RegExp;
-  /** Replacement copy. */
   message: string;
-  /** Optional hint shown under the main message (e.g. "check your billing"). */
   hint?: string;
 }> = [
   // ---- Image gen (Replicate) ----
@@ -69,13 +101,82 @@ const FRIENDLY_RULES: ReadonlyArray<{
     hint: "The file may be in a format we don't support. Try re-uploading as MP4.",
   },
   {
+    match: /\[AAI_AUTH\]|aai.*auth/i,
+    message: "Transcription is not configured on the server.",
+    hint: "This is on us. Try again — if it keeps failing, contact support.",
+  },
+  {
+    match: /\[AAI_QUOTA\]|assemblyai.*quota|aai.*quota/i,
+    message: "Transcription service quota is exhausted.",
+    hint: "We're aware of this. Try again later — your video will retry automatically.",
+  },
+  {
     match: /assemblyai.*rate limit|429/i,
     message: "Transcription is temporarily rate-limited.",
     hint: "Try again in a few minutes.",
   },
   {
+    match: /\[AAI_BAD_REQUEST\]|aai.*bad.*request/i,
+    message: "The audio file couldn't be submitted for transcription.",
+    hint: "The format may be unsupported. Try re-uploading the video.",
+  },
+  {
+    match: /\[AAI_TRANSCRIPT_ERROR\]/i,
+    message: "Transcription failed to complete.",
+    hint: "Try again — most transcription failures are temporary.",
+  },
+  {
     match: /assemblyai|transcription.*failed/i,
     message: "We couldn't transcribe the audio in this video.",
+    hint: "Try again — most failures are temporary.",
+  },
+
+  // ---- LLM / chapter generation ----
+  {
+    match: /\[LLM_AUTH\]|llm.*auth/i,
+    message: "The AI service for chapter generation isn't configured.",
+    hint: "This is on us. Try again — if it keeps failing, contact support.",
+  },
+  {
+    match: /\[LLM_RATE_LIMIT\]|llm.*rate limit/i,
+    message: "Chapter generation is temporarily rate-limited.",
+    hint: "Try again in a few minutes.",
+  },
+  {
+    match: /\[LLM_BAD_OUTPUT\]/i,
+    message: "The AI returned an unexpected response while generating chapters.",
+    hint: "Try again — most failures are temporary.",
+  },
+  {
+    match: /\[GEN_TRANSCRIPT_MISSING\]/i,
+    message: "The transcript wasn't ready when chapter generation started.",
+    hint: "Try again — this usually resolves on retry.",
+  },
+  {
+    match: /\[GEN_TRANSCRIPT_PARSE_ERROR\]/i,
+    message: "We couldn't read the transcript for chapter generation.",
+    hint: "Try again — most failures are temporary.",
+  },
+  {
+    match: /llm|chapter.*generat/i,
+    message: "We couldn't generate chapters from the transcript.",
+    hint: "Try again — most failures are temporary.",
+  },
+
+  // ---- Thumbnail / image gen ----
+  {
+    match: /\[THUMBNAIL_PREREQ_MISSING\]/i,
+    message: "Thumbnail prerequisites (chapters or frames) are missing.",
+    hint: "Try again — the pipeline may still be catching up.",
+  },
+  {
+    match: /\[NO_CHAPTERS\]/i,
+    message: "No chapters were found to base thumbnails on.",
+    hint: "Try again after chapters are generated.",
+  },
+  {
+    match: /thumbnail.*error|thumbnails.*fail/i,
+    message: "We couldn't generate thumbnails for this video.",
     hint: "Try again — most failures are temporary.",
   },
 
@@ -139,6 +240,10 @@ export interface FriendlyError {
   message: string;
   /** Optional secondary line (e.g. actionable next step). */
   hint: string | null;
+  /** Which pipeline step failed. */
+  step: FailedStep;
+  /** Human label for the failed step (e.g. "thumbnail generation"). */
+  stepLabel: string;
   /**
    * The matched `failureReason` — useful when the UI wants to render
    * a "View technical details" disclosure (collapsed by default).
@@ -154,14 +259,16 @@ const GENERIC_HINT =
 
 export function friendlyError(raw: string | null | undefined): FriendlyError {
   if (!raw) {
-    return { message: GENERIC_MESSAGE, hint: GENERIC_HINT, raw: null };
+    return { message: GENERIC_MESSAGE, hint: GENERIC_HINT, step: "unknown", stepLabel: STEP_LABEL.unknown, raw: null };
   }
+
+  const step = extractFailedStep(raw);
 
   for (const rule of FRIENDLY_RULES) {
     if (rule.match.test(raw)) {
-      return { message: rule.message, hint: rule.hint ?? null, raw };
+      return { message: rule.message, hint: rule.hint ?? null, step, stepLabel: STEP_LABEL[step], raw };
     }
   }
 
-  return { message: GENERIC_MESSAGE, hint: GENERIC_HINT, raw };
+  return { message: GENERIC_MESSAGE, hint: GENERIC_HINT, step, stepLabel: STEP_LABEL[step], raw };
 }

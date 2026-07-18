@@ -64,6 +64,7 @@ const secret =
 
 export const authConfig = {
   secret,
+  trustHost: true,
   pages: {
     signIn: "/signin",
   },

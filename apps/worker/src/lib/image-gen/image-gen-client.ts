@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import Replicate from "replicate";
 import type { Env } from "@clipflow/config";
-import { ImageGenError, mapSdkApiError } from "./image-gen-errors.js";
+import { ImageGenError, mapSdkApiError, mapNvidiaApiError } from "./image-gen-errors.js";
 
 export interface ImageGenOptions {
   prompt: string;
@@ -19,6 +19,8 @@ export interface ImageGenOptions {
   aspectRatio?: string;
   /** Reference image URLs for image-to-image guidance (Gemini). */
   referenceImages?: string[];
+  /** Optional mode for Nvidia (e.g. "base" | "canny" | "depth"). Defaults to "base". */
+  mode?: "base" | "canny" | "depth";
 }
 
 export interface ImageGenResult {
@@ -27,7 +29,7 @@ export interface ImageGenResult {
   /** Which model actually served the request. */
   modelUsed: string;
   /** Provider that served the request. */
-  provider: "gemini" | "replicate";
+  provider: "gemini" | "replicate" | "nvidia";
 }
 
 /**
@@ -44,18 +46,31 @@ export interface ImageGenResult {
  * tier limits or want higher-quality models (Flux Pro / SDXL).
  */
 export class ImageGenClient {
-  private provider: "gemini" | "replicate";
+  private provider: "gemini" | "replicate" | "nvidia";
   private genai?: GoogleGenAI;
   private geminiImageModel: string;
   private geminiVisionModel: string;
   private replicate?: Replicate;
   private replicateModel: string;
+  private nvidiaApiKey?: string;
+  private nvidiaImageModel: string;
 
   constructor(env: Env) {
     this.provider = env.IMAGE_GEN_PROVIDER;
     this.geminiImageModel = env.GEMINI_IMAGE_MODEL;
     this.geminiVisionModel = env.GEMINI_VISION_MODEL;
     this.replicateModel = env.REPLICATE_IMAGE_MODEL;
+    this.nvidiaImageModel = env.NVIDIA_IMAGE_MODEL;
+
+    if (this.provider === "nvidia") {
+      if (!env.NVIDIA_API_KEY) {
+        throw new ImageGenError(
+          "NVIDIA_AUTH",
+          "NVIDIA_API_KEY is not configured but IMAGE_GEN_PROVIDER=nvidia",
+        );
+      }
+      this.nvidiaApiKey = env.NVIDIA_API_KEY;
+    }
 
     if (this.provider === "gemini") {
       if (!env.GEMINI_API_KEY) {
@@ -81,6 +96,9 @@ export class ImageGenClient {
   async generateImage(opts: ImageGenOptions): Promise<ImageGenResult> {
     if (this.provider === "gemini") {
       return this.generateGemini(opts);
+    }
+    if (this.provider === "nvidia") {
+      return this.generateNvidia(opts);
     }
     return this.generateReplicate(opts);
   }
@@ -368,6 +386,184 @@ export class ImageGenClient {
       "REPLICATE_BAD_REQUEST",
       `Unsupported Replicate output item shape: ${typeof item}`,
     );
+  }
+
+  // ---- Nvidia NIM ----
+
+  private async generateNvidia(opts: ImageGenOptions): Promise<ImageGenResult> {
+    if (!this.nvidiaApiKey) {
+      throw new ImageGenError(
+        "NVIDIA_AUTH",
+        "NVIDIA API key is not configured",
+      );
+    }
+
+    const model = this.nvidiaImageModel;
+    const invokeUrl = model.startsWith("http")
+      ? model
+      : `https://ai.api.nvidia.com/v1/genai/${model}`;
+
+    const headers = {
+      "Authorization": `Bearer ${this.nvidiaApiKey}`,
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+    };
+
+    const { width, height } = this.mapAspectRatioToWidthHeight(opts.aspectRatio ?? "16:9");
+    const mode = opts.mode ?? "base";
+
+    let imageBase64: string | undefined;
+    if (mode === "canny" || mode === "depth") {
+      if (!opts.referenceImages || opts.referenceImages.length === 0) {
+        throw new ImageGenError(
+          "NVIDIA_BAD_REQUEST",
+          `A reference image is required for Nvidia '${mode}' mode.`,
+        );
+      }
+      const refUrl = opts.referenceImages[0]!;
+      if (refUrl.startsWith("data:")) {
+        imageBase64 = refUrl;
+      } else {
+        const rawBase64 = await this.fetchImageAsBase64(refUrl);
+        imageBase64 = `data:image/png;base64,${rawBase64}`;
+      }
+    }
+
+    const payload: Record<string, any> = {
+      prompt: opts.prompt,
+      mode,
+      cfg_scale: 3.5,
+      width,
+      height,
+      seed: Math.floor(Math.random() * 1_000_000),
+      steps: 50,
+    };
+
+    if (imageBase64) {
+      payload.image = imageBase64;
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(invokeUrl, {
+        method: "POST",
+        body: JSON.stringify(payload),
+        headers,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new ImageGenError(
+        "NVIDIA_UPSTREAM",
+        `NVIDIA network error: ${msg}`,
+      );
+    }
+
+    if (!response.ok) {
+      let errBody = "";
+      try {
+        errBody = await response.text();
+      } catch {
+        errBody = response.statusText;
+      }
+      throw mapNvidiaApiError(response.status, errBody);
+    }
+
+    let responseBody: any;
+    try {
+      responseBody = await response.json();
+    } catch (err) {
+      throw new ImageGenError(
+        "NVIDIA_UPSTREAM",
+        `Failed to parse NVIDIA JSON response: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
+    const artifacts = responseBody?.artifacts;
+    if (!Array.isArray(artifacts) || artifacts.length === 0) {
+      throw new ImageGenError(
+        "NVIDIA_BAD_REQUEST",
+        "NVIDIA returned no image artifacts",
+      );
+    }
+
+    const images: string[] = [];
+    for (const artifact of artifacts) {
+      if (artifact.base64) {
+        images.push(`data:image/png;base64,${artifact.base64}`);
+      }
+    }
+
+    if (images.length === 0) {
+      throw new ImageGenError(
+        "NVIDIA_BAD_REQUEST",
+        "NVIDIA returned no base64 image data",
+      );
+    }
+
+    return {
+      images,
+      modelUsed: model,
+      provider: "nvidia",
+    };
+  }
+
+  private static readonly NVIDIA_VALID_DIMS = [
+    768, 832, 896, 960, 1024, 1088, 1152, 1216, 1280, 1344,
+  ] as const;
+
+  private static clampToNearest(
+    value: number,
+    valid: readonly number[] = ImageGenClient.NVIDIA_VALID_DIMS,
+  ): number {
+    let best = valid[0]!;
+    let bestDist = Math.abs(value - best);
+    for (let i = 1; i < valid.length; i++) {
+      const d = Math.abs(value - valid[i]!);
+      if (d < bestDist) {
+        bestDist = d;
+        best = valid[i]!;
+      }
+    }
+    return best;
+  }
+
+  private mapAspectRatioToWidthHeight(aspectRatio?: string): { width: number; height: number } {
+    if (!aspectRatio) {
+      return { width: 1024, height: 1024 };
+    }
+    switch (aspectRatio) {
+      case "16:9":
+        return { width: 1344, height: 768 };
+      case "1:1":
+        return { width: 1024, height: 1024 };
+      case "4:3":
+        return { width: 1024, height: 768 };
+      case "3:2":
+        return { width: 1152, height: 768 };
+      case "21:9":
+        return { width: 1344, height: 768 };
+      case "9:16":
+        return { width: 768, height: 1344 };
+      case "3:4":
+        return { width: 768, height: 1024 };
+      case "2:3":
+        return { width: 768, height: 1152 };
+      default:
+        const parts = aspectRatio.split(":");
+        if (parts.length === 2) {
+          const w = parseFloat(parts[0]!);
+          const h = parseFloat(parts[1]!);
+          if (!isNaN(w) && !isNaN(h) && h > 0) {
+            const targetWidth = 1024;
+            const targetHeight = Math.round((targetWidth * h) / w);
+            return {
+              width: targetWidth,
+              height: ImageGenClient.clampToNearest(targetHeight),
+            };
+          }
+        }
+        return { width: 1024, height: 1024 };
+    }
   }
 }
 

@@ -7,38 +7,63 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { useRetryVideo } from "@/hooks/use-videos";
+import { extractFailedStep } from "@/lib/friendly-error";
 
 interface RetryButtonProps {
   videoId: string;
-  /** Title used in the confirm prompt and the aria-label. */
   videoTitle?: string;
+  /** Current video status — used to tailor the confirm prompt. */
+  status: string;
+  /** Raw failure reason string (optional), used to detect which step failed. */
+  failureReason?: string | null;
+  retryCount?: number;
 }
 
-/**
- * Retry action for the video detail page. Visible only on FAILED rows
- * (the `<ActionPanel>` in `page.tsx` gates the render).
- *
- * Calls `POST /api/videos/:id/retry` which resets the row to
- * `EXTRACTING` and re-enqueues the ingest job. We `router.refresh()`
- * after the mutation so the page re-renders with the new status pill
- * + the live SSE progress strip.
- *
- * A confirm prompt asks the user before kicking it off — retrying
- * re-runs FFmpeg and the LLM stages, which costs the user's plan
- * quota for thumbnails + LLM tokens. The prompt is the cheap "are
- * you sure" gate; the server-side guard (status === "FAILED") is the
- * real safety.
- */
-export function RetryButton({ videoId, videoTitle }: RetryButtonProps) {
+const STEP_CONFIRM: Record<string, { label: string; confirm: string }> = {
+  extraction: {
+    label: "audio extraction",
+    confirm: "re-run audio and frame extraction",
+  },
+  transcription: {
+    label: "transcription",
+    confirm: "re-run transcription (the audio is already on our servers)",
+  },
+  generation: {
+    label: "chapter generation",
+    confirm: "re-run chapter and thumbnail generation (the transcript is already saved)",
+  },
+  thumbnails: {
+    label: "thumbnail generation",
+    confirm: "re-run thumbnail generation (chapters are already done)",
+  },
+  publish: {
+    label: "publishing",
+    confirm: "re-publish to YouTube",
+  },
+};
+
+export function RetryButton({ videoId, videoTitle, status, failureReason, retryCount }: RetryButtonProps) {
   const router = useRouter();
   const mutation = useRetryVideo();
 
+  const isThumbnailRetry = status === "GENERATING";
+  const failedStep = isThumbnailRetry
+    ? "thumbnails"
+    : extractFailedStep(failureReason);
+  const stepInfo = STEP_CONFIRM[failedStep] ?? {
+    label: "processing",
+    confirm: "re-run the entire pipeline from the start",
+  };
+
+  const retryLabel =
+    retryCount != null && retryCount > 0 ? `Retry ${stepInfo.label} (attempt ${retryCount + 1}/4)` : `Retry ${stepInfo.label}`;
+
   const handleClick = () => {
     const label = videoTitle ? `"${videoTitle}"` : "this video";
-    if (!confirm(`Retry processing for ${label}? This will re-run the pipeline from the start.`)) return;
+    if (!confirm(`Retry ${stepInfo.label} for ${label}? This will ${stepInfo.confirm}.`)) return;
     mutation.mutate(videoId, {
       onSuccess: () => {
-        toast.success("Retrying — back to the start of the pipeline.");
+        toast.success(`Retrying ${stepInfo.label} — you'll see progress update live.`);
         router.refresh();
       },
       onError: (err) => {
@@ -55,7 +80,9 @@ export function RetryButton({ videoId, videoTitle }: RetryButtonProps) {
       onClick={handleClick}
       disabled={mutation.isPending}
       aria-label={
-        videoTitle ? `Retry processing for ${videoTitle}` : "Retry processing"
+        videoTitle
+          ? `${retryLabel} for ${videoTitle}`
+          : retryLabel
       }
     >
       {mutation.isPending ? (
@@ -63,7 +90,7 @@ export function RetryButton({ videoId, videoTitle }: RetryButtonProps) {
       ) : (
         <RefreshCw className="h-4 w-4" aria-hidden="true" />
       )}
-      Retry
+      {retryLabel}
     </Button>
   );
 }

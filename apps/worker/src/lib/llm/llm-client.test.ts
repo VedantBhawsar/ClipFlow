@@ -105,6 +105,7 @@ const baseEnv: Env = {
   GEMINI_VISION_MODEL: "gemini-2.0-flash-001",
   REPLICATE_API_TOKEN: undefined,
   REPLICATE_IMAGE_MODEL: "black-forest-labs/flux-pro",
+  NVIDIA_IMAGE_MODEL: "black-forest-labs/flux.1-dev",
   THUMBNAILS_PER_VIDEO: 5,
   THUMBNAIL_VISION_ENABLED: true,
   DODO_PAYMENTS_API_KEY: "test-dodo-api-key-min-20-chars",
