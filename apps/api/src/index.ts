@@ -30,6 +30,7 @@ import { connectEventBus, eventBus } from "./lib/events.js";
 import { inspect } from "node:util";
 import type { Logger } from "./lib/logger.js";
 import { initBillingClient, getBillingClient } from "./modules/billing/client.js";
+import { isBillingEnabled } from "@clipflow/config";
 
 /**
  * Result of a single service reachability probe. Shape stays narrow so the
@@ -177,8 +178,18 @@ const main = async (): Promise<void> => {
   });
 
   // ---- Dodo Payments probe ----
-  let indiaSupported = false;
-  if (env.DODO_PAYMENTS_API_KEY && env.DODO_PAYMENTS_API_KEY !== "stub") {
+  // The BILLING_ENABLED flag is the master switch — when false, every
+  // user is on free unlimited and the Dodo SDK probe is skipped. The
+  // banner surfaces the flag's state explicitly so an operator flipping
+  // the env can confirm boot behaviour at a glance.
+  if (!isBillingEnabled(env)) {
+    checks.push({
+      name: "Billing (kill-switch)",
+      ok: true,
+      detail: "⊘ disabled — BILLING_ENABLED=false (free unlimited for everyone)",
+    });
+  } else if (env.DODO_PAYMENTS_API_KEY && env.DODO_PAYMENTS_API_KEY !== "stub") {
+    let indiaSupported = false;
     try {
       initBillingClient(env);
       const billingClient = getBillingClient();

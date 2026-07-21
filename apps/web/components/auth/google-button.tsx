@@ -1,35 +1,29 @@
 "use client";
 
+import { useCallback } from "react";
+import { useSearchParams } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 
 interface GoogleButtonProps {
-  /**
-   * Label override. Defaults to "Continue with Google" per the design
-   * voice — verb-first, no "Sign in with..." preamble.
-   */
   label?: string;
-  /**
-   * Disabled state for surfaces where the option is unavailable (e.g.
-   * during the OAuth step when backend is 501).
-   */
   disabled?: boolean;
 }
 
 /**
- * "Continue with Google" trigger. For v1 the backend stubs this with a
- * 501 (YouTube OAuth isn't wired yet), so we surface a clear "Coming
- * soon" toast instead of faking a flow. The button is fully visible and
- * discoverable — Design.md says the stub must be visible, not hidden
- * behind a coming-soon banner.
+ * "Continue with Google" trigger. Opens Google's OAuth consent screen
+ * via NextAuth's Google provider. After successful authentication,
+ * NextAuth sends the ID token to the Express API for verification and
+ * token issuance — see `auth.ts`'s `jwt` callback.
  */
 export function GoogleButton({ label = "Continue with Google", disabled }: GoogleButtonProps) {
-  const handleClick = () => {
-    toast.message("Google sign-in is coming soon.", {
-      description:
-        "Use email and password for now — Google sign-in will be enabled in the next release.",
-    });
-  };
+  const searchParams = useSearchParams();
+
+  const handleClick = useCallback(() => {
+    const callbackUrl = searchParams.get("callbackUrl") ?? searchParams.get("next") ?? "/dashboard";
+    const target = callbackUrl.startsWith("/") && !callbackUrl.startsWith("//") ? callbackUrl : "/dashboard";
+    void signIn("google", { callbackUrl: target });
+  }, [searchParams]);
 
   return (
     <Button

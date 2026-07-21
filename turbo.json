@@ -5,9 +5,11 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "!.next/dev/**"]
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "!.next/dev/**"],
+      "cache": true,
+      "persistent": false
     },
-    "start" : {
+    "start": {
       "dependsOn": ["^build"],
       "persistent": true,
       "cache": false,
@@ -33,7 +35,7 @@
         "AUTH_SECRET",
         "NEXTAUTH_SECRET"
       ]
-    }, 
+    },
     "lint": {
       "dependsOn": ["^lint"]
     },

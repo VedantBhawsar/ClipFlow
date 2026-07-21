@@ -81,6 +81,12 @@ vi.mock("../lib/llm/index.js", () => ({
     userPrompt: "USR",
   })),
   classifyLlmError: mockLlmClassify,
+  computeChapterBudget: vi.fn(() => ({
+    targetMin: 3,
+    targetMax: 5,
+    target: 3,
+    minGapMs: 10_000,
+  })),
   validateWithRetry: mockValidateWithRetry,
 }));
 

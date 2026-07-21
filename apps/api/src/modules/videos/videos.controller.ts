@@ -316,9 +316,13 @@ export const deleteVideoController = async (
  *
  * User-driven publish trigger from the video detail page. Empty body
  * = publish immediately; `scheduledPublishAt` ISO 8601 in the body =
- * schedule for that instant. The service dispatches to the
- * `publishVideoNow` helper (sync YouTube upload) or the
- * `enqueuePublishJob` path (delayed BullMQ job) accordingly.
+ * schedule for that instant. The service ALWAYS enqueues — the actual
+ * YouTube upload runs in the worker so the HTTP request stays well
+ * under a second and the dashboard SSE channel can deliver the final
+ * status transition. We return 202 Accepted (not 200) so the web can
+ * tell at a glance that the response is "queued, not done" — the row
+ * has flipped to `SCHEDULED` (with delay) or `PUBLISHING` (immediate)
+ * already, but the YouTube upload itself is still pending.
  *
  * Service-level guards:
  *   - 404 `VIDEO_NOT_FOUND` for unknown / foreign id (via
@@ -342,7 +346,7 @@ export const publishVideoController = async (
     }
     const input = (req.body ?? {}) as PublishVideoInput;
     const result = await videosService.publishVideo(userId, id, input, env);
-    sendOk(res, result, "Video published.");
+    sendOk(res, result, "Video queued for publish.", 202);
   } catch (err) {
     next(err);
   }

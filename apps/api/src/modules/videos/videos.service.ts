@@ -256,7 +256,7 @@ export const createVideo = async (
 ): Promise<CreateVideoResponse> => {
   requireDatabase();
 
-  await assertWithinVideoLimit(userId);
+  await assertWithinVideoLimit(userId, env);
 
   const channel = await requireConnectedChannel(userId);
 
@@ -1030,50 +1030,6 @@ export const unpublishVideo = async (
 };
 
 /**
- * Re-export for the immediate-publish path. The controller calls this
- * for videos with no `scheduledPublishAt` so we publish synchronously
- * rather than waiting for the worker to pick up a fresh job.
- *
- * Currently unused in the controller — finalizeUpload always enqueues
- * because we want the request to return quickly. Exported so a future
- * "publish now" UI button can use it.
- */
-export const publishVideoNow = async (
-  userId: string,
-  videoId: string,
-  env: Env,
-): Promise<Video> => {
-  requireDatabase();
-  await loadVideoForOwner(userId, videoId);
-  let result: Awaited<ReturnType<typeof publishVideoOnYouTube>>;
-  try {
-    result = await publishVideoOnYouTube(
-      { videoId },
-      { prisma, env, logger: buildConsoleLogger("api") },
-    );
-  } catch (err) {
-    mapYouTubeErrorToAppError(err);
-    // Unreachable — mapYouTubeErrorToAppError always throws. The
-    // explicit throw keeps TS happy that `result` is definitely
-    // assigned below.
-    throw err;
-  }
-  // Best-effort thumbnail upload — the video is already live.
-  if (result.youtubeVideoId) {
-    try {
-      await uploadVideoThumbnail(
-        { videoId, youtubeVideoId: result.youtubeVideoId },
-        { prisma, env, logger: buildConsoleLogger("api") },
-      );
-    } catch {
-      // Thumbnail failure doesn't undo the publish.
-    }
-  }
-  const updated = await prisma.video.findUniqueOrThrow({ where: { id: videoId } });
-  return toVideoDto(updated);
-};
-
-/**
  * Per-step retry for a video that hit a permanent failure.
  *
  * Instead of always resetting to `EXTRACTING`, we parse the
@@ -1194,18 +1150,21 @@ export const retryVideo = async (
 };
 
 /**
- * User-driven publish endpoint. Dispatches to one of two paths:
+ * User-driven publish endpoint. ALWAYS enqueues — the YouTube upload
+ * itself happens in the worker, so the HTTP request stays well under
+ * a second even for multi-megabyte uploads (a synchronous 30s-2min
+ * publish would freeze the PublishSheet on the dashboard). Two paths:
  *
  * - `scheduledPublishAt` set → row flips to `SCHEDULED`, a delayed
  *   `youtube-publish` job is enqueued via `enqueuePublishJob`, and we
  *   return the updated row immediately. The worker startup-recovery
  *   pass picks the job up even if the API / worker was offline at
  *   the scheduled time (cerebrum 2026-06-27).
- * - `scheduledPublishAt` omitted → delegates to `publishVideoNow` for
- *   the synchronous YouTube upload path. Same code path as the
- *   previously-unused `publishVideoNow` — we keep that helper as the
- *   authoritative "publish now" implementation so the two callers
- *   can't drift on YouTube-thumbnail sequencing.
+ * - `scheduledPublishAt` omitted → row flips to `PUBLISHING`, a
+ *   not-delayed job is enqueued (`null` scheduledAt → `delay` is
+ *   `undefined` in BullMQ → immediate pickup). The dashboard sees
+ *   the row in `PUBLISHING` immediately and SSE delivers the final
+ *   status transition when the worker finishes.
  *
  * Status guard: `READY_FOR_REVIEW` or `PUBLISH_FAILED` only. Publishing
  * a `PUBLISHED` row would be a silent YouTube state change with no
@@ -1213,6 +1172,11 @@ export const retryVideo = async (
  * an auto-republish would skip that safety), and publishing any
  * earlier status would race with the pipeline workers that own those
  * rows.
+ *
+ * Note: the controller returns 202 Accepted (not 200) so the web can
+ * tell at a glance that the response is "queued, not done" — the row
+ * status flips to `PUBLISHING` here, but the YouTube upload itself
+ * is still pending in the worker.
  */
 export const publishVideo = async (
   userId: string,
@@ -1229,6 +1193,7 @@ export const publishVideo = async (
       "Video can't be published from its current status.",
     );
   }
+
   if (input.scheduledPublishAt) {
     // Scheduled path — flip the row, enqueue a delayed job, return the
     // updated DTO. The job itself runs from the worker, which picks
@@ -1242,8 +1207,21 @@ export const publishVideo = async (
     return toVideoDto(updated);
   }
 
-  // Immediate path — delegate to the existing sync helper.
-  return publishVideoNow(userId, videoId, env);
+  // Immediate path — flip to PUBLISHING (so the dashboard / SSE show
+  // "in flight" instantly) and enqueue without a delay. The worker
+  // owns the actual YouTube upload from here; we return the DTO as
+  // it stands now and the client polls SSE for the terminal status.
+  const updated = await prisma.video.update({
+    where: { id: videoId },
+    data: {
+      status: "PUBLISHING",
+      // Clear any previously-scheduled time so a "publish now" after a
+      // scheduled-publish follow-up doesn't leave a stale SLA hint.
+      scheduledPublishAt: null,
+    },
+  });
+  await enqueuePublishJob(videoId, null, env);
+  return toVideoDto(updated);
 };
 
 // ---------- internal helpers ----------

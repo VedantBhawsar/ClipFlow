@@ -1,6 +1,13 @@
 # Memory
 
 > Chronological action log. Hooks and AI append to this file automatically.
+
+## Session: 2026-07-19 — Billing frontend polish + async publish
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|--------|---------|
+| 09:55 | Added BILLING_ENABLED env (default false) + isBillingEnabled() helper to @clipflow/config; rebuilt dist; added entry to mockEnv in auth.service.test.ts | packages/config + auth.service.test.ts | config typechecks clean | ~600 |
+| 09:56 | Threaded env through plan-guard.ts: assertWithinVideoLimit(userId, env) + evaluateUploadAccess(userId, env); short-circuit to unlimited when flag off. Updated plan-guard.test.ts (8 → 9 cases incl 2 new flag-off cases); added BILLING_ENABLED:true to videos.service.test.ts baseEnv. | apps/api/src/lib/plan-guard.ts, plan-guard.test.ts, videos.service.test.ts | api typecheck clean; 182/182 api tests pass | ~1200 |
 > Old sessions are consolidated by the daemon weekly.
 
 | Time | Description | File(s) | Outcome | ~Tokens |
@@ -1412,3 +1419,60 @@ Closed the loop on the user-driven publish trigger for `READY_FOR_REVIEW` (and r
 | 08:56 | Edited apps/web/components/dashboard/youtube-connect-card.tsx | expanded (+6 lines) | ~614 |
 | 08:56 | Edited apps/web/components/dashboard/video-card.tsx | expanded (+6 lines) | ~169 |
 | 08:56 | Edited apps/web/components/dashboard/video-card.tsx | expanded (+11 lines) | ~462 |
+
+## Session: 2026-07-19 09:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-19 09:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-19 09:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-19 09:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-19 09:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-07-19 09:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:48 | Created ../../../.claude/plans/harmonic-wibbling-trinket.md | — | ~4020 |
+| 09:52 | Edited packages/config/src/index.ts | expanded (+11 lines) | ~196 |
+| 09:52 | Edited packages/config/src/index.ts | expanded (+8 lines) | ~129 |
+| 09:53 | Edited apps/api/src/modules/auth/auth.service.test.ts | 3→4 lines | ~25 |
+| 09:54 | Edited apps/api/src/lib/plan-guard.ts | added 1 condition(s) | ~996 |
+| 09:54 | Edited apps/api/src/modules/videos/videos.service.ts | inline fix | ~13 |
+| 09:55 | Created apps/api/src/lib/plan-guard.test.ts | — | ~2334 |
+| 09:55 | Edited apps/api/src/modules/videos/videos.service.test.ts | 4→8 lines | ~94 |
+| 09:56 | Edited apps/api/src/modules/billing/controller.ts | expanded (+12 lines) | ~534 |
+| 09:56 | Edited apps/api/src/modules/billing/routes.ts | added 2 condition(s) | ~1272 |
+| 09:56 | Edited apps/api/src/modules/billing/routes.ts | 7→8 lines | ~59 |
+| 09:56 | Edited apps/api/src/modules/billing/routes.ts | modified buildBillingStatusRouter() | ~114 |
+| 09:57 | Edited apps/api/src/app.ts | inline fix | ~34 |
+| 09:57 | Edited apps/api/src/app.ts | 2→5 lines | ~81 |
+| 09:57 | Edited apps/api/src/index.ts | added 1 import(s) | ~39 |
+| 09:57 | Edited apps/api/src/index.ts | added 1 condition(s) | ~445 |
+| 09:57 | Edited apps/api/src/modules/videos/videos.service.ts | removed 46 lines | ~18 |
+
+## Session: 2026-07-19 09:58
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:59 | Edited apps/api/src/modules/videos/videos.service.ts | modified async() | ~907 |
+| 09:59 | Edited apps/api/src/modules/videos/videos.controller.ts | modified async() | ~448 |
+| 09:59 | Edited apps/api/src/modules/videos/videos.schemas.ts | now() → job() | ~210 |
+| 09:59 | Edited apps/api/src/modules/videos/videos.service.test.ts | expanded (+10 lines) | ~496 |
+| 10:00 | Edited apps/api/src/modules/videos/videos.service.test.ts | 52→51 lines | ~547 |

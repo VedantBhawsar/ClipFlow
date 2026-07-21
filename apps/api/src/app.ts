@@ -17,7 +17,7 @@ import { buildLogger, type Logger } from "./lib/logger.js";
 // unhandledRejection. Must come AFTER `import express` and BEFORE
 // any Router() construction. See lib/async-handler.ts for the why.
 import "./lib/async-handler.js";
-import { buildBillingRouter, buildBillingWebhookRouter } from "./modules/billing/routes.js";
+import { buildBillingRouter, buildBillingStatusRouter, buildBillingWebhookRouter } from "./modules/billing/routes.js";
 import { buildErrorHandler, notFoundHandler } from "./middleware/error.js";
 import { requestIdMiddleware } from "./middleware/request-id.js";
 import { buildGlobalRateLimiter } from "./middleware/rate-limit.js";
@@ -143,7 +143,10 @@ export const createApp = ({ env, logger }: CreateAppOptions): Application => {
   app.use("/api/videos", buildVideosRouter(env));
   // User-level thumbnail style profile (not per-video).
   app.use("/api/thumbnail-style", buildThumbnailStyleRouter(env));
-  // Billing routes (JSON body, auth-protected).
+  // Billing routes (JSON body, auth-protected). The status router is
+  // mounted FIRST so /status isn't caught by the disabled-billing 404
+  // stub in `buildBillingRouter`.
+  app.use("/api/billing", buildBillingStatusRouter(env));
   app.use("/api/billing", buildBillingRouter(env));
 
   // 404 + error handler must be last.

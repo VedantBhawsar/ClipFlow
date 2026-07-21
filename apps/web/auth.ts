@@ -29,6 +29,7 @@
  */
 import NextAuth, { type NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
 import type { NextAuthResult } from "next-auth";
 
 import { env } from "@/lib/env";
@@ -37,6 +38,7 @@ import { authConfig, type AuthToken } from "./auth.config";
 const config: NextAuthConfig = {
   ...authConfig,
   providers: [
+    Google,
     Credentials({
       name: "credentials",
       credentials: {
@@ -125,13 +127,58 @@ const config: NextAuthConfig = {
      * is sent back to /signin instead of getting stuck with a dead
      * access token.
      */
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user, account, trigger, session }) {
       // NextAuth's JWT is typed as `Record<string, unknown> & DefaultJWT`
       // — see `AuthToken` in auth.config.ts. Narrowing it here makes
       // every property read properly typed without fighting module
       // augmentation across `@auth/core/jwt` (which is not a direct
       // pnpm dependency of this app).
       const t = token as AuthToken;
+
+      // Google OAuth sign-in: exchange the verified ID token for
+      // Express-issued access + refresh tokens via the backend's
+      // `/api/auth/google` endpoint. The backend verifies the ID token
+      // independently, finds or creates the user, and returns the same
+      // token pair that email/password login returns — so the rest of
+      // the JWT / session callbacks treat both flows identically.
+      if (account?.provider === "google" && account.id_token) {
+        try {
+          const res = await fetch(`${env.apiBaseUrl}/api/auth/google`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken: account.id_token }),
+          });
+          const envelope = (await res.json()) as {
+            success?: boolean;
+            data?: {
+              user: { id: string };
+              accessToken: string;
+              refreshToken: string;
+              accessTokenExpiresAt: number;
+              onboardingCompleted: boolean;
+              displayName: string | null;
+            };
+          };
+          if (envelope.success === true && envelope.data) {
+            const d = envelope.data;
+            return {
+              ...token,
+              accessToken: d.accessToken,
+              refreshToken: d.refreshToken,
+              accessTokenExpiresAt: d.accessTokenExpiresAt,
+              userId: d.user.id,
+              onboardingCompleted: d.onboardingCompleted ?? false,
+              displayName: d.displayName ?? null,
+            };
+          }
+        } catch {
+          // Network failure — fall through to return null so NextAuth
+          // refuses the sign-in and the user sees a generic error.
+        }
+        // Google auth failed — don't create a session.
+        return null;
+      }
+
       // First sign-in: user object is populated from `authorize`.
       if (user) {
         const u = user as {

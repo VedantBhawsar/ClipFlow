@@ -3279,6 +3279,108 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-18T03:26:29.246Z"
+    },
+    {
+      "id": "bug-201",
+      "timestamp": "2026-07-19T04:22:46.038Z",
+      "error_message": "Type error",
+      "file": "packages/config/src/index.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-19T04:22:46.038Z"
+    },
+    {
+      "id": "bug-202",
+      "timestamp": "2026-07-19T04:26:55.778Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/api/src/modules/billing/routes.ts",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 17→11 lines (7 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-19T04:26:55.778Z"
+    },
+    {
+      "id": "bug-203",
+      "timestamp": "2026-07-19T04:29:06.805Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/api/src/modules/videos/videos.service.ts",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 52→74 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-19T04:29:06.805Z"
+    },
+    {
+      "id": "bug-204",
+      "timestamp": "2026-07-19T04:29:58.021Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/api/src/modules/videos/videos.service.test.ts",
+      "root_cause": "15 lines replaced/restructured",
+      "fix": "Rewrote 36→46 lines (15 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-19T04:29:58.021Z"
+    },
+    {
+      "id": "bug-205",
+      "timestamp": "2026-07-19T04:30:05.336Z",
+      "error_message": "Type error",
+      "file": "apps/api/src/modules/videos/videos.service.test.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-19T04:30:05.336Z"
+    },
+    {
+      "id": "bug-206",
+      "timestamp": "2026-07-21T10:42:00.000Z",
+      "error_message": "User-reported: on larger videos the AI generates ~12 chapters packed at the 10-second minimum gap (the YouTube hard floor) — a wall of near-duplicate micro-chapters rather than meaningfully-spaced sections. User clarified: the AI should consider the FULL CONTEXT of the video and generate chapters accurate and precise to the actual content.",
+      "file": "apps/worker/src/lib/llm/prompts/select-highlights.ts",
+      "root_cause": "Two design flaws: (1) the prompt treated AssemblyAI's auto-chapter output as a 'starting point' rather than the primary signal — AssemblyAI's auto_chapters field already runs a topic-segmentation model that detects real topic shifts, but we were asking the LLM to find boundaries from scratch. (2) duration-based budgeting asked the LLM to scale chapter count with video length, which produced a uniform-interval pattern (10-12 chapters evenly distributed) rather than chapters aligned to actual content. The LLM had no way to ground boundary decisions in the video's structure.",
+      "fix": "Content-aware framing. (1) Prompt now treats AssemblyAI auto-chapters as the PRIMARY signal — each anchor is rendered with full context (time range, headline, gist, summary) and the LLM's job is to REVIEW the anchors (keep / merge / split / rename) rather than invent boundaries. The prompt explicitly forbids inventing boundaries not grounded in the anchors. (2) The per-video chapter count is determined by the CONTENT, not the video length — the budget becomes a soft density hint ('a 30-min talk usually has ~10 chapters') rather than a target. Prompt explicitly says fewer-than-hint is OK when anchors cover the same topic, and more-than-hint is OK when content warrants it. (3) Removed the per-video dynamic minGapMs from parseLlmOutput — the LLM is trusted with content-aware framing; the YouTube 10 s hard floor is the only spacing rule. Real videos often have rapid topic transitions within a topic cluster, and forcing uniform spacing would block legitimate tight transitions. (4) Bumped MAX_TRANSCRIPT_CHARS from 60 000 to 120 000 so long videos send more of the actual transcript to the LLM. (5) Added MAX_CHAPTERS=12 cap (YouTube display limit) so even a misbehaving LLM can't produce 50 micro-chapters. computeChapterBudget is kept as a soft hint in the prompt (target/targetMin/targetMax) but minGapMs is removed.",
+      "tags": [
+        "manual",
+        "llm",
+        "chapters",
+        "prompt-quality",
+        "schema",
+        "youtube-rules",
+        "content-aware",
+        "assemblyai",
+        "user-reported"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-21T10:42:00.000Z"
     }
   ]
 }

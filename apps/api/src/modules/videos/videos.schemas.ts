@@ -411,9 +411,11 @@ export type UpdateVideoInput = z.infer<typeof updateVideoSchema>;
 // ---- Publish / Schedule (POST /api/videos/:id/publish) ----
 //
 // Body for the user-driven "Publish" button on the video detail page.
-// Empty body = publish now (the service delegates to the existing
-// `publishVideoNow` path). A `scheduledPublishAt` flips the row to
-// `SCHEDULED` and enqueues a delayed `youtube-publish` job.
+// The service ALWAYS enqueues — empty body flips the row to
+// `PUBLISHING` and enqueues an immediate BullMQ job (the worker owns
+// the actual YouTube upload). A `scheduledPublishAt` flips the row to
+// `SCHEDULED` and enqueues a delayed `youtube-publish` job. Either way
+// the controller returns 202 Accepted.
 //
 // YouTube's own window for scheduled videos is 15 min ≤ publishAt ≤
 // 60 days out. We mirror those bounds here so the server is the source

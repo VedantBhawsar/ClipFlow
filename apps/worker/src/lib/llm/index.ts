@@ -20,7 +20,11 @@ export {
 export {
   LlmOutputSchema,
   LlmParseError,
+  MAX_CHAPTERS,
+  MIN_CHAPTER_GAP_MS,
+  computeChapterBudget,
   parseLlmOutput,
+  type ChapterBudget,
   type LlmOutput,
 } from "./schemas.js";
 export {

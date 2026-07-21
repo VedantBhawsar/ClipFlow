@@ -97,6 +97,7 @@ const mockEnv: Env = {
   DODO_PRO_PRODUCT_ID: undefined,
   DODO_FREE_PRODUCT_ID: undefined,
   APP_URL: undefined,
+  BILLING_ENABLED: false,
 };
 
 const mockUser = {
@@ -298,12 +299,12 @@ describe("auth.service", () => {
   });
 
   describe("googleSignIn", () => {
-    it("throws NOT_IMPLEMENTED", async () => {
+    it("throws GOOGLE_NOT_CONFIGURED when env.GOOGLE_CLIENT_ID is not set", async () => {
       await expect(
-        authService.googleSignIn("some-id-token"),
+        authService.googleSignIn("some-id-token", mockEnv),
       ).rejects.toMatchObject({
         statusCode: 501,
-        code: "NOT_IMPLEMENTED",
+        code: "GOOGLE_NOT_CONFIGURED",
       });
     });
   });

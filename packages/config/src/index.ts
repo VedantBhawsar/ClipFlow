@@ -177,6 +177,17 @@ const envSchema = z.object({
   DODO_FREE_PRODUCT_ID: z.string().regex(/^pdt_/).optional(),
 
   APP_URL: z.string().url().optional(),
+
+  // ---- Billing kill-switch ----
+  /// Master switch for the billing slice. When false (the default), the
+  /// plan-guard short-circuits to "always allowed" and the billing routes
+  /// 404 — every user is effectively on free unlimited. Flip to true via
+  /// env when ready to monetise; redeploy to change.
+  ///
+  /// Coerced so a string from .env ("true"/"false"/"1"/"0") parses the
+  /// same way as a JSON boolean. Default is `false` so a fresh clone
+  /// boots into "billing off" — the safest posture for pre-launch.
+  BILLING_ENABLED: z.coerce.boolean().default(false),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -207,6 +218,14 @@ const publicEnvSchema = z.object({
 export type PublicEnv = z.infer<typeof publicEnvSchema>;
 
 export const resolveAppUrl = (env: Env): string => env.APP_URL ?? env.WEB_ORIGIN;
+
+/**
+ * Master switch for the billing slice. When `false`, the plan-guard
+ * short-circuits and the billing routes 404 — every user is effectively
+ * on free unlimited. Read at runtime by services/controllers that gate on
+ * the flag so the kill-switch behaviour is centralised.
+ */
+export const isBillingEnabled = (env: Env): boolean => env.BILLING_ENABLED === true;
 
 export function loadPublicEnv(source: Record<string, unknown> = {}): PublicEnv {
   const parsed = publicEnvSchema.safeParse({

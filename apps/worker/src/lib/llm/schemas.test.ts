@@ -1,12 +1,20 @@
 /**
- * Unit tests for `LlmOutputSchema` + `parseLlmOutput`.
+ * Unit tests for `LlmOutputSchema` + `parseLlmOutput` +
+ * `computeChapterBudget`.
  *
  * The schema is the single source of truth for "what the LLM is allowed
  * to emit". These tests lock down the contract so a future schema
  * change is a deliberate edit, not an accidental widening.
  */
 import { describe, it, expect } from "vitest";
-import { LlmOutputSchema, parseLlmOutput, LlmParseError } from "./schemas.js";
+import {
+  LlmOutputSchema,
+  computeChapterBudget,
+  parseLlmOutput,
+  LlmParseError,
+  MAX_CHAPTERS,
+  MIN_CHAPTER_GAP_MS,
+} from "./schemas.js";
 
 const validOutput = {
   summary: "A short summary of the video content for YouTube.",
@@ -48,6 +56,24 @@ describe("LlmOutputSchema", () => {
           { startMs: 0, title: "a".repeat(100) },
           { startMs: 12_000, title: "ok" },
           { startMs: 24_000, title: "ok" },
+        ],
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("accepts 3 chapters spaced only 30 s apart — content-aware framing permits tight genuine topic shifts", () => {
+      // A 60-min video with 3 closely-spaced genuine topic shifts
+      // (e.g. a panel discussion where 3 speakers each talk for
+      // 30 s back-to-back) should pass. Per-video minGap enforcement
+      // was deliberately removed in favour of trusting the
+      // content-aware prompt; the YouTube 10 s floor is the only
+      // spacing rule.
+      const result = LlmOutputSchema.safeParse({
+        summary: "ok",
+        chapters: [
+          { startMs: 0, title: "Panel intro" },
+          { startMs: 30_000, title: "Speaker 1" },
+          { startMs: 60_000, title: "Speaker 2" },
         ],
       });
       expect(result.success).toBe(true);
@@ -140,6 +166,27 @@ describe("LlmOutputSchema", () => {
       if (!result.success) {
         expect(result.error.issues[0]!.message).toContain("3");
       }
+    });
+
+    it("rejects when chapter count exceeds the YouTube max", () => {
+      const chapters = Array.from({ length: 13 }, (_, i) => ({
+        startMs: i * 15_000,
+        title: `Chapter ${i + 1}`,
+      }));
+      const result = LlmOutputSchema.safeParse({ summary: "ok", chapters });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]!.message).toMatch(/12/);
+      }
+    });
+
+    it("rejects 13 chapters even if the gaps are wide enough — the YouTube cap wins", () => {
+      const chapters = Array.from({ length: 13 }, (_, i) => ({
+        startMs: i * 300_000,
+        title: `Chapter ${i + 1}`,
+      }));
+      const result = LlmOutputSchema.safeParse({ summary: "ok", chapters });
+      expect(result.success).toBe(false);
     });
 
     it("rejects when first chapter is not at 0 ms", () => {
@@ -254,5 +301,64 @@ describe("parseLlmOutput", () => {
     }
     expect(caught).toBeInstanceOf(LlmParseError);
     expect((caught as LlmParseError).message).toContain("10");
+  });
+});
+
+describe("computeChapterBudget", () => {
+  it("clamps to 3 chapters for very short videos", () => {
+    // 30 s clip — duration-derived density floors at the YouTube min.
+    const b = computeChapterBudget(30_000);
+    expect(b.targetMin).toBe(3);
+    expect(b.target).toBe(3);
+    expect(b.targetMax).toBe(5); // target + 2
+  });
+
+  it("targets ~3 chapters for a 2-minute video", () => {
+    const b = computeChapterBudget(120_000);
+    expect(b.target).toBe(3);
+  });
+
+  it("targets ~5 chapters for a 10-minute video", () => {
+    const b = computeChapterBudget(10 * 60_000);
+    // 600 / 180 = 3.33 → round → 3, but target + 2 = 5 so range is 3-5
+    expect(b.target).toBe(3);
+    expect(b.targetMin).toBe(3);
+    expect(b.targetMax).toBe(5);
+  });
+
+  it("scales to ~10 chapters for a 30-minute video", () => {
+    const b = computeChapterBudget(30 * 60_000);
+    expect(b.target).toBe(10);
+    expect(b.targetMin).toBe(8);
+    expect(b.targetMax).toBe(12);
+  });
+
+  it("caps at the YouTube max of 12 chapters even for hour-long videos", () => {
+    const b = computeChapterBudget(60 * 60_000);
+    expect(b.target).toBe(MAX_CHAPTERS);
+    expect(b.targetMax).toBe(MAX_CHAPTERS);
+  });
+
+  it("grows target monotonically (clamped at 12) as duration grows", () => {
+    const durations = [
+      60_000,
+      5 * 60_000,
+      10 * 60_000,
+      20 * 60_000,
+      30 * 60_000,
+      45 * 60_000,
+      60 * 60_000,
+      2 * 60 * 60_000,
+    ];
+    const targets = durations.map((d) => computeChapterBudget(d).target);
+    for (let i = 1; i < targets.length; i++) {
+      expect(targets[i]).toBeGreaterThanOrEqual(targets[i - 1]!);
+      expect(targets[i]).toBeLessThanOrEqual(MAX_CHAPTERS);
+    }
+  });
+
+  it("does not include minGapMs anymore — content-aware framing handles spacing", () => {
+    const b = computeChapterBudget(30 * 60_000);
+    expect((b as unknown as Record<string, unknown>).minGapMs).toBeUndefined();
   });
 });

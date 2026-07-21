@@ -62,6 +62,7 @@ import {
   OpenAICompatLlmClient,
   buildSelectHighlightsPrompt,
   classifyLlmError,
+  computeChapterBudget,
   validateWithRetry,
   type AaiTranscript,
 } from "../lib/llm/index.js";
@@ -92,11 +93,14 @@ const nowIso = (): string => new Date().toISOString();
 /**
  * Max characters of the transcript we send to the LLM. The transcript
  * we read from S3 is the full AssemblyAI JSON including the verbatim
- * `text` field; for a 30-min video that can run ~50 KB. Llama 3.1 70B
- * has a 128 k context window, but in practice we want to keep the
- * input under 60 kB to leave room for the system prompt + output.
+ * `text` field; a 30-min video runs ~50 KB and a 60-min video runs
+ * ~100 KB. Llama 3.1 70B has a 128 k token context window (~512 k
+ * chars); we cap at 120 k chars so the system prompt + output have
+ * room. The chapter-selection prompt is content-aware (anchored on
+ * AssemblyAI's auto-chapters) so sending more of the actual transcript
+ * gives the LLM more to ground its boundary decisions in.
  */
-const MAX_TRANSCRIPT_CHARS = 60_000;
+const MAX_TRANSCRIPT_CHARS = 120_000;
 
 /**
  * Truncate the transcript text to `max` characters on a word boundary
@@ -323,11 +327,25 @@ export const processGenerateJob = async (
       });
     }
 
+    const budget = computeChapterBudget(transcript.durationMs);
+    ctx.logger.info(
+      {
+        videoId,
+        durationMs: transcript.durationMs,
+        targetMin: budget.targetMin,
+        targetMax: budget.targetMax,
+        target: budget.target,
+        aaiAnchorCount: transcript.chapters.length,
+      },
+      "Computed chapter budget",
+    );
+
     const promptInput = {
       transcriptText: truncateTranscript(transcript.text, MAX_TRANSCRIPT_CHARS),
       durationMs: transcript.durationMs,
       aaiChapters: transcript.chapters,
       languageCode: transcript.languageCode,
+      budget,
     };
     const { systemPrompt, userPrompt } = buildSelectHighlightsPrompt(promptInput);
 

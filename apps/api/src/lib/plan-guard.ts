@@ -1,3 +1,5 @@
+import type { Env } from "@clipflow/config";
+import { isBillingEnabled } from "@clipflow/config";
 import { prisma } from "./prisma.js";
 import { requireDatabase } from "./db-guard.js";
 import { AppError } from "../errors/AppError.js";
@@ -19,7 +21,24 @@ async function getFreePlan() {
   return plan;
 }
 
-export const evaluateUploadAccess = async (userId: string): Promise<EffectiveAccess> => {
+/**
+ * When billing is disabled (the default), every user is effectively on
+ * free unlimited — no plan row lookup, no cache check, no quota math.
+ * Returned shape is the same as a free-plan-allowed `EffectiveAccess`
+ * so downstream code can treat it identically.
+ */
+function billingDisabledAccess(): EffectiveAccess {
+  return {
+    canUpload: true,
+    planKey: FREE_PLAN_KEY,
+    videosAllowed: Number.POSITIVE_INFINITY,
+    videosUsed: 0,
+  };
+}
+
+export const evaluateUploadAccess = async (userId: string, env: Env): Promise<EffectiveAccess> => {
+  if (!isBillingEnabled(env)) return billingDisabledAccess();
+
   requireDatabase();
 
   const cached = await cache.get(`access:${userId}`);
@@ -71,8 +90,8 @@ export const evaluateUploadAccess = async (userId: string): Promise<EffectiveAcc
   return result;
 };
 
-export const assertWithinVideoLimit = async (userId: string): Promise<void> => {
-  const access = await evaluateUploadAccess(userId);
+export const assertWithinVideoLimit = async (userId: string, env: Env): Promise<void> => {
+  const access = await evaluateUploadAccess(userId, env);
   if (access.canUpload) return;
 
   if (access.reason === "PLAN_LIMIT_REACHED") {

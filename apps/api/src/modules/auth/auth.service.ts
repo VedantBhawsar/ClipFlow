@@ -224,14 +224,78 @@ export const logout = async (input: LogoutRequest | undefined): Promise<void> =>
 };
 
 /**
- * Google sign-in. Stub for the next slice: returns 501 so the route is
- * obviously wired and the controller contract is exercised end-to-end.
+ * Google sign-in.
+ *
+ * Flow:
+ *  1. Verifies the Google ID token using google-auth-library.
+ *  2. Extracts email, name, and Google subject id from the verified payload.
+ *  3. Finds the user by googleId, then by email (linking accounts).
+ *  4. Creates a new user if neither exists.
+ *  5. Returns the standard AuthResponse (JWT + refresh token).
  */
-export const googleSignIn = async (_idToken: string): Promise<AuthResponse> => {
-  void _idToken;
-  throw new AppError(
-    501,
-    "NOT_IMPLEMENTED",
-    "Google sign-in ships in the next slice.",
-  );
+export const googleSignIn = async (
+  idToken: string,
+  env: Env,
+): Promise<AuthResponse> => {
+  requireDatabase();
+
+  if (!env.GOOGLE_CLIENT_ID) {
+    throw new AppError(
+      501,
+      "GOOGLE_NOT_CONFIGURED",
+      "Google sign-in is not configured. Set GOOGLE_CLIENT_ID in your environment.",
+    );
+  }
+
+  const { OAuth2Client } = await import("google-auth-library");
+  const client = new OAuth2Client(env.GOOGLE_CLIENT_ID);
+
+  let ticket;
+  try {
+    ticket = await client.verifyIdToken({
+      idToken,
+      audience: env.GOOGLE_CLIENT_ID,
+    });
+  } catch {
+    throw new AppError(400, "GOOGLE_VERIFICATION_FAILED", "Could not verify Google ID token.");
+  }
+
+  const tokenPayload = ticket.getPayload();
+  if (!tokenPayload?.email || !tokenPayload?.sub) {
+    throw new AppError(400, "INVALID_GOOGLE_TOKEN", "Invalid Google ID token payload.");
+  }
+
+  const email: string = tokenPayload.email;
+  const name: string | null = tokenPayload.name ?? null;
+  const googleId: string = tokenPayload.sub;
+
+  // Find existing user by googleId (fast path), then by email (account linking).
+  let user = await prisma.user.findUnique({ where: { googleId } });
+  if (!user) {
+    user = await prisma.user.findUnique({ where: { email } });
+    if (user) {
+      // Link the Google account to the existing email user
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          googleId,
+          emailVerifiedAt: user.emailVerifiedAt ?? new Date(),
+          name: user.name ?? name,
+        },
+      });
+    } else {
+      user = await prisma.user.create({
+        data: {
+          email,
+          name,
+          googleId,
+          authProvider: "GOOGLE",
+          emailVerifiedAt: new Date(),
+        },
+      });
+    }
+  }
+
+  const { onboardingCompleted, displayName } = await resolveSessionProfile(user.id);
+  return mintAuthResponse(user, env, onboardingCompleted, displayName);
 };

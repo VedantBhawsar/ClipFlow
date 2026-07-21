@@ -30,7 +30,7 @@ export interface ValidateWithRetryOptions {
   request: LlmCompletionRequest;
   /** Max attempts INCLUDING the first try. Default 3. */
   maxAttempts?: number;
-  /** Video duration in ms — used to validate chapter boundaries don't exceed the video. */
+  /** Video duration in ms — used to validate the last chapter fits inside the video. */
   durationMs: number;
 }
 
@@ -74,11 +74,8 @@ export const validateWithRetry = async (
 
     const result = await opts.client.complete(requestForAttempt);
     lastRawText = result.text;
-    console.log("result", result)
     try {
       const output = parseLlmOutput(result.text, durationMs);
-
-      console.log("output", output)
       return { output, attempts: attempt, lastRawText };
     } catch (err) {
       if (err instanceof LlmParseError) {

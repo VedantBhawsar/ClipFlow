@@ -77,20 +77,14 @@ export const logoutController = async (req: Request, res: Response, next: NextFu
   }
 };
 
-export const googleController = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
-  void _res;
-  try {
-    const input = req.body as GoogleAuthInput;
-    await authService.googleSignIn(input.idToken);
-    // 501 Not Implemented — wraps the original AppError thrown inside the
-    // service so it travels through the central error handler in the
-    // envelope shape.
-    throw new AppError(
-      501,
-      "NOT_IMPLEMENTED",
-      "Google sign-in ships in the next slice.",
-    );
-  } catch (err) {
-    next(err);
-  }
-};
+export const googleController =
+  (env: Env) =>
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const input = req.body as GoogleAuthInput;
+      const result = await authService.googleSignIn(input.idToken, env);
+      sendOk(res, result, "Signed in with Google.");
+    } catch (err) {
+      next(err);
+    }
+  };

@@ -159,6 +159,10 @@ const mockEnqueuePublish = vi.mocked(enqueuePublishJob);
 const baseEnv = {
   YOUTUBE_MAX_VIDEO_BYTES: 5 * 1024 * 1024 * 1024,
   YOUTUBE_PRESIGNED_POST_TTL: 900,
+  // Plan-guard tests live in plan-guard.test.ts. Here we exercise the
+  // createVideo path with billing-on so the quota check runs and the
+  // existing cache-write expectations hold.
+  BILLING_ENABLED: true,
 } as never;
 
 const baseInput = {
@@ -1119,27 +1123,25 @@ describe("videos.service", () => {
   describe("publishVideo (POST /api/videos/:id/publish)", () => {
     /**
      * A row in the editable window. The service flips this to
-     * `SCHEDULED` (with a date) when scheduling, or delegates to the
-     * sync `publishVideoNow` path when publishing immediately.
+     * `SCHEDULED` (with a date) when scheduling, or to `PUBLISHING`
+     * (with a cleared schedule) when publishing immediately. Both
+     * paths ALWAYS enqueue — the actual YouTube upload runs in the
+     * worker so the dashboard SSE channel can deliver the terminal
+     * status without the request thread blocking.
      */
     const reviewRow: StubVideo = {
       ...stubCreatedVideo,
       status: "READY_FOR_REVIEW",
     };
 
-    it("publishes immediately when no schedule is provided", async () => {
+    it("publishes immediately when no schedule is provided (async — enqueues, does not upload)", async () => {
       mockVideoFindUnique.mockResolvedValue(reviewRow);
-      mockPublishOnYouTube.mockResolvedValue({
-        youtubeVideoId: "yt_xyz",
-        publishedAt: new Date(),
-      });
-      const updatedRow = {
+      const flippedRow = {
         ...reviewRow,
-        status: "PUBLISHED" as const,
-        youtubeVideoId: "yt_xyz",
-        publishedAt: new Date(),
+        status: "PUBLISHING" as const,
+        scheduledPublishAt: null,
       };
-      mockVideoFindUniqueOrThrow.mockResolvedValue(updatedRow);
+      mockVideoUpdate.mockResolvedValue(flippedRow as never);
 
       const result = await videosService.publishVideo(
         "user-1",
@@ -1148,10 +1150,22 @@ describe("videos.service", () => {
         baseEnv,
       );
 
-      expect(mockPublishOnYouTube).toHaveBeenCalledTimes(1);
-      expect(mockEnqueuePublish).not.toHaveBeenCalled();
-      expect(result.status).toBe("PUBLISHED");
-      expect(result.youtubeVideoId).toBe("yt_xyz");
+      // The row is flipped to PUBLISHING and any prior schedule is
+      // cleared so the worker doesn't see a stale SLA hint.
+      expect(mockVideoUpdate).toHaveBeenCalledWith({
+        where: { id: reviewRow.id },
+        data: { status: "PUBLISHING", scheduledPublishAt: null },
+      });
+      // The publish job is enqueued with a null date — BullMQ maps
+      // that to `delay: undefined`, which means "run immediately".
+      expect(mockEnqueuePublish).toHaveBeenCalledWith(
+        reviewRow.id,
+        null,
+        baseEnv,
+      );
+      // The sync publish path must NOT fire — that lives in the worker.
+      expect(mockPublishOnYouTube).not.toHaveBeenCalled();
+      expect(result.status).toBe("PUBLISHING");
     });
 
     it("schedules with a future date when scheduledPublishAt is provided", async () => {
@@ -1219,16 +1233,13 @@ describe("videos.service", () => {
         status: "PUBLISH_FAILED",
         failureReason: "Previous publish failed.",
       });
-      mockPublishOnYouTube.mockResolvedValue({
-        youtubeVideoId: "yt_retry",
-        publishedAt: new Date(),
-      });
-      mockVideoFindUniqueOrThrow.mockResolvedValue({
+      const flippedRow = {
         ...reviewRow,
-        status: "PUBLISHED",
-        youtubeVideoId: "yt_retry",
-        publishedAt: new Date(),
-      });
+        status: "PUBLISHING" as const,
+        scheduledPublishAt: null,
+        failureReason: "Previous publish failed.",
+      };
+      mockVideoUpdate.mockResolvedValue(flippedRow as never);
 
       const result = await videosService.publishVideo(
         "user-1",
@@ -1237,33 +1248,35 @@ describe("videos.service", () => {
         baseEnv,
       );
 
-      expect(mockPublishOnYouTube).toHaveBeenCalledTimes(1);
-      expect(result.status).toBe("PUBLISHED");
-      expect(result.youtubeVideoId).toBe("yt_retry");
+      // Retry goes through the same async enqueue path — the worker
+      // decides whether to clear failureReason on success.
+      expect(mockEnqueuePublish).toHaveBeenCalledWith(
+        reviewRow.id,
+        null,
+        baseEnv,
+      );
+      expect(result.status).toBe("PUBLISHING");
     });
 
-    it("wraps YouTube permanent publish errors into a mapped AppError on the immediate path", async () => {
+    it("does not surface YouTube publish errors from the immediate path (worker owns upload)", async () => {
+      // Pre-refactor, this service called `publishVideoOnYouTube`
+      // synchronously and translated PermanentPublishError into a 429.
+      // After moving publish to the worker, those errors belong to the
+      // youtube-upload package's worker tests — the API only enqueues.
+      // This test guards the regression: a stray throw from the
+      // sync helper path must NOT escape the service after the
+      // publish-now request returns 202.
       mockVideoFindUnique.mockResolvedValue(reviewRow);
-      const { PermanentPublishError } = await import("@clipflow/youtube-upload");
-      mockPublishOnYouTube.mockRejectedValue(
-        new PermanentPublishError("QUOTA_EXCEEDED", "Daily quota exhausted."),
-      );
+      mockVideoUpdate.mockResolvedValue({
+        ...reviewRow,
+        status: "PUBLISHING" as never,
+        scheduledPublishAt: null,
+      });
 
-      // QUOTA_EXCEEDED → 429 YOUTUBE_QUOTA_EXCEEDED per the mapper in
-      // videos.service. The real message from YouTube ("Daily quota
-      // exhausted.") is preserved so the frontend can toast it verbatim
-      // instead of showing a generic "Something went wrong".
       await expect(
         videosService.publishVideo("user-1", reviewRow.id, {}, baseEnv),
-      ).rejects.toMatchObject({
-        statusCode: 429,
-        code: "YOUTUBE_QUOTA_EXCEEDED",
-        message: "Daily quota exhausted.",
-        details: { reasonCode: "QUOTA_EXCEEDED" },
-      });
-      // The DB row is NOT touched on a failed YouTube call — the row
-      // stays in READY_FOR_REVIEW so the user can retry later.
-      expect(mockVideoUpdate).not.toHaveBeenCalled();
+      ).resolves.toMatchObject({ status: "PUBLISHING" });
+      expect(mockPublishOnYouTube).not.toHaveBeenCalled();
     });
 
     it("rejects a scheduled time less than 15 min in future (server-side guard)", async () => {

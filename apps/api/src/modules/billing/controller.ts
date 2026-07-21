@@ -1,8 +1,20 @@
 import type { Request, Response } from "express";
 import type { Env } from "@clipflow/config";
+import { isBillingEnabled } from "@clipflow/config";
 import { sendOk } from "../../lib/response.js";
 import { listPlans, getSubscription, createCheckout, openCustomerPortal, cancelScheduled } from "./service.js";
 import type { CreateCheckoutInput } from "./schemas.js";
+
+/**
+ * Public flag the web reads on app load to decide whether to render
+ * pricing UI. Always mounted (even when BILLING_ENABLED=false) so the
+ * web can render the "free unlimited" experience without an extra
+ * code path on the client. No auth required — the flag is intentionally
+ * not a secret.
+ */
+export const getBillingStatusController = (env: Env) => (_req: Request, res: Response) => {
+  sendOk(res, { enabled: isBillingEnabled(env) }, "Billing status retrieved");
+};
 
 export const listPlansController = () => async (_req: Request, res: Response) => {
   const plans = await listPlans();

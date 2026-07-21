@@ -1,170 +1,69 @@
 {
-  "session_id": "session-2026-07-18-0847",
-  "started": "2026-07-18T03:17:15.816Z",
+  "session_id": "session-2026-07-19-0958",
+  "started": "2026-07-19T04:28:45.702Z",
   "files_read": {
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/dashboard-content.tsx": {
-      "count": 1,
-      "tokens": 2836,
-      "first_read": "2026-07-18T03:18:05.721Z"
+    "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts": {
+      "count": 2,
+      "tokens": 13227,
+      "first_read": "2026-07-19T04:28:51.357Z"
     },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/dashboard-stats.tsx": {
+    "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.controller.ts": {
       "count": 1,
-      "tokens": 1956,
-      "first_read": "2026-07-18T03:18:11.295Z"
+      "tokens": 3989,
+      "first_read": "2026-07-19T04:29:11.892Z"
     },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/sidebar-content.tsx": {
+    "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.schemas.ts": {
       "count": 1,
-      "tokens": 2045,
-      "first_read": "2026-07-18T03:18:16.347Z"
+      "tokens": 4468,
+      "first_read": "2026-07-19T04:29:30.220Z"
     },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/globals.css": {
-      "count": 1,
-      "tokens": 3090,
-      "first_read": "2026-07-18T03:18:18.268Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/layout.tsx": {
-      "count": 1,
-      "tokens": 582,
-      "first_read": "2026-07-18T03:18:21.474Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/page.tsx": {
-      "count": 1,
-      "tokens": 190,
-      "first_read": "2026-07-18T03:18:23.501Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/sidebar.tsx": {
-      "count": 1,
-      "tokens": 200,
-      "first_read": "2026-07-18T03:18:25.523Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/video-list.tsx": {
-      "count": 1,
-      "tokens": 1424,
-      "first_read": "2026-07-18T03:18:27.216Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/mobile-nav.tsx": {
-      "count": 1,
-      "tokens": 697,
-      "first_read": "2026-07-18T03:18:28.967Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/ui/card.tsx": {
-      "count": 1,
-      "tokens": 550,
-      "first_read": "2026-07-18T03:18:30.708Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/youtube-connect-card.tsx": {
-      "count": 1,
-      "tokens": 2837,
-      "first_read": "2026-07-18T03:18:32.834Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/sidebar.test.tsx": {
-      "count": 1,
-      "tokens": 1377,
-      "first_read": "2026-07-18T03:18:34.688Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/video-card.tsx": {
-      "count": 1,
-      "tokens": 2489,
-      "first_read": "2026-07-18T03:18:38.766Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/docs/Design.md": {
-      "count": 1,
-      "tokens": 2626,
-      "first_read": "2026-07-18T03:18:41.326Z"
+    "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.test.ts": {
+      "count": 2,
+      "tokens": 13445,
+      "first_read": "2026-07-19T04:29:38.377Z"
     }
   },
   "files_written": [
     {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/globals.css",
+      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts",
       "action": "edit",
-      "tokens": 106,
-      "at": "2026-07-18T03:25:02.130Z"
+      "tokens": 907,
+      "at": "2026-07-19T04:29:06.803Z"
     },
     {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/dashboard-stats.tsx",
+      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.controller.ts",
       "action": "edit",
-      "tokens": 114,
-      "at": "2026-07-18T03:25:07.567Z"
+      "tokens": 448,
+      "at": "2026-07-19T04:29:26.232Z"
     },
     {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/dashboard-stats.tsx",
+      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.schemas.ts",
       "action": "edit",
-      "tokens": 504,
-      "at": "2026-07-18T03:25:19.105Z"
+      "tokens": 210,
+      "at": "2026-07-19T04:29:35.897Z"
     },
     {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/dashboard-content.tsx",
+      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.test.ts",
       "action": "edit",
-      "tokens": 271,
-      "at": "2026-07-18T03:25:27.213Z"
+      "tokens": 496,
+      "at": "2026-07-19T04:29:58.020Z"
     },
     {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/app/dashboard/dashboard-content.tsx",
+      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.test.ts",
       "action": "edit",
-      "tokens": 759,
-      "at": "2026-07-18T03:25:38.509Z"
-    },
-    {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/sidebar-content.tsx",
-      "action": "edit",
-      "tokens": 207,
-      "at": "2026-07-18T03:25:42.705Z"
-    },
-    {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/sidebar-content.tsx",
-      "action": "edit",
-      "tokens": 294,
-      "at": "2026-07-18T03:25:51.566Z"
-    },
-    {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/sidebar-content.tsx",
-      "action": "edit",
-      "tokens": 89,
-      "at": "2026-07-18T03:25:57.541Z"
-    },
-    {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/mobile-nav.tsx",
-      "action": "edit",
-      "tokens": 84,
-      "at": "2026-07-18T03:26:02.383Z"
-    },
-    {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/youtube-connect-card.tsx",
-      "action": "edit",
-      "tokens": 410,
-      "at": "2026-07-18T03:26:12.223Z"
-    },
-    {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/youtube-connect-card.tsx",
-      "action": "edit",
-      "tokens": 614,
-      "at": "2026-07-18T03:26:23.340Z"
-    },
-    {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/video-card.tsx",
-      "action": "edit",
-      "tokens": 169,
-      "at": "2026-07-18T03:26:29.245Z"
-    },
-    {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/web/components/dashboard/video-card.tsx",
-      "action": "edit",
-      "tokens": 462,
-      "at": "2026-07-18T03:26:38.434Z"
+      "tokens": 547,
+      "at": "2026-07-19T04:30:05.335Z"
     }
   ],
   "edit_counts": {
-    "apps/web/app/globals.css": 1,
-    "apps/web/components/dashboard/dashboard-stats.tsx": 2,
-    "apps/web/app/dashboard/dashboard-content.tsx": 2,
-    "apps/web/components/dashboard/sidebar-content.tsx": 3,
-    "apps/web/components/dashboard/mobile-nav.tsx": 1,
-    "apps/web/components/dashboard/youtube-connect-card.tsx": 2,
-    "apps/web/components/dashboard/video-card.tsx": 2
+    "apps/api/src/modules/videos/videos.service.ts": 1,
+    "apps/api/src/modules/videos/videos.controller.ts": 1,
+    "apps/api/src/modules/videos/videos.schemas.ts": 1,
+    "apps/api/src/modules/videos/videos.service.test.ts": 2
   },
-  "anatomy_hits": 14,
+  "anatomy_hits": 4,
   "anatomy_misses": 0,
-  "repeated_reads_warned": 0,
+  "repeated_reads_warned": 2,
   "cerebrum_warnings": 0,
   "stop_count": 0
 }

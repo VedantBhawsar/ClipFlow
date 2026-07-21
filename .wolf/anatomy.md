@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-18T03:26:38.427Z
-> Files: 404 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-07-19T04:30:05.328Z
+> Files: 409 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../tmp/
 
@@ -15,6 +15,7 @@
 
 ## ../../../.claude/plans/
 
+- `harmonic-wibbling-trinket.md` — ClipFlow — Frontend Billing Polish + Async Publish (~3769 tok)
 - `i-want-you-to-expressive-quail.md` — ClipFlow — Dodo Payments Implementation Plan (India Region) (~10356 tok)
 - `i-want-you-to-precious-hopcroft.md` — Plan: Personalized Thumbnail Style — Onboarding Step 5 + Settings Re-entry (~3683 tok)
 - `memoized-floating-dijkstra.md` — ClipFlow Dashboard UI Polish — Plan (~2700 tok)
@@ -77,8 +78,8 @@
 
 ## apps/api/src/
 
-- `app.ts` — Express app factory. (~1564 tok)
-- `index.ts` — Entrypoint. (~2421 tok)
+- `app.ts` — Express app factory. (~1886 tok)
+- `index.ts` — Entrypoint. (~2905 tok)
 - `server.ts` — HTTP server lifecycle. (~844 tok)
 
 ## apps/api/src/config/
@@ -99,6 +100,8 @@
 - `jwt.ts` — JWT helpers. (~583 tok)
 - `logger.ts` — Structured logger (pino). The single source of truth for application (~306 tok)
 - `password.ts` — Password hashing helpers. (~264 tok)
+- `plan-guard.test.ts` — Minimal Env shape for plan-guard tests — only the BILLING_ENABLED (~2334 tok)
+- `plan-guard.ts` — When billing is disabled (the default), every user is effectively on (~996 tok)
 - `prisma.ts` — Prisma client re-export. (~328 tok)
 - `queue.ts` — BullMQ enqueue helpers. (~3943 tok)
 - `refresh-token.test.ts` — Declares prismaMock (~2701 tok)
@@ -122,9 +125,14 @@
 - `auth.routes.ts` — Auth route definitions. (~532 tok)
 - `auth.schemas.test.ts` — Declares result (~1693 tok)
 - `auth.schemas.ts` — Zod schemas for auth routes. (~717 tok)
-- `auth.service.test.ts` — Declares mockEnv (~2648 tok)
+- `auth.service.test.ts` — Declares mockEnv (~2905 tok)
 - `auth.service.ts` — Auth service. (~2107 tok)
 - `auth.types.ts` — Auth-module-specific type helpers. (~87 tok)
+
+## apps/api/src/modules/billing/
+
+- `controller.ts` — Public flag the web reads on app load to decide whether to render (~534 tok)
+- `routes.ts` — Build the JSON billing router. When `BILLING_ENABLED=false`, every (~1204 tok)
 
 ## apps/api/src/modules/health/
 
@@ -166,11 +174,11 @@
 
 ## apps/api/src/modules/videos/
 
-- `videos.controller.ts` — Videos controller. (~3989 tok)
+- `videos.controller.ts` — Videos controller. (~4466 tok)
 - `videos.routes.ts` — Videos route definitions. (~1578 tok)
-- `videos.schemas.ts` — Zod schemas for the videos module. (~4468 tok)
-- `videos.service.test.ts` — Tests for the videos service. (~12754 tok)
-- `videos.service.ts` — Videos service — owns all DB + S3 + YouTube-publish enqueue logic (~12814 tok)
+- `videos.schemas.ts` — Zod schemas for the videos module. (~4502 tok)
+- `videos.service.test.ts` — Tests for the videos service. (~13583 tok)
+- `videos.service.ts` — Videos service — owns all DB + S3 + YouTube-publish enqueue logic (~13512 tok)
 - `videos.types.ts` — Module-internal types for the videos module. (~1301 tok)
 
 ## apps/api/src/modules/youtube/
@@ -579,7 +587,7 @@
 
 ## packages/config/src/
 
-- `index.ts` — Zod schemas: envSchema, publicEnvSchema (~2623 tok)
+- `index.ts` — Zod schemas: envSchema, publicEnvSchema (~3111 tok)
 
 ## packages/crypto/
 

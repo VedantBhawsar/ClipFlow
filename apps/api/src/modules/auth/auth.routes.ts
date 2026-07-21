@@ -61,7 +61,7 @@ export const buildAuthRouter = (env: Env): Router => {
     refreshController(env),
   );
   router.post("/logout", validate({ body: logoutSchema }), logoutController);
-  router.post("/google", validate({ body: googleAuthSchema }), googleController);
+  router.post("/google", validate({ body: googleAuthSchema }), googleController(env));
 
   router.post(
     "/forgot-password",
