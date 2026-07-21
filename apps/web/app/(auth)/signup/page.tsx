@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 
 import {
@@ -24,7 +25,9 @@ export default function SignUpPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <SignUpForm />
+        <Suspense fallback={<div className="h-96 animate-pulse rounded-md bg-muted" />}>
+          <SignUpForm />
+        </Suspense>
       </CardContent>
     </Card>
   );
