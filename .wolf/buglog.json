@@ -3381,6 +3381,30 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-21T10:42:00.000Z"
+    },
+    {
+      "id": "bug-207",
+      "timestamp": "2026-07-21T10:35:00.000Z",
+      "error_message": "TS2305: Module '@clipflow/config' has no exported member 'isBillingEnabled' (5 files: src/index.ts, src/lib/plan-guard.ts, auth.service.test.ts, billing/controller.ts, billing/routes.ts).",
+      "file": "packages/config/src/index.ts",
+      "root_cause": "The BILLING_ENABLED env var + isBillingEnabled() helper were added to packages/config/src/index.ts but the dist/ directory was never rebuilt. tsc --noEmit on the API resolved the module to dist/index.d.ts (the old build without the new export) and failed.",
+      "fix": "Ran `pnpm --filter @clipflow/config build` to recompile src/ → dist/. All 5 TS2305 errors resolved.",
+      "tags": ["manual", "type-fix", "config", "dist-stale", "build-step"],
+      "related_bugs": ["bug-138"],
+      "occurrences": 1,
+      "last_seen": "2026-07-21T10:35:00.000Z"
+    },
+    {
+      "id": "bug-208",
+      "timestamp": "2026-07-21T10:37:00.000Z",
+      "error_message": "Next.js build error: `useSearchParams() should be wrapped in a suspense boundary at page '/signup'` — build crashed prerendering /signup.",
+      "file": "apps/web/app/(auth)/signup/page.tsx",
+      "root_cause": "The `GoogleButton` component (rendered by `SignUpForm`) calls `useSearchParams()` to read callbackUrl/next params. The signup page did not wrap `SignUpForm` in a `<Suspense>` boundary, so Next.js failed to statically prerender it. The signin page already had this pattern (`<Suspense><SignInForm /></Suspense>`) but the signup page was missed.",
+      "fix": "Added `import { Suspense } from 'react'` and wrapped `<SignUpForm />` in `<Suspense fallback={<div className=\"h-96 animate-pulse rounded-md bg-muted\" />}>` in apps/web/app/(auth)/signup/page.tsx.",
+      "tags": ["manual", "build-error", "nextjs", "suspense", "useSearchParams"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-07-21T10:37:00.000Z"
     }
   ]
 }

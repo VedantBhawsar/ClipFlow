@@ -368,6 +368,14 @@
 | 10:08 | Converted the "Sequence diagram (target end state)" from `flowchart TD` to a proper mermaid `sequenceDiagram` with lifelines + phase backgrounds (rect) + par/alt blocks. Added init directive to bump fontSize to 18px and lift message/actor margins. Diagram now renders tall and reads as a sequence diagram instead of a flowchart. | README.md | green — mermaid syntax validates locally (lint of syntax only) | ~3.5k |
 | 10:09 | Session end: 2 writes across 1 files (README.md) | 12 reads | ~38524 tok |
 
+## Session: 2026-07-21 10:35 — Fix TS errors + Suspense boundary
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|--------|---------|
+| 10:35 | Fixed TS2305: rebuilt @clipflow/config dist/ (isBillingEnabled export was missing from stale compiled output) | packages/config | pnpm --filter api check-types clean | ~300 |
+| 10:37 | Fixed Next.js build error: wrapped SignUpForm in Suspense on /signup page (GoogleButton uses useSearchParams) | apps/web/app/(auth)/signup/page.tsx | build can now prerender /signup | ~200 |
+| 10:42 | Added Do-Not-Repeat rules to cerebrum.md: (1) always rebuild workspace package dist/ after editing src/, (2) wrap any page rendering a useSearchParams consumer in Suspense. Logged bug-207 (config dist stale) + bug-208 (missing Suspense). Appended session to memory.md. | .wolf/cerebrum.md, .wolf/buglog.json, .wolf/memory.md | session recorded | ~400 |
+
 ## Session: 2026-07-01 17:56
 
 | Time | Action | File(s) | Outcome | ~Tokens |
