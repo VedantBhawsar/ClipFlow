@@ -147,6 +147,8 @@ const buildMockCtx = (env: Partial<Env> = {}) => {
     SMTP_PORT: 587,
     SMTP_FROM: "noreply@clipflow.com",
     IMAGE_GEN_PROVIDER: "gemini",
+    GEMINI_IMAGE_URL: "https://example.com/gemini-image-url",
+    BILLING_ENABLED: false,
     GEMINI_API_KEY: "test-gemini-key-min-20-chars",
     GEMINI_IMAGE_MODEL: "gemini-2.0-flash-exp-image-generation",
     GEMINI_VISION_MODEL: "gemini-2.0-flash-001",

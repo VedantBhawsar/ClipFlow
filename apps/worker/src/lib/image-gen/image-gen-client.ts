@@ -54,6 +54,7 @@ export class ImageGenClient {
   private replicateModel: string;
   private nvidiaApiKey?: string;
   private nvidiaImageModel: string;
+  private geminiImageUrl: string; 
 
   constructor(env: Env) {
     this.provider = env.IMAGE_GEN_PROVIDER;
@@ -61,6 +62,7 @@ export class ImageGenClient {
     this.geminiVisionModel = env.GEMINI_VISION_MODEL;
     this.replicateModel = env.REPLICATE_IMAGE_MODEL;
     this.nvidiaImageModel = env.NVIDIA_IMAGE_MODEL;
+    this.geminiImageUrl = env.GEMINI_IMAGE_URL; 
 
     if (this.provider === "nvidia") {
       if (!env.NVIDIA_API_KEY) {
@@ -79,7 +81,9 @@ export class ImageGenClient {
           "GEMINI_API_KEY is not configured but IMAGE_GEN_PROVIDER=gemini",
         );
       }
-      this.genai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+      this.genai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY, httpOptions: { 
+        baseUrl: this.geminiImageUrl
+      } });
     }
 
     if (this.provider === "replicate") {

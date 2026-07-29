@@ -103,6 +103,7 @@ const baseEnv: Env = {
   GEMINI_API_KEY: "test-gemini-key-min-20-chars",
   GEMINI_IMAGE_MODEL: "gemini-2.0-flash-exp-image-generation",
   GEMINI_VISION_MODEL: "gemini-2.0-flash-001",
+  GEMINI_IMAGE_URL: "https://example.com/gemini-image-url",
   REPLICATE_API_TOKEN: undefined,
   REPLICATE_IMAGE_MODEL: "black-forest-labs/flux-pro",
   NVIDIA_IMAGE_MODEL: "black-forest-labs/flux.1-dev",
@@ -111,6 +112,7 @@ const baseEnv: Env = {
   DODO_PAYMENTS_API_KEY: "test-dodo-api-key-min-20-chars",
   DODO_PAYMENTS_WEBHOOK_SECRET: "test-dodo-webhook-secret-min-20-chars",
   DODO_PAYMENTS_ENVIRONMENT: "test_mode",
+  BILLING_ENABLED: false,
 };
 
 beforeEach(() => {

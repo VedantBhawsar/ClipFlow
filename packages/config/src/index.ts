@@ -146,6 +146,7 @@ const envSchema = z.object({
   /// Gemini model for vision analysis (channel thumbnail style detection).
   /// `gemini-2.5-flash` accepts image + text inputs and returns text.
   GEMINI_VISION_MODEL: z.string().default("gemini-2.5-flash"),
+  GEMINI_IMAGE_URL: z.string(), 
   /// Replicate API token. Required when IMAGE_GEN_PROVIDER=replicate.
   REPLICATE_API_TOKEN: z.string().min(1).optional(),
   /// Replicate model for image generation (e.g. flux, sdxl).
