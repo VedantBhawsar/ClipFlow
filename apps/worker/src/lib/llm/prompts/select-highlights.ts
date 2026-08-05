@@ -31,7 +31,7 @@
  *   4. Each chapter title ≤ 100 chars.
  */
 import type { AaiChapter } from "../../transcription/assemblyai.js";
-import { MIN_CHAPTER_GAP_MS, type ChapterBudget } from "../schemas.js";
+import { MAX_CHAPTERS, MIN_CHAPTER_GAP_MS, type ChapterBudget } from "../schemas.js";
 
 export interface SelectHighlightsPromptInput {
   /** Full transcript text from AssemblyAI. May be long; the caller
@@ -83,6 +83,9 @@ export const buildSelectHighlightsPrompt = (
 
   const densityGuidance = buildDensityGuidance(budget, durationSeconds);
 
+  const halfwayMs = Math.floor(durationMs / 2);
+  const halfwaySeconds = Math.floor(durationSeconds / 2);
+
   const systemPrompt = `You are a senior YouTube producer writing chapter titles and a one-paragraph summary for a finished video transcript.
 
 OUTPUT CONTRACT (strict — your response will be parsed as JSON):
@@ -96,20 +99,32 @@ OUTPUT CONTRACT (strict — your response will be parsed as JSON):
 - Output ONLY the JSON. No markdown, no code fences, no commentary.
 - If you cannot produce a valid response, output {"summary":"","chapters":[]}.
 
+IMPORTANT — startMs VALUES ARE IN MILLISECONDS:
+Each anchor below shows "startMs: XXXXXX" — copy that number directly into your output. Do NOT convert to seconds. Do NOT re-calculate the number. Just use it as-is.
+Example: "startMs: 3300000" means the chapter starts at 55:00 in the video.
+
 PRIMARY SIGNAL — ASSEMBLYAI AUTO-CHAPTERS:
 The transcript was processed by AssemblyAI's topic-segmentation model. The list below is the PRIMARY source for chapter boundaries — each anchor is a real detected topic shift with a short gist, a one-sentence headline, and a longer summary of what was said. Read them carefully before deciding on the chapter list.
 
 For each anchor you'll see:
-  - Time range  — the start and end of the detected topic segment.
+  - Time range  — the start and end of the detected topic segment (human-readable AND raw ms values).
   - Headline    — AssemblyAI's one-sentence title.
   - Gist        — AssemblyAI's 3-8 word topic tag.
   - Summary     — AssemblyAI's multi-sentence description of the content.
 
 YOUR TASK — REVIEW, EDIT, OUTPUT:
-1. Read every anchor. For each one, decide: KEEP it as-is, MERGE it with an adjacent anchor that covers the same topic, or SPLIT it if it spans two clearly distinct topics.
-2. Pick the final chapter list. Each chapter's startMs should match the start of one of the anchors (or, rarely, a slightly better point within an anchor's range). Do NOT invent boundaries that aren't grounded in the anchors.
-3. Write a chapter title per chapter. Prefer the AssemblyAI headline when it's accurate and engaging; rewrite it to be sharper or more specific when it isn't. Use language code "${languageCode}" to match the spoken language.
-4. Write a 1-2 sentence summary of the WHOLE video (not per-chapter — that's the summary field in the JSON).
+1. Read EVERY anchor from the first to the last. The anchors span the FULL video — you must consider all of them.
+2. For each anchor, decide: KEEP it as-is, MERGE it with an adjacent anchor that covers the same topic, or SPLIT it if it spans two clearly distinct topics.
+3. Pick the final chapter list. Each chapter's startMs MUST be the exact startMs value shown for one of the anchors (copy the number — do not calculate or convert). Do NOT invent boundaries that aren't grounded in the anchors.
+4. Write a chapter title per chapter. Prefer the AssemblyAI headline when it's accurate and engaging; rewrite it to be sharper or more specific when it isn't. Use language code "${languageCode}" to match the spoken language.
+5. Write a 1-2 sentence summary of the WHOLE video (not per-chapter — that's the summary field in the JSON).
+
+FULL-VIDEO COVERAGE (this is the most critical requirement):
+- Your chapters MUST span the COMPLETE video from the very first second to near the very end.
+- The video is ${durationSeconds} seconds (${formatMs(durationMs)}) long. At least one chapter MUST start after ${halfwaySeconds} seconds (${halfwayMs} ms) — the second half of the video must be represented.
+- After writing your chapters, verify: "Do I have at least one chapter in the first third, one in the middle third, and one in the final third of the video?" If not, revise.
+- NEVER produce a chapter list where all chapters fall within the first few minutes of a long video. That is always wrong.
+- When you have more anchors than your chapter limit allows, merge from ACROSS the entire video proportionally — do NOT keep only the early anchors and discard the later ones.
 
 QUALITY PRINCIPLES:
 - Each chapter must reflect a GENUINELY distinct topic or scene shift. If two anchors cover the same topic, merge them. If one anchor clearly spans two topics, split it.
@@ -120,15 +135,15 @@ ${densityGuidance}
 
 YOUTUBE CHAPTER RULES (your output is rejected if any of these fail):
 - chapters[0].startMs MUST be exactly 0.
-- chapters.length MUST be at least 3 and at most 12. (If AssemblyAI gave you fewer than 3 anchors and the video is genuinely too short for 3 distinct topics, return the anchors you have and the server will re-derive YouTube-compliant chapters.)
+- chapters.length MUST be at least 3 and at most ${MAX_CHAPTERS}. (If AssemblyAI gave you fewer than 3 anchors and the video is genuinely too short for 3 distinct topics, return the anchors you have and the server will re-derive YouTube-compliant chapters.)
 - The minimum gap between consecutive chapter startMs values is ${MIN_CHAPTER_GAP_MS} ms (10 seconds) — this is the YouTube hard floor.
 - The last chapter's startMs MUST be less than the video duration (${durationMs} ms).
 - Each chapter title MUST be ≤ 100 characters.
 
 TRANSCRIPT METADATA:
 - Language: ${languageCode}
-- Duration: ${durationSeconds} s (${durationMs} ms)
-- Auto-chapter anchors: ${aaiChapters.length}
+- Duration: ${durationSeconds} s (${formatMs(durationMs)}, ${durationMs} ms)
+- Auto-chapter anchors: ${aaiChapters.length} (covering the full video)
 
 GUIDANCE:
 - Titles should be short, descriptive, and front-loaded with the strongest noun ("Why the model hallucinates" beats "Hallucinations explained").
@@ -162,8 +177,12 @@ const formatAnchorChapters = (aaiChapters: AaiChapter[]): string => {
   if (aaiChapters.length === 0) return "";
   return aaiChapters
     .map((c, i) => {
+      // Show both human-readable time AND the raw ms value the LLM must
+      // use in its output — prevents seconds/ms confusion on long videos.
       const range = `[${formatMs(c.startMs)} – ${formatMs(c.endMs)}]`;
-      const lines: string[] = [`Anchor ${i + 1}: ${range}`];
+      const lines: string[] = [
+        `Anchor ${i + 1}: ${range}  ← startMs: ${c.startMs}  endMs: ${c.endMs}`,
+      ];
       const headline = (c.headline || "").trim();
       const gist = (c.gist || "").trim();
       const summary = (c.summary || "").trim();
@@ -192,7 +211,8 @@ const buildDensityGuidance = (
 - For a ${minutes}-minute video, the natural chapter density is ~${targetMin}–${targetMax} chapters (roughly ${target}). This is a HINT about typical density, not a quota.
 - Match the actual number of distinct topic shifts the video contains. The AssemblyAI anchors above already reflect those shifts; trust them.
 - It's fine to output FEWER chapters than the hint if many anchors cover the same topic and should be merged.
-- It's fine to output MORE chapters than the hint if the content has more distinct topics than typical for this length.`;
+- It's fine to output MORE chapters than the hint if the content has more distinct topics than typical for this length.
+- Regardless of the count, chapters MUST be distributed across the FULL video — never cluster them all at the start.`;
 };
 
 /**

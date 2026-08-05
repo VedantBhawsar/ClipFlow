@@ -47,10 +47,13 @@ const chapterSchema = z.object({
 const MAX_DURATION_MS = 86_400_000;
 
 /**
- * YouTube's display rules cap a video at 12 visible chapters (the
- * 13th onward are silently dropped in the progress bar).
+ * Maximum chapters we allow per video. YouTube supports many more
+ * chapters in the progress bar than the original 12 limit this code
+ * used to enforce. Real-world videos with 20-40 chapters are common
+ * and fully supported. 30 is a safe ceiling that lets the LLM cover
+ * long videos properly without generating a wall of micro-chapters.
  */
-export const MAX_CHAPTERS = 12;
+export const MAX_CHAPTERS = 30;
 
 /**
  * YouTube's hard floor on consecutive-chapter spacing (10 seconds).
@@ -83,10 +86,12 @@ export const computeChapterBudget = (durationMs: number): ChapterBudget => {
   const durationSeconds = durationMs / 1000;
   // One chapter every ~3 minutes as a starting density, clamped to
   // the YouTube min/max for the hint range.
+  // NOTE: for long videos (>30 min) this intentionally exceeds the old
+  // MAX_CHAPTERS=12 ceiling so the density hint reflects reality.
   const rawTarget = Math.round(durationSeconds / 180);
   const target = Math.max(3, Math.min(MAX_CHAPTERS, rawTarget));
-  const targetMin = Math.max(3, target - 2);
-  const targetMax = Math.min(MAX_CHAPTERS, target + 2);
+  const targetMin = Math.max(3, target - Math.ceil(target * 0.2));
+  const targetMax = Math.min(MAX_CHAPTERS, target + Math.ceil(target * 0.2));
   return { targetMin, targetMax, target };
 };
 

@@ -1484,3 +1484,65 @@ Closed the loop on the user-driven publish trigger for `READY_FOR_REVIEW` (and r
 | 09:59 | Edited apps/api/src/modules/videos/videos.schemas.ts | now() → job() | ~210 |
 | 09:59 | Edited apps/api/src/modules/videos/videos.service.test.ts | expanded (+10 lines) | ~496 |
 | 10:00 | Edited apps/api/src/modules/videos/videos.service.test.ts | 52→51 lines | ~547 |
+
+## Session: 2026-08-02 16:57
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-05 09:10
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-05 09:10
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-05 09:10
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-05 09:11
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-05 09:12
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-05 09:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-05 09:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-05 09:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-05 09:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:23 | Edited apps/worker/src/lib/llm/schemas.ts | 5→8 lines | ~110 |
+| 09:23 | Edited apps/worker/src/lib/llm/schemas.ts | 10→12 lines | ~196 |
+| 09:24 | Edited apps/worker/src/lib/llm/prompts/select-highlights.ts | modified CONTRACT() | ~1516 |
+| 09:24 | Edited apps/worker/src/lib/llm/prompts/select-highlights.ts | 16→20 lines | ~247 |
+| 09:24 | Edited apps/worker/src/lib/llm/prompts/select-highlights.ts | modified HINT() | ~263 |
+| 09:24 | Edited apps/worker/src/lib/llm/prompts/select-highlights.ts | inline fix | ~25 |
+| 09:28 | Edited apps/worker/src/lib/llm/schemas.test.ts | 8→8 lines | ~93 |
+| 09:29 | Edited apps/worker/src/lib/llm/schemas.test.ts | modified if() | ~224 |
+| 09:29 | Edited apps/worker/src/lib/llm/schemas.test.ts | modified for() | ~557 |
+| 09:29 | Edited apps/worker/src/lib/llm/prompts/select-highlights.test.ts | 8→9 lines | ~100 |
+| 04:17 | Fixed chapter generation for long videos: MAX_CHAPTERS 12→30, computeChapterBudget spread ±20%, added full-video coverage prompt requirement and ms values in anchor format | apps/worker/src/lib/llm/schemas.ts, prompts/select-highlights.ts, *.test.ts | 50 tests pass, pre-existing failures unchanged | ~4000 |
+| 09:48 | Session end: 10 writes across 4 files (schemas.ts, select-highlights.ts, schemas.test.ts, select-highlights.test.ts) | 8 reads | ~16625 tok |

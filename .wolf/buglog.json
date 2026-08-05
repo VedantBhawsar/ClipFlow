@@ -3389,8 +3389,16 @@
       "file": "packages/config/src/index.ts",
       "root_cause": "The BILLING_ENABLED env var + isBillingEnabled() helper were added to packages/config/src/index.ts but the dist/ directory was never rebuilt. tsc --noEmit on the API resolved the module to dist/index.d.ts (the old build without the new export) and failed.",
       "fix": "Ran `pnpm --filter @clipflow/config build` to recompile src/ → dist/. All 5 TS2305 errors resolved.",
-      "tags": ["manual", "type-fix", "config", "dist-stale", "build-step"],
-      "related_bugs": ["bug-138"],
+      "tags": [
+        "manual",
+        "type-fix",
+        "config",
+        "dist-stale",
+        "build-step"
+      ],
+      "related_bugs": [
+        "bug-138"
+      ],
       "occurrences": 1,
       "last_seen": "2026-07-21T10:35:00.000Z"
     },
@@ -3401,10 +3409,60 @@
       "file": "apps/web/app/(auth)/signup/page.tsx",
       "root_cause": "The `GoogleButton` component (rendered by `SignUpForm`) calls `useSearchParams()` to read callbackUrl/next params. The signup page did not wrap `SignUpForm` in a `<Suspense>` boundary, so Next.js failed to statically prerender it. The signin page already had this pattern (`<Suspense><SignInForm /></Suspense>`) but the signup page was missed.",
       "fix": "Added `import { Suspense } from 'react'` and wrapped `<SignUpForm />` in `<Suspense fallback={<div className=\"h-96 animate-pulse rounded-md bg-muted\" />}>` in apps/web/app/(auth)/signup/page.tsx.",
-      "tags": ["manual", "build-error", "nextjs", "suspense", "useSearchParams"],
+      "tags": [
+        "manual",
+        "build-error",
+        "nextjs",
+        "suspense",
+        "useSearchParams"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-07-21T10:37:00.000Z"
+    },
+    {
+      "id": "bug-209",
+      "timestamp": "2026-08-05T03:53:25.384Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/worker/src/lib/llm/schemas.ts",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 5→8 lines (3 removed) | Also: const targetMin = Math.max(3, target - 2);; const targetMax = Math.min(MAX_CHAPTERS, target + ",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-08-05T03:53:34.289Z"
+    },
+    {
+      "id": "bug-210",
+      "timestamp": "2026-08-05T03:54:23.285Z",
+      "error_message": "Significant refactor of ",
+      "file": "apps/worker/src/lib/llm/prompts/select-highlights.ts",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 51→66 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-05T03:54:23.285Z"
+    },
+    {
+      "id": "bug-211",
+      "timestamp": "2026-08-05T09:47:00.000Z",
+      "error_message": "Chapter generation only produces chapters for the first 1-2 minutes of long (1-hour+) videos",
+      "file": "apps/worker/src/lib/llm/schemas.ts, apps/worker/src/lib/llm/prompts/select-highlights.ts",
+      "root_cause": "Three compounding issues: (1) MAX_CHAPTERS was 12 — for a 1-hour video with 20+ AssemblyAI anchors the LLM had to merge all into 12, often keeping only early anchors and discarding later ones; (2) computeChapterBudget clamped rawTarget to 12 so the density hint was 10-12 even for hour-long videos; (3) the prompt had no explicit requirement to distribute chapters across the FULL video, so the LLM naturally kept high-density early anchors; (4) anchor format showed human-readable times but not the raw ms values, causing potential seconds/ms confusion on large timestamps",
+      "fix": "MAX_CHAPTERS increased 12→30. computeChapterBudget now uses ±20% spread instead of fixed ±2. Prompt adds FULL-VIDEO COVERAGE section requiring chapters to span the entire video with explicit half-way check, adds ms values alongside human-readable times in anchor format, and adds distribution guidance for when anchors must be merged.",
+      "tags": ["chapters", "llm", "prompt", "long-video", "youtube"],
+      "related_bugs": ["bug-206"],
+      "occurrences": 1,
+      "last_seen": "2026-08-05T09:47:00.000Z"
     }
   ]
 }

@@ -32,8 +32,8 @@ describe("LlmOutputSchema", () => {
       expect(result.success).toBe(true);
     });
 
-    it("accepts up to 12 chapters with valid gaps", () => {
-      const chapters = Array.from({ length: 12 }, (_, i) => ({
+    it("accepts up to 30 chapters with valid gaps", () => {
+      const chapters = Array.from({ length: 30 }, (_, i) => ({
         startMs: i * 15_000,
         title: `Chapter ${i + 1}`,
       }));
@@ -168,20 +168,20 @@ describe("LlmOutputSchema", () => {
       }
     });
 
-    it("rejects when chapter count exceeds the YouTube max", () => {
-      const chapters = Array.from({ length: 13 }, (_, i) => ({
+    it("rejects when chapter count exceeds the max (30)", () => {
+      const chapters = Array.from({ length: 31 }, (_, i) => ({
         startMs: i * 15_000,
         title: `Chapter ${i + 1}`,
       }));
       const result = LlmOutputSchema.safeParse({ summary: "ok", chapters });
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0]!.message).toMatch(/12/);
+        expect(result.error.issues[0]!.message).toMatch(/30/);
       }
     });
 
-    it("rejects 13 chapters even if the gaps are wide enough — the YouTube cap wins", () => {
-      const chapters = Array.from({ length: 13 }, (_, i) => ({
+    it("rejects 31 chapters even if the gaps are wide enough — the cap wins", () => {
+      const chapters = Array.from({ length: 31 }, (_, i) => ({
         startMs: i * 300_000,
         title: `Chapter ${i + 1}`,
       }));
@@ -310,7 +310,8 @@ describe("computeChapterBudget", () => {
     const b = computeChapterBudget(30_000);
     expect(b.targetMin).toBe(3);
     expect(b.target).toBe(3);
-    expect(b.targetMax).toBe(5); // target + 2
+    // spread = ceil(3 * 0.2) = 1, so targetMax = 3 + 1 = 4
+    expect(b.targetMax).toBe(4);
   });
 
   it("targets ~3 chapters for a 2-minute video", () => {
@@ -318,28 +319,33 @@ describe("computeChapterBudget", () => {
     expect(b.target).toBe(3);
   });
 
-  it("targets ~5 chapters for a 10-minute video", () => {
+  it("targets ~3 chapters for a 10-minute video (600/180=3.33→3)", () => {
     const b = computeChapterBudget(10 * 60_000);
-    // 600 / 180 = 3.33 → round → 3, but target + 2 = 5 so range is 3-5
+    // 600 / 180 = 3.33 → round → 3
     expect(b.target).toBe(3);
     expect(b.targetMin).toBe(3);
-    expect(b.targetMax).toBe(5);
+    // spread = ceil(3 * 0.2) = 1, so targetMax = 4
+    expect(b.targetMax).toBe(4);
   });
 
   it("scales to ~10 chapters for a 30-minute video", () => {
     const b = computeChapterBudget(30 * 60_000);
     expect(b.target).toBe(10);
+    // spread = ceil(10 * 0.2) = 2, so range is 8–12
     expect(b.targetMin).toBe(8);
     expect(b.targetMax).toBe(12);
   });
 
-  it("caps at the YouTube max of 12 chapters even for hour-long videos", () => {
+  it("targets ~20 chapters for an hour-long video — not capped at old 12 limit", () => {
+    // 3600 / 180 = 20; new MAX_CHAPTERS=30 so no clamping here
     const b = computeChapterBudget(60 * 60_000);
-    expect(b.target).toBe(MAX_CHAPTERS);
-    expect(b.targetMax).toBe(MAX_CHAPTERS);
+    expect(b.target).toBe(20);
+    // spread = ceil(20 * 0.2) = 4, so range is 16–24
+    expect(b.targetMin).toBe(16);
+    expect(b.targetMax).toBe(24);
   });
 
-  it("grows target monotonically (clamped at 12) as duration grows", () => {
+  it("grows target monotonically (clamped at MAX_CHAPTERS) as duration grows", () => {
     const durations = [
       60_000,
       5 * 60_000,

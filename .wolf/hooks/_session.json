@@ -1,69 +1,119 @@
 {
-  "session_id": "session-2026-07-19-0958",
-  "started": "2026-07-19T04:28:45.702Z",
+  "session_id": "session-2026-08-05-0913",
+  "started": "2026-08-05T03:43:12.770Z",
   "files_read": {
-    "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts": {
-      "count": 2,
-      "tokens": 13227,
-      "first_read": "2026-07-19T04:28:51.357Z"
-    },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.controller.ts": {
+    "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/jobs/generate.ts": {
       "count": 1,
-      "tokens": 3989,
-      "first_read": "2026-07-19T04:29:11.892Z"
+      "tokens": 3836,
+      "first_read": "2026-08-05T03:45:17.331Z"
     },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.schemas.ts": {
+    "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/prompts/select-highlights.ts": {
+      "count": 3,
+      "tokens": 3558,
+      "first_read": "2026-08-05T03:45:18.062Z"
+    },
+    "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/schemas.ts": {
       "count": 1,
-      "tokens": 4468,
-      "first_read": "2026-07-19T04:29:30.220Z"
+      "tokens": 1100,
+      "first_read": "2026-08-05T03:45:23.343Z"
     },
-    "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.test.ts": {
+    "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/transcription/assemblyai.ts": {
+      "count": 1,
+      "tokens": 2283,
+      "first_read": "2026-08-05T03:45:23.795Z"
+    },
+    "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/validate-with-retry.ts": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-08-05T03:47:44.786Z"
+    },
+    "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/index.ts": {
+      "count": 1,
+      "tokens": 331,
+      "first_read": "2026-08-05T03:47:44.829Z"
+    },
+    "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/schemas.test.ts": {
       "count": 2,
-      "tokens": 13445,
-      "first_read": "2026-07-19T04:29:38.377Z"
+      "tokens": 2186,
+      "first_read": "2026-08-05T03:57:40.172Z"
+    },
+    "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/prompts/select-highlights.test.ts": {
+      "count": 2,
+      "tokens": 0,
+      "first_read": "2026-08-05T03:58:12.008Z"
     }
   },
   "files_written": [
     {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.ts",
+      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/schemas.ts",
       "action": "edit",
-      "tokens": 907,
-      "at": "2026-07-19T04:29:06.803Z"
+      "tokens": 110,
+      "at": "2026-08-05T03:53:25.376Z"
     },
     {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.controller.ts",
+      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/schemas.ts",
       "action": "edit",
-      "tokens": 448,
-      "at": "2026-07-19T04:29:26.232Z"
+      "tokens": 196,
+      "at": "2026-08-05T03:53:34.288Z"
     },
     {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.schemas.ts",
+      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/prompts/select-highlights.ts",
       "action": "edit",
-      "tokens": 210,
-      "at": "2026-07-19T04:29:35.897Z"
+      "tokens": 1516,
+      "at": "2026-08-05T03:54:23.284Z"
     },
     {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.test.ts",
+      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/prompts/select-highlights.ts",
       "action": "edit",
-      "tokens": 496,
-      "at": "2026-07-19T04:29:58.020Z"
+      "tokens": 247,
+      "at": "2026-08-05T03:54:33.787Z"
     },
     {
-      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/api/src/modules/videos/videos.service.test.ts",
+      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/prompts/select-highlights.ts",
       "action": "edit",
-      "tokens": 547,
-      "at": "2026-07-19T04:30:05.335Z"
+      "tokens": 263,
+      "at": "2026-08-05T03:54:45.741Z"
+    },
+    {
+      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/prompts/select-highlights.ts",
+      "action": "edit",
+      "tokens": 25,
+      "at": "2026-08-05T03:54:59.808Z"
+    },
+    {
+      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/schemas.test.ts",
+      "action": "edit",
+      "tokens": 93,
+      "at": "2026-08-05T03:58:54.235Z"
+    },
+    {
+      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/schemas.test.ts",
+      "action": "edit",
+      "tokens": 224,
+      "at": "2026-08-05T03:59:04.710Z"
+    },
+    {
+      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/schemas.test.ts",
+      "action": "edit",
+      "tokens": 557,
+      "at": "2026-08-05T03:59:26.766Z"
+    },
+    {
+      "file": "/Users/vedant/Documents/projects/ClipFlow/apps/worker/src/lib/llm/prompts/select-highlights.test.ts",
+      "action": "edit",
+      "tokens": 100,
+      "at": "2026-08-05T03:59:39.765Z"
     }
   ],
   "edit_counts": {
-    "apps/api/src/modules/videos/videos.service.ts": 1,
-    "apps/api/src/modules/videos/videos.controller.ts": 1,
-    "apps/api/src/modules/videos/videos.schemas.ts": 1,
-    "apps/api/src/modules/videos/videos.service.test.ts": 2
+    "apps/worker/src/lib/llm/schemas.ts": 2,
+    "apps/worker/src/lib/llm/prompts/select-highlights.ts": 4,
+    "apps/worker/src/lib/llm/schemas.test.ts": 3,
+    "apps/worker/src/lib/llm/prompts/select-highlights.test.ts": 1
   },
-  "anatomy_hits": 4,
-  "anatomy_misses": 0,
-  "repeated_reads_warned": 2,
+  "anatomy_hits": 6,
+  "anatomy_misses": 1,
+  "repeated_reads_warned": 4,
   "cerebrum_warnings": 0,
-  "stop_count": 0
+  "stop_count": 1
 }

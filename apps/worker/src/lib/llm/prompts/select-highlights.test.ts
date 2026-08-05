@@ -201,12 +201,13 @@ describe("buildSelectHighlightsPrompt", () => {
 
   describe("density hint", () => {
     it("names the target range for a 5-minute video", () => {
+      // 5 min → target=3, spread=ceil(3*0.2)=1 → range 3–4
       const { systemPrompt } = buildSelectHighlightsPrompt({
         ...baseInput,
         durationMs: 5 * 60_000,
         budget: computeChapterBudget(5 * 60_000),
       });
-      expect(systemPrompt).toContain("3–5");
+      expect(systemPrompt).toContain("3–4");
     });
 
     it("names the target range for a 30-minute video", () => {

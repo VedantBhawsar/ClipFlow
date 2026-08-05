@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-07-19T04:30:05.328Z
-> Files: 409 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-08-05T03:59:39.757Z
+> Files: 410 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../../tmp/
 
@@ -552,14 +552,15 @@
 - `llm-client.test.ts` — Unit tests for `OpenAICompatLlmClient`. (~2570 tok)
 - `llm-client.ts` — LLM client — OpenAI-compatible. (~1842 tok)
 - `llm-errors.test.ts` — Unit tests for `classifyLlmError`. (~2018 tok)
-- `schemas.test.ts` — Unit tests for `LlmOutputSchema` + `parseLlmOutput`. (~2186 tok)
-- `schemas.ts` — Zod schemas for the `generate` job's LLM output. (~1100 tok)
+- `schemas.test.ts` — Unit tests for `LlmOutputSchema` + `parseLlmOutput` + (~3379 tok)
+- `schemas.ts` — Zod schemas for the `generate` job's LLM output. (~2124 tok)
 - `validate-with-retry.test.ts` — Unit tests for `validateWithRetry`. (~1650 tok)
 - `validate-with-retry.ts` — `validateWithRetry` — turn the LLM's "I tried, here is something (~1092 tok)
 
 ## apps/worker/src/lib/llm/prompts/
 
-- `select-highlights.ts` — `select-highlights` prompt — single joint LLM call that produces (~1633 tok)
+- `select-highlights.test.ts` — Unit tests for `buildSelectHighlightsPrompt`. (~2875 tok)
+- `select-highlights.ts` — `select-highlights` prompt — single joint LLM call that produces (~3562 tok)
 
 ## apps/worker/src/lib/transcription/
 
